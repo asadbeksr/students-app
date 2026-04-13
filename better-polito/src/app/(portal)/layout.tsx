@@ -48,10 +48,11 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Topbar onMobileMenuOpen={() => setMobileNavOpen(true)} />
 
-        {children}
-      </main>
-      {/* <Footer /> */}
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6">
+          {children}
+        </main>
+        {/* <Footer /> */}
+      </div>
     </div>
-    </div >
   );
 }
