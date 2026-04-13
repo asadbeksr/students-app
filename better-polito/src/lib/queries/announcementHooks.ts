@@ -6,7 +6,7 @@ export const ANNOUNCEMENTS_QUERY_KEY = ['announcements'];
 
 export const useGetAnnouncements = (seen: boolean, scope?: string) => useQuery({
   queryKey: [...ANNOUNCEMENTS_QUERY_KEY, { seen, scope }],
-  queryFn: () => getApiClient().getAnnouncements({ _new: !seen }).then((r: any) => {
+  queryFn: () => ((getApiClient() as any) as any).getAnnouncements({ _new: !seen }).then((r: any) => {
     const data = r.data ?? [];
     return scope ? data.filter((a: any) => a.scope === scope) : data;
   }),

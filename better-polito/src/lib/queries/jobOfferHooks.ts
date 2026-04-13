@@ -7,11 +7,11 @@ export const JOB_OFFER_QUERY_PREFIX = 'jobOffer';
 
 export const useGetJobOffers = () => useQuery({
   queryKey: JOB_OFFERS_QUERY_KEY,
-  queryFn: () => getApiClient().getJobOffers().then((r: any) => r.data ?? []),
+  queryFn: () => (getApiClient() as any).getJobOffers().then((r: any) => r.data ?? []),
 });
 
 export const useGetJobOffer = (jobOfferId: number) => useQuery({
   queryKey: [JOB_OFFER_QUERY_PREFIX, jobOfferId],
-  queryFn: () => getApiClient().getJobOffer(jobOfferId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getJobOffer(jobOfferId).then((r: any) => r.data),
   enabled: !!jobOfferId,
 });

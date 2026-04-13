@@ -9,19 +9,19 @@ export const FAQS_QUERY_KEY = ['ticket-faqs'];
 
 export const useGetTickets = () => useQuery({
   queryKey: TICKETS_QUERY_KEY,
-  queryFn: () => getApiClient().getTickets().then((r: any) => r.data ?? []),
+  queryFn: () => (getApiClient() as any).getTickets().then((r: any) => r.data ?? []),
 });
 
 export const useGetTicket = (ticketId: number) => useQuery({
   queryKey: [TICKET_QUERY_PREFIX, ticketId],
-  queryFn: () => getApiClient().getTicket(ticketId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getTicket(ticketId).then((r: any) => r.data),
   enabled: !!ticketId,
 });
 
 export const useCreateTicket = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: unknown) => getApiClient().createTicket(dto),
+    mutationFn: (dto: unknown) => (getApiClient() as any).createTicket(dto),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TICKETS_QUERY_KEY }),
   });
 };
@@ -29,21 +29,21 @@ export const useCreateTicket = () => {
 export const useReplyToTicket = (ticketId: number) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: unknown) => getApiClient().replyToTicket(ticketId, dto),
+    mutationFn: (dto: unknown) => (getApiClient() as any).replyToTicket(ticketId, dto),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [TICKET_QUERY_PREFIX, ticketId] }),
   });
 };
 
 export const useGetTicketTopics = () => useQuery({
   queryKey: TOPICS_QUERY_KEY,
-  queryFn: () => getApiClient().getTicketTopics().then((r: any) => r.data ?? []),
+  queryFn: () => (getApiClient() as any).getTicketTopics().then((r: any) => r.data ?? []),
   staleTime: Infinity,
 });
 
 export const useMarkTicketAsClosed = (ticketId: number) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => getApiClient().markTicketAsClosed(ticketId),
+    mutationFn: () => (getApiClient() as any).markTicketAsClosed(ticketId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TICKETS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [TICKET_QUERY_PREFIX, ticketId] });
@@ -53,6 +53,6 @@ export const useMarkTicketAsClosed = (ticketId: number) => {
 
 export const useSearchTicketFaqs = (search: string) => useQuery({
   queryKey: [...FAQS_QUERY_KEY, search],
-  queryFn: () => getApiClient().searchTicketFaqs(search).then((r: any) => r.data ?? []),
+  queryFn: () => (getApiClient() as any).searchTicketFaqs(search).then((r: any) => r.data ?? []),
   enabled: search.length >= 2,
 });

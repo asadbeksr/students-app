@@ -1,107 +1,262 @@
 'use client';
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { giphyService } from '@/lib/giphyService';
 import {
   LayoutDashboard, BookOpen, Calendar, GraduationCap, ClipboardList,
   CalendarCheck, MapPin, Ticket, Users, Briefcase, ClipboardCheck,
-  MessageSquare, User, Bot, Brain, BarChart3, ChevronRight
+  MessageSquare, User, Bot, Brain, BarChart3, PanelLeftClose,
+  Moon, Sun, Settings, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToolkitStore } from '@/lib/stores/toolkitStore';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/courses', label: 'Courses', icon: BookOpen },
-  { href: '/agenda', label: 'Agenda', icon: Calendar },
-  { href: '/transcript', label: 'Transcript', icon: GraduationCap },
-  { href: '/exams', label: 'Exams', icon: ClipboardList },
-  { href: '/bookings', label: 'Bookings', icon: CalendarCheck },
-  { href: '/places', label: 'Campus Map', icon: MapPin },
-  { href: '/tickets', label: 'Tickets', icon: Ticket },
-  { href: '/people', label: 'People', icon: Users },
-  { href: '/services', label: 'Services', icon: Briefcase },
-  { href: '/surveys', label: 'Surveys', icon: ClipboardCheck },
-  { href: '/messages', label: 'Messages', icon: MessageSquare },
-  { href: '/profile', label: 'Profile', icon: User },
+const navGroups = [
+  {
+    id: 'academics',
+    title: 'Academics',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/courses', label: 'Courses', icon: BookOpen },
+      { href: '/agenda', label: 'Agenda', icon: Calendar },
+      { href: '/exams', label: 'Exams', icon: ClipboardList },
+      { href: '/transcript', label: 'Transcript', icon: GraduationCap },
+    ],
+  },
+  {
+    id: 'campus',
+    title: 'Campus & Services',
+    items: [
+      { href: '/messages', label: 'Messages', icon: MessageSquare },
+      { href: '/bookings', label: 'Bookings', icon: CalendarCheck },
+      { href: '/places', label: 'Campus Map', icon: MapPin },
+      { href: '/services', label: 'Services', icon: Briefcase },
+      { href: '/tickets', label: 'Tickets', icon: Ticket },
+    ],
+  },
+  {
+    id: 'directory',
+    title: 'Directory & Account',
+    items: [
+      { href: '/people', label: 'People', icon: Users },
+      { href: '/surveys', label: 'Surveys', icon: ClipboardCheck },
+      { href: '/profile', label: 'Profile', icon: User },
+    ],
+  },
+  {
+    id: 'ai',
+    title: 'AI Features',
+    items: [
+      { href: '/ai/chatbot', label: 'AI Assistant', icon: Bot },
+      { href: '/ai/study-planner', label: 'Study Planner', icon: Brain },
+      { href: '/ai/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  }
 ];
 
-const aiItems = [
-  { href: '/ai/study-planner', label: 'Study Planner', icon: Brain },
-  { href: '/ai/chatbot', label: 'AI Assistant', icon: Bot },
-  { href: '/ai/analytics', label: 'Analytics', icon: BarChart3 },
-];
-
-function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) {
-  const pathname = usePathname();
-  const isActive = pathname === href || pathname.startsWith(`${href}/`);
+function SidebarItemContent({ icon: Icon, label, isActive, isCollapsed }: { icon: React.ElementType, label: string, isActive?: boolean, isCollapsed?: boolean }) {
   return (
-    <Link
-      href={href}
-      className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-xl text-[15px] font-medium tracking-[0.15px] transition-all duration-150',
-        isActive
-          ? 'bg-[#f5f2ef] text-black shadow-[rgba(0,0,0,0.075)_0px_0px_0px_0.5px_inset]'
-          : 'text-[#4e4e4e] hover:bg-[#f5f5f5] hover:text-black'
-      )}
-    >
-      <Icon className="w-4 h-4 shrink-0" />
-      <span className="flex-1">{label}</span>
-      {isActive && <ChevronRight className="w-3 h-3 text-[#777169]" />}
-    </Link>
+    <div className={cn(
+      "flex items-center rounded-lg transition-[width,padding,margin] duration-200 cursor-pointer overflow-hidden relative",
+      isCollapsed ? "justify-center w-10 px-0 h-10 ml-3 py-0" : "px-3 py-2.5 w-full gap-3",
+      isActive
+        ? 'bg-primary/10 text-primary'
+        : 'hover:bg-muted text-foreground'
+    )}>
+      <span className={cn("shrink-0 flex items-center justify-center", isActive ? 'text-primary' : '')}>
+        <Icon className="h-4 w-4" />
+      </span>
+
+      <span className={cn(
+        "whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out",
+        isCollapsed ? "max-w-0 opacity-0 border-none" : "max-w-[200px] opacity-100",
+        isActive ? 'text-primary font-medium' : ''
+      )}>
+        {label}
+      </span>
+    </div>
   );
 }
 
 export function Sidebar() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ academics: true });
+  const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const { focusMode } = useToolkitStore();
+  const [logoGif, setLogoGif] = useState<string | null>(null);
+
+  const toggleGroup = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const fetchLogoGif = async (category: string) => {
+    const gif = await giphyService.getRandomGif(category);
+    if (gif) setLogoGif(gif);
+  };
+
+  useEffect(() => {
+    fetchLogoGif('study');
+  }, []);
+
+  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+  const isDark = theme === 'dark';
+
   return (
-    <aside className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 bg-white border-r border-[#e5e5e5] overflow-y-auto">
-      {/* Brand */}
-      <div className="px-6 py-5 border-b border-[#e5e5e5]">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-black flex items-center justify-center">
-            <span className="text-white text-xs font-bold">BP</span>
+    <TooltipProvider delayDuration={0}>
+      <aside
+        className={cn(
+          "border-r border-border bg-card hidden lg:flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden h-screen sticky top-0 shrink-0 z-30",
+          focusMode.isActive ? 'w-0 border-0' : isCollapsed ? 'w-16' : 'w-64'
+        )}
+      >
+        {/* Header with Logo and Collapse Button */}
+        <div className={cn(
+          "h-[74px] border-b border-border flex items-center shrink-0 transition-[padding] duration-300",
+          isCollapsed ? 'justify-center' : 'justify-between px-3'
+        )}>
+          <div className={cn(
+            "flex items-center gap-3 overflow-hidden transition-[width,opacity,padding,margin] duration-300",
+            isCollapsed ? "w-0 opacity-0 p-0" : "w-auto opacity-100 flex-1 mr-2"
+          )}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-3 min-w-0 cursor-pointer group select-none">
+                  <div className="bg-primary/10 text-primary-foreground rounded-xl p-0 overflow-hidden shrink-0 w-12 h-12 flex items-center justify-center border border-primary/20 group-hover:border-primary/50 transition-all shadow-sm group-hover:shadow-md group-hover:scale-105">
+                    {logoGif ? (
+                      <img src={logoGif} alt="App Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <GraduationCap className="h-6 w-6 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex flex-col truncate">
+                    <h1 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">Better Polito</h1>
+                    <span className="text-[10px] font-medium text-muted-foreground mt-[2px]">unofficial portal</span>
+                  </div>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Change Logo Theme</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => fetchLogoGif('study')} className="cursor-pointer">📚 Study Vibes</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fetchLogoGif('university aesthetic')} className="cursor-pointer">🎓 University Life</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fetchLogoGif('student')} className="cursor-pointer">🎒 Student Life</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fetchLogoGif('cats')} className="cursor-pointer">🐱 Cute Cats</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fetchLogoGif('coffee aesthetic')} className="cursor-pointer">☕ Coffee Break</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <div>
-            <span className="text-sm font-semibold text-black">Better Polito</span>
-            <span className="ml-2 inline-flex items-center rounded-full bg-[#f5f2ef] px-1.5 py-0.5 text-[10px] font-medium text-[#777169]">
-              unofficial
-            </span>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleSidebar}
+                className={cn(
+                  "flex items-center justify-center rounded-lg transition-[width,height] hover:bg-muted text-foreground cursor-pointer shrink-0 z-20",
+                  isCollapsed ? "w-10 h-10" : "w-9 h-9"
+                )}
+              >
+                <PanelLeftClose className={cn("h-5 w-5", isCollapsed && "rotate-180")} />
+              </button>
+            </TooltipTrigger>
+            {isCollapsed && <TooltipContent side="right" className="font-normal">Expand</TooltipContent>}
+          </Tooltip>
+        </div>
+
+        {/* Navigation - Scrollable */}
+        <div className={cn("flex-1 overflow-hidden py-4 transition-[padding] duration-300", isCollapsed ? 'px-0' : 'px-2')}>
+          <ScrollArea className="h-full">
+            {navGroups.map((group) => {
+              const isOpen = isCollapsed ? true : !!openGroups[group.id];
+              return (
+              <div key={group.id} className="mb-4">
+                <button 
+                  onClick={(e) => !isCollapsed && toggleGroup(group.id, e)}
+                  disabled={isCollapsed}
+                  className={cn(
+                    "flex items-center justify-between w-full text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap overflow-hidden transition-[height,opacity,padding,margin] duration-300",
+                    isCollapsed ? "h-0 w-0 opacity-0 p-0 m-0" : "h-4 w-full opacity-100 px-3 mb-2 cursor-pointer hover:text-foreground"
+                  )}
+                >
+                  <span>{group.title}</span>
+                  {!isCollapsed && (
+                    <ChevronDown className={cn("h-3 w-3 shrink-0 transition-transform duration-200", !isOpen && "-rotate-90")} />
+                  )}
+                </button>
+
+                <div className={cn(
+                  "space-y-1 overflow-hidden transition-all duration-300",
+                  isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                )}>
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    return (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                          <Link href={item.href} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
+                            <SidebarItemContent
+                              icon={item.icon}
+                              label={item.label}
+                              isActive={isActive}
+                              isCollapsed={isCollapsed}
+                            />
+                          </Link>
+                        </TooltipTrigger>
+                        {isCollapsed && <TooltipContent side="right" className="font-normal">{item.label}</TooltipContent>}
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            )})}
+          </ScrollArea>
+        </div>
+
+        {/* Bottom Section */}
+        <div className={cn("shrink-0 border-t border-border py-4 transition-[padding] duration-300", isCollapsed ? 'px-0' : 'px-2')}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/profile" className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
+                  <SidebarItemContent
+                    icon={User}
+                    label="Profile"
+                    isActive={pathname === '/profile'}
+                    isCollapsed={isCollapsed}
+                  />
+                </Link>
+              </TooltipTrigger>
+              {isCollapsed && <TooltipContent side="right" className="font-normal">Profile</TooltipContent>}
+            </Tooltip>
+
+            {/* Dark Mode Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
+                  <SidebarItemContent
+                    icon={isDark ? Sun : Moon}
+                    label={isDark ? 'Light Mode' : 'Dark Mode'}
+                    isCollapsed={isCollapsed}
+                  />
+                </button>
+              </TooltipTrigger>
+              {isCollapsed && <TooltipContent side="right" className="font-normal">{isDark ? 'Light Mode' : 'Dark Mode'}</TooltipContent>}
+            </Tooltip>
           </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map((item) => (
-          <NavLink key={item.href} {...item} />
-        ))}
-
-        <div className="pt-4 pb-1">
-          <Separator />
-        </div>
-
-        <p className="px-3 pt-3 pb-1 text-[11px] font-semibold text-[#777169] uppercase tracking-widest">
-          AI Features
-        </p>
-
-        {aiItems.map((item) => (
-          <NavLink key={item.href} {...item} />
-        ))}
-      </nav>
-
-      {/* Footer disclaimer */}
-      <div className="px-4 py-3 border-t border-[#e5e5e5]">
-        <p className="text-[10px] text-[#777169] leading-relaxed">
-          Not affiliated with Politecnico di Torino.{' '}
-          <a
-            href="https://github.com/polito/students-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-[#4e4e4e]"
-          >
-            EUPL v1.2
-          </a>
-        </p>
-      </div>
-    </aside>
+      </aside>
+    </TooltipProvider>
   );
 }

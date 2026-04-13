@@ -37,8 +37,8 @@ export function StudyPlanner() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-light text-black">AI Study Planner</h2>
-          <p className="text-sm text-[#777169] mt-0.5">
+          <h2 className="text-xl font-light text-foreground">AI Study Planner</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
             Generate a personalized week-by-week study schedule based on your exams and grades.
           </p>
         </div>
@@ -68,11 +68,11 @@ export function StudyPlanner() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {week.tasks?.map((task: any, j: number) => (
-                  <div key={j} className="flex items-start gap-3 p-3 rounded-xl bg-[#f5f5f5]">
-                    <ChevronRight className="w-3 h-3 text-[#777169] mt-0.5 shrink-0" />
+                  <div key={j} className="flex items-start gap-3 p-3 rounded-xl bg-background">
+                    <ChevronRight className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-black">{task.subject}</p>
-                      <p className="text-xs text-[#777169] mt-0.5">{task.description}</p>
+                      <p className="text-sm font-medium text-foreground">{task.subject}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
                     </div>
                   </div>
                 ))}
@@ -81,7 +81,7 @@ export function StudyPlanner() {
           ))}
 
           {plan.summary && (
-            <Card className="bg-black text-white border-0">
+            <Card className="bg-foreground text-surface border-0">
               <CardContent className="p-5">
                 <p className="text-sm text-white/80">{plan.summary}</p>
               </CardContent>
@@ -93,8 +93,8 @@ export function StudyPlanner() {
       {!plan && !loading && (
         <Card>
           <CardContent className="py-16 text-center">
-            <Brain className="w-10 h-10 text-[#e5e5e5] mx-auto mb-3" />
-            <p className="text-[#777169] text-sm">
+            <Brain className="w-10 h-10 text-border mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">
               Click &ldquo;Generate Plan&rdquo; to create your personalized study schedule.
             </p>
           </CardContent>

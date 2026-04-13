@@ -6,7 +6,7 @@ export const SURVEYS_QUERY_KEY = ['surveys'];
 
 export const useGetSurveys = () => useQuery({
   queryKey: SURVEYS_QUERY_KEY,
-  queryFn: () => getApiClient().getSurveys().then((r: any) => r.data ?? []),
+  queryFn: () => (getApiClient() as any).getSurveys().then((r: any) => r.data ?? []),
 });
 
 export const useGetCpdSurveys = () => {

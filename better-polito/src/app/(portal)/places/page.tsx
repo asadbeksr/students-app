@@ -35,15 +35,15 @@ export default function PlacesPage() {
   );
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 w-full">
       <div>
-        <h1 className="text-3xl font-light text-black">Campus Map</h1>
-        <p className="text-sm text-[#777169] mt-1">Find buildings, labs, and services on campus.</p>
+        <h1 className="text-3xl font-light text-foreground">Campus Map</h1>
+        <p className="text-sm text-muted-foreground mt-1">Find buildings, labs, and services on campus.</p>
       </div>
 
       {/* Map */}
       <Card className="overflow-hidden">
-        <div className="h-80 bg-[#f5f5f5] relative">
+        <div className="h-80 bg-background relative">
           <div className="absolute inset-0 z-10">
             {typeof window !== 'undefined' && (
               <MapContainer
@@ -67,7 +67,7 @@ export default function PlacesPage() {
       </Card>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#777169]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Search places…"
           value={search}
@@ -85,11 +85,11 @@ export default function PlacesPage() {
           {filtered.slice(0, 24).map((place: any) => (
             <Card key={place.id} className="hover:shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(78,50,23,0.06)_0px_8px_24px] transition-shadow">
               <CardContent className="p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#f5f2ef] flex items-center justify-center shrink-0 mt-0.5">
-                  <MapPin className="w-4 h-4 text-[#777169]" />
+                <div className="w-8 h-8 rounded-lg bg-surface-warm flex items-center justify-center shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-sm text-black truncate">{place.name}</p>
+                  <p className="font-medium text-sm text-foreground truncate">{place.name}</p>
                   {place.type && <Badge variant="warm" className="mt-1 text-[10px]">{place.type}</Badge>}
                 </div>
               </CardContent>

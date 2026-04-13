@@ -63,11 +63,11 @@ export function ChatBot() {
         <div className="space-y-4 py-4">
           {messages.length === 0 && (
             <div className="text-center py-12">
-              <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center mx-auto mb-4">
-                <Bot className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-2xl bg-foreground flex items-center justify-center mx-auto mb-4">
+                <Bot className="w-6 h-6 text-surface" />
               </div>
-              <h3 className="text-lg font-light text-black mb-2">AI Study Assistant</h3>
-              <p className="text-sm text-[#777169] max-w-sm mx-auto">
+              <h3 className="text-lg font-light text-foreground mb-2">AI Study Assistant</h3>
+              <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                 Ask about exam tips, university services, study strategies, or your academic questions.
               </p>
             </div>
@@ -76,12 +76,12 @@ export function ChatBot() {
           {messages.map((m) => (
             <div key={m.id} className={cn('flex gap-3', m.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
               <Avatar className="h-7 w-7 shrink-0 mt-0.5">
-                <AvatarFallback className={cn('text-xs', m.role === 'user' ? 'bg-black text-white' : 'bg-[#f5f2ef] text-[#4e4e4e]')}>
+                <AvatarFallback className={cn('text-xs', m.role === 'user' ? 'bg-foreground text-surface' : 'bg-surface-warm text-text-muted')}>
                   {m.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                 </AvatarFallback>
               </Avatar>
               <div className={cn('max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed',
-                m.role === 'user' ? 'bg-black text-white rounded-tr-sm' : 'bg-[#f5f5f5] text-[#4e4e4e] rounded-tl-sm'
+                m.role === 'user' ? 'bg-foreground text-surface rounded-tr-sm' : 'bg-background text-text-muted rounded-tl-sm'
               )}>
                 {m.content}
               </div>
@@ -91,9 +91,9 @@ export function ChatBot() {
           {isLoading && (
             <div className="flex gap-3">
               <Avatar className="h-7 w-7 shrink-0">
-                <AvatarFallback className="text-xs bg-[#f5f2ef] text-[#4e4e4e]"><Bot className="w-3 h-3" /></AvatarFallback>
+                <AvatarFallback className="text-xs bg-surface-warm text-text-muted"><Bot className="w-3 h-3" /></AvatarFallback>
               </Avatar>
-              <div className="px-4 py-2.5 rounded-2xl rounded-tl-sm bg-[#f5f5f5] flex items-center gap-1.5">
+              <div className="px-4 py-2.5 rounded-2xl rounded-tl-sm bg-background flex items-center gap-1.5">
                 {[0, 1, 2].map(i => (
                   <span key={i} className="w-1.5 h-1.5 bg-[#777169] rounded-full animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
                 ))}
@@ -106,7 +106,7 @@ export function ChatBot() {
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t border-[#e5e5e5]">
+      <div className="p-4 border-t border-border">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
             value={input}

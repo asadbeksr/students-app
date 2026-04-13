@@ -12,11 +12,11 @@ export default function TicketsPage() {
   const { data: tickets = [], isLoading } = useGetTickets();
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-light text-black">Support Tickets</h1>
-          <p className="text-sm text-[#777169] mt-1">Your support requests and inquiries.</p>
+          <h1 className="text-3xl font-light text-foreground">Support Tickets</h1>
+          <p className="text-sm text-muted-foreground mt-1">Your support requests and inquiries.</p>
         </div>
         <Button onClick={() => toast.info('New ticket form coming soon')}>
           <Plus className="w-4 h-4 mr-2" /> New Ticket
@@ -28,8 +28,8 @@ export default function TicketsPage() {
       ) : (tickets as any[]).length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
-            <Ticket className="w-10 h-10 text-[#e5e5e5] mx-auto mb-3" />
-            <p className="text-[#777169]">No open tickets.</p>
+            <Ticket className="w-10 h-10 text-border mx-auto mb-3" />
+            <p className="text-muted-foreground">No open tickets.</p>
           </CardContent>
         </Card>
       ) : (
@@ -39,17 +39,17 @@ export default function TicketsPage() {
               <Card className="hover:shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(78,50,23,0.06)_0px_8px_24px] transition-shadow cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="font-medium text-black truncate">{t.subject || t.title}</p>
+                    <p className="font-medium text-foreground truncate">{t.subject || t.title}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-[#777169]">#{t.id}</span>
-                      {t.createdAt && <span className="text-xs text-[#777169]">{new Date(t.createdAt).toLocaleDateString()}</span>}
+                      <span className="text-xs text-muted-foreground">#{t.id}</span>
+                      {t.createdAt && <span className="text-xs text-muted-foreground">{new Date(t.createdAt).toLocaleDateString()}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={t.status === 'open' ? 'success' : t.status === 'closed' ? 'secondary' : 'warning'}>
                       {t.status ?? 'open'}
                     </Badge>
-                    <ChevronRight className="w-4 h-4 text-[#777169]" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </CardContent>
               </Card>

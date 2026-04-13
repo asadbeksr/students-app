@@ -35,13 +35,13 @@ export function CourseSummarizer() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-light text-black">Course Summarizer</h2>
-        <p className="text-sm text-[#777169] mt-0.5">Generate AI summaries with key concepts and exam questions.</p>
+        <h2 className="text-xl font-light text-foreground">Course Summarizer</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Generate AI summaries with key concepts and exam questions.</p>
       </div>
 
       <div className="flex gap-3">
         <select
-          className="flex h-10 flex-1 rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+          className="flex h-10 flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
           value={selectedCourse}
           onChange={(e) => setSelectedCourse(e.target.value)}
         >
@@ -62,7 +62,7 @@ export function CourseSummarizer() {
         <Card>
           <CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4" /> Summary</CardTitle></CardHeader>
           <CardContent>
-            <div className="prose prose-sm max-w-none text-[#4e4e4e] whitespace-pre-wrap text-sm leading-relaxed">
+            <div className="prose prose-sm max-w-none text-text-muted whitespace-pre-wrap text-sm leading-relaxed">
               {summary}
             </div>
           </CardContent>

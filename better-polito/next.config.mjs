@@ -21,6 +21,13 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    // Prevent canvas/encoding from being bundled (optional pdfjs dependencies
+    // that may still be referenced transitively)
+    config.resolve.alias.canvas = false;
+    config.resolve.alias.encoding = false;
+    return config;
+  },
 };
 
 export default nextConfig;

@@ -7,41 +7,41 @@ export const COURSE_QUERY_PREFIX = 'course';
 
 export const useGetCourses = () => useQuery({
   queryKey: COURSES_QUERY_KEY,
-  queryFn: () => getApiClient().getCourses().then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getCourses().then((r: any) => r.data),
 });
 
 export const useGetCourse = (courseId: number) => useQuery({
   queryKey: [COURSE_QUERY_PREFIX, courseId],
-  queryFn: () => getApiClient().getCourse(courseId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getCourse(courseId).then((r: any) => r.data),
   enabled: !!courseId,
 });
 
 export const useGetCourseFiles = (courseId: number) => useQuery({
   queryKey: [COURSE_QUERY_PREFIX, courseId, 'files'],
-  queryFn: () => getApiClient().getCourseFiles(courseId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getCourseFiles(courseId).then((r: any) => r.data),
   enabled: !!courseId,
 });
 
 export const useGetCourseAssignments = (courseId: number) => useQuery({
   queryKey: [COURSE_QUERY_PREFIX, courseId, 'assignments'],
-  queryFn: () => getApiClient().getCourseAssignments(courseId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getCourseAssignments(courseId).then((r: any) => r.data),
   enabled: !!courseId,
 });
 
 export const useGetCourseNotices = (courseId: number) => useQuery({
   queryKey: [COURSE_QUERY_PREFIX, courseId, 'notices'],
-  queryFn: () => getApiClient().getCourseNotices(courseId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getCourseNotices(courseId).then((r: any) => r.data),
   enabled: !!courseId,
 });
 
 export const useGetCourseGuide = (courseId: number) => useQuery({
   queryKey: [COURSE_QUERY_PREFIX, courseId, 'guide'],
-  queryFn: () => getApiClient().getCourseGuide(courseId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getCourseGuide(courseId).then((r: any) => r.data),
   enabled: !!courseId,
 });
 
 export const useGetCourseVirtualClassrooms = (courseId: number) => useQuery({
   queryKey: [COURSE_QUERY_PREFIX, courseId, 'virtualClassrooms'],
-  queryFn: () => getApiClient().getCourseVirtualClassrooms(courseId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getCourseVirtualClassrooms(courseId).then((r: any) => r.data),
   enabled: !!courseId,
 });

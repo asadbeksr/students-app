@@ -7,11 +7,11 @@ export const NEWS_ITEM_QUERY_PREFIX = 'news-item';
 
 export const useGetNews = () => useQuery({
   queryKey: NEWS_QUERY_KEY,
-  queryFn: () => getApiClient().getNews().then((r: any) => r.data ?? []),
+  queryFn: () => (getApiClient() as any).getNews().then((r: any) => r.data ?? []),
 });
 
 export const useGetNewsItem = (newsItemId: number) => useQuery({
   queryKey: [NEWS_ITEM_QUERY_PREFIX, newsItemId],
-  queryFn: () => getApiClient().getNewsItem(newsItemId).then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).getNewsItem(newsItemId).then((r: any) => r.data),
   enabled: !!newsItemId,
 });

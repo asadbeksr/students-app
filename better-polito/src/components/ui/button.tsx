@@ -9,17 +9,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-black text-white rounded-full hover:bg-neutral-800 shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(0,0,0,0.04)_0px_4px_4px]',
+          'bg-foreground text-surface rounded-full hover:bg-neutral-800 shadow-el-card',
         stone:
-          'bg-[rgba(245,242,239,0.8)] text-black rounded-full border border-[#e5e5e5] hover:bg-[#f5f2ef] shadow-[rgba(78,50,23,0.04)_0px_6px_16px]',
+          'bg-[rgba(245,242,239,0.8)] text-foreground rounded-full border border-border hover:bg-surface-warm shadow-el-warm',
         outline:
-          'border border-[#e5e5e5] bg-white text-black rounded-full hover:bg-[#f5f5f5] shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(0,0,0,0.04)_0px_4px_4px]',
+          'border border-border bg-surface text-foreground rounded-full hover:bg-background shadow-el-card',
         ghost:
-          'text-black rounded-full hover:bg-[#f5f5f5]',
+          'text-foreground rounded-full hover:bg-background',
         destructive:
-          'bg-red-500 text-white rounded-full hover:bg-red-600',
+          'bg-red-500 text-surface rounded-full hover:bg-red-600',
         link:
-          'text-black underline-offset-4 hover:underline p-0 h-auto',
+          'text-foreground underline-offset-4 hover:underline p-0 h-auto',
       },
       size: {
         default: 'h-9 px-4 py-2',

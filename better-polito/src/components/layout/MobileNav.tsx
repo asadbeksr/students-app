@@ -48,11 +48,11 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         onClick={onClose}
       />
       {/* Panel */}
-      <div className="absolute left-0 top-0 h-full w-72 bg-white shadow-2xl flex flex-col">
-        <div className="flex items-center justify-between px-4 py-4 border-b border-[#e5e5e5]">
+      <div className="absolute left-0 top-0 h-full w-72 bg-surface shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-black flex items-center justify-center">
-              <span className="text-white text-[10px] font-bold">BP</span>
+            <div className="w-6 h-6 rounded-md bg-foreground flex items-center justify-center">
+              <span className="text-surface text-[10px] font-bold">BP</span>
             </div>
             <span className="text-sm font-semibold">Better Polito</span>
           </div>
@@ -71,8 +71,8 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-xl text-[15px] font-medium transition-all duration-150',
                   isActive
-                    ? 'bg-[#f5f2ef] text-black'
-                    : 'text-[#4e4e4e] hover:bg-[#f5f5f5] hover:text-black'
+                    ? 'bg-surface-warm text-foreground'
+                    : 'text-text-muted hover:bg-background hover:text-foreground'
                 )}
               >
                 <Icon className="w-4 h-4 shrink-0" />
@@ -82,8 +82,8 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
           })}
         </nav>
 
-        <div className="px-4 py-3 border-t border-[#e5e5e5]">
-          <p className="text-[10px] text-[#777169]">
+        <div className="px-4 py-3 border-t border-border">
+          <p className="text-[10px] text-muted-foreground">
             Not affiliated with Politecnico di Torino.
           </p>
         </div>

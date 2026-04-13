@@ -13,14 +13,14 @@ export default function PeoplePage() {
   const { data: people = [], isLoading } = useGetPeople(search, search.length >= 2);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 w-full max-w-3xl">
       <div>
-        <h1 className="text-3xl font-light text-black">People</h1>
-        <p className="text-sm text-[#777169] mt-1">Search professors, staff, and students.</p>
+        <h1 className="text-3xl font-light text-foreground">People</h1>
+        <p className="text-sm text-muted-foreground mt-1">Search professors, staff, and students.</p>
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#777169]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Search by name (min 2 chars)…"
           value={search}
@@ -31,14 +31,14 @@ export default function PeoplePage() {
 
       {search.length < 2 ? (
         <div className="py-16 text-center">
-          <Users className="w-10 h-10 text-[#e5e5e5] mx-auto mb-3" />
-          <p className="text-[#777169]">Type at least 2 characters to search.</p>
+          <Users className="w-10 h-10 text-border mx-auto mb-3" />
+          <p className="text-muted-foreground">Type at least 2 characters to search.</p>
         </div>
       ) : isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16" />)}</div>
       ) : (people as any[]).length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-[#777169]">No results for &ldquo;{search}&rdquo;</p>
+          <p className="text-muted-foreground">No results for &ldquo;{search}&rdquo;</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -51,10 +51,10 @@ export default function PeoplePage() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="font-medium text-black">{[person.firstName, person.lastName].filter(Boolean).join(' ')}</p>
+                  <p className="font-medium text-foreground">{[person.firstName, person.lastName].filter(Boolean).join(' ')}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     {person.role && <Badge variant="secondary" className="text-[10px]">{person.role}</Badge>}
-                    {person.email && <span className="text-xs text-[#777169]">{person.email}</span>}
+                    {person.email && <span className="text-xs text-muted-foreground">{person.email}</span>}
                   </div>
                 </div>
               </CardContent>

@@ -10,18 +10,35 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         username: { label: 'Username', type: 'text' },
         password: { label: 'Password', type: 'password' },
+        ssoUid: { label: 'SSO UID', type: 'text' },
+        ssoKey: { label: 'SSO Key', type: 'text' },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) return null;
+        const client = getApiClient();
         try {
-          const client = getApiClient();
-          const res = await client.login({
-            username: credentials.username,
-            password: credentials.password,
-            language: 'en',
-          });
+          let res;
+          if (credentials?.ssoUid && credentials?.ssoKey) {
+            // SSO login flow
+            res = await client.login({
+              uid: credentials.ssoUid,
+              key: credentials.ssoKey,
+              loginType: 'sso',
+              preferences: { language: 'en' },
+            });
+          } else if (credentials?.username && credentials?.password) {
+            // Basic login flow
+            res = await client.login({
+              username: credentials.username,
+              password: credentials.password,
+              loginType: 'basic',
+              preferences: { language: 'en' },
+            });
+          } else {
+            return null;
+          }
           const data = (res as any).data;
           if (!data?.token) return null;
+          if (data.type && data.type !== 'student') return null;
           getApiClient(data.token);
           return {
             id: data.username,

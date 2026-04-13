@@ -31,10 +31,10 @@ export default function AnalyticsPage() {
   const distData = Object.entries(distribution).map(([range, count]) => ({ range, count }));
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <div>
-        <h1 className="text-3xl font-light text-black">Analytics</h1>
-        <p className="text-sm text-[#777169] mt-1">Grade analytics and academic performance insights.</p>
+        <h1 className="text-3xl font-light text-foreground">Analytics</h1>
+        <p className="text-sm text-muted-foreground mt-1">Grade analytics and academic performance insights.</p>
       </div>
 
       {/* Summary */}
@@ -45,19 +45,19 @@ export default function AnalyticsPage() {
           <>
             <Card>
               <CardContent className="p-5">
-                <p className="text-xs text-[#777169]">Average Grade</p>
+                <p className="text-xs text-muted-foreground">Average Grade</p>
                 <p className="text-3xl font-light mt-1">{avg ?? '—'}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-5">
-                <p className="text-xs text-[#777169]">Exams Passed</p>
+                <p className="text-xs text-muted-foreground">Exams Passed</p>
                 <p className="text-3xl font-light mt-1">{numericGrades.length}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-5">
-                <p className="text-xs text-[#777169]">Best Grade</p>
+                <p className="text-xs text-muted-foreground">Best Grade</p>
                 <p className="text-3xl font-light mt-1">
                   {numericGrades.length ? Math.max(...numericGrades.map((g: any) => parseFloat(g.grade))) : '—'}
                 </p>
@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
             </Card>
             <Card>
               <CardContent className="p-5">
-                <p className="text-xs text-[#777169]">Credits Earned</p>
+                <p className="text-xs text-muted-foreground">Credits Earned</p>
                 <p className="text-3xl font-light mt-1">
                   {numericGrades.reduce((a: number, g: any) => a + (g.credits ?? 0), 0)}
                 </p>
@@ -117,8 +117,8 @@ export default function AnalyticsPage() {
       {!isLoading && numericGrades.length === 0 && (
         <Card>
           <CardContent className="py-16 text-center">
-            <BarChart3 className="w-10 h-10 text-[#e5e5e5] mx-auto mb-3" />
-            <p className="text-[#777169]">No grade data available for analytics.</p>
+            <BarChart3 className="w-10 h-10 text-border mx-auto mb-3" />
+            <p className="text-muted-foreground">No grade data available for analytics.</p>
           </CardContent>
         </Card>
       )}

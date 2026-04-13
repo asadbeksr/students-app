@@ -6,14 +6,14 @@ export const ESC_QUERY_KEY = ['esc'];
 
 export const useEscGet = () => useQuery({
   queryKey: ESC_QUERY_KEY,
-  queryFn: () => getApiClient().escGet().then((r: any) => r.data),
+  queryFn: () => (getApiClient() as any).escGet().then((r: any) => r.data),
   gcTime: Infinity,
 });
 
 export const useRequestEsc = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => getApiClient().escRequest(),
+    mutationFn: () => (getApiClient() as any).escRequest(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ESC_QUERY_KEY }),
   });
 };
