@@ -12,20 +12,21 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useGetStudent, useGetGrades, useGetMessages, useGetLectures } from '@/lib/queries/studentHooks';
 import { useGetExams } from '@/lib/queries/examHooks';
+import { useGetCourses } from '@/lib/queries/courseHooks';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatThirtiethsGrade } from '@/lib/utils/grades';
 import {
   Clock, MapPin, Sparkles, GripVertical, EyeOff, Eye,
   LayoutGrid, Check, ChevronRight, CalendarCheck,
-  MessageSquare, ClipboardList,
+  MessageSquare, ClipboardList, BookOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
-type WidgetId = 'classes' | 'messages' | 'exams' | 'grades' | 'ai';
+type WidgetId = 'classes' | 'courses' | 'messages' | 'exams' | 'grades' | 'ai';
 type ColSpan = 1 | 2 | 3;
 
 interface LayoutState {
@@ -38,6 +39,7 @@ interface LayoutState {
 
 const WIDGET_META: Record<WidgetId, { label: string; accent: string }> = {
   classes:  { label: "Today's Classes", accent: '#424AFB' },
+  courses:  { label: 'Courses',         accent: '#3B82F6' },
   messages: { label: 'Messages',        accent: '#9D72FF' },
   exams:    { label: 'Upcoming Exams',  accent: '#FF6B8B' },
   grades:   { label: 'Grades',          accent: '#34C759' },
@@ -45,12 +47,12 @@ const WIDGET_META: Record<WidgetId, { label: string; accent: string }> = {
 };
 
 const DEFAULT_LAYOUT: LayoutState = {
-  order: ['classes', 'messages', 'exams', 'grades', 'ai'],
-  spans: { classes: 2, messages: 1, exams: 1, grades: 1, ai: 1 },
+  order: ['classes', 'courses', 'messages', 'exams', 'grades', 'ai'],
+  spans: { classes: 2, courses: 1, messages: 1, exams: 1, grades: 1, ai: 1 },
   hidden: [],
 };
 
-const STORAGE_KEY = 'better-polito:dashboard-layout-v1';
+const STORAGE_KEY = 'better-polito:dashboard-layout-v2';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -234,6 +236,54 @@ function MessagesContent({ isEditing }: { isEditing?: boolean }) {
   );
 }
 
+function CoursesContent({ isEditing }: { isEditing?: boolean }) {
+  const { data: courses = [], isLoading } = useGetCourses();
+  const items = (courses as any[]).slice(0, 5);
+
+  return (
+    <Widget id="courses" label="Courses" href="/courses" isEditing={isEditing}>
+      {isLoading ? (
+        <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-14 rounded-2xl" />)}</div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-4 gap-2">
+          <BookOpen className="w-7 h-7 text-muted-foreground/30" />
+          <p className="text-xs text-muted-foreground text-center">No courses available</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((course: any, index: number) => {
+            const courseId = course.id ?? course.code ?? course.courseId;
+            const teachers = (course.staff ?? [])
+              .slice(0, 2)
+              .map((s: any) => s.name ?? s.firstName)
+              .filter(Boolean)
+              .join(', ');
+
+            return (
+              <Link
+                key={courseId ?? `${course.name ?? 'course'}-${index}`}
+                href={courseId ? `/courses/${courseId}` : '/courses'}
+                className="glass-inner block p-3 rounded-2xl hover:opacity-90 transition-opacity"
+              >
+                <p className="text-sm font-semibold text-foreground truncate">{course.name ?? 'Course'}</p>
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground truncate font-mono">
+                    {course.shortcode ?? course.code ?? 'COURSE'}
+                  </span>
+                  {course.credits && (
+                    <Badge variant="outline" className="text-[10px] h-5 shrink-0">{course.credits} cr</Badge>
+                  )}
+                </div>
+                {teachers && <p className="text-[11px] text-muted-foreground truncate mt-1">{teachers}</p>}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </Widget>
+  );
+}
+
 function ExamsContent({ isEditing }: { isEditing?: boolean }) {
   const { data: exams = [], isLoading } = useGetExams();
   const upcoming = (exams as any[])
@@ -340,7 +390,7 @@ function AIContent({ isEditing }: { isEditing?: boolean }) {
 }
 
 const WIDGET_CONTENT: Record<WidgetId, (p: { isEditing?: boolean }) => React.ReactElement> = {
-  classes: ClassesContent, messages: MessagesContent,
+  classes: ClassesContent, courses: CoursesContent, messages: MessagesContent,
   exams: ExamsContent, grades: GradesContent, ai: AIContent,
 };
 

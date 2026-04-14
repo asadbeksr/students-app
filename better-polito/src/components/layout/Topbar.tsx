@@ -117,7 +117,7 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
 
   return (
     <div className={cn("bg-card border-b border-border shrink-0 sticky top-0 z-40 transition-colors", isCourseDetail ? "flex md:hidden" : "block")}>
-      <div className="min-h-[73px] w-full px-3 md:px-6 py-3 md:py-0 flex items-center md:flex-row gap-3 md:gap-6">
+      <div className="h-[52px] w-full px-3 md:px-6 py-0 flex items-center md:flex-row gap-3 md:gap-6">
 
         {/* Mobile menu and Brand */}
         <div className="flex items-center gap-2 lg:hidden shrink-0">
@@ -141,9 +141,9 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
           {headerInfo ? (
             <>
               <h1 className="text-lg md:text-xl font-semibold text-foreground truncate">{headerInfo.title}</h1>
-              <p className="text-muted-foreground text-xs md:text-sm mt-0.5 truncate hidden sm:block">
+              {/* <p className="text-muted-foreground text-xs md:text-sm mt-0.5 truncate hidden sm:block">
                 {headerInfo.desc}
-              </p>
+              </p> */}
             </>
           ) : (
             <h1 className="text-lg md:text-xl font-semibold text-foreground truncate hidden lg:block">Better Polito</h1>
@@ -153,7 +153,7 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
         {/* ⌘K hint */}
         <button
           onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border glass-ctrl hover:opacity-80 transition-opacity text-xs text-muted-foreground shrink-0"
+          className="w-40 sm:flex gap-1.5 px-3 py-1.5 rounded-xl border border-border glass-ctrl hover:opacity-80 transition-opacity text-xs text-muted-foreground shrink-0 flex items-center justify-between"
         >
           <span>Search</span>
           <kbd className="font-mono text-[10px] bg-muted border border-border rounded px-1">⌘K</kbd>

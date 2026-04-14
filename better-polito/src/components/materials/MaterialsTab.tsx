@@ -143,6 +143,98 @@ function parseDateMs(date?: string): number {
   return Number.isFinite(ts) ? ts : 0;
 }
 
+function scoreRecordShape(record: Record<string, unknown>): number {
+  let score = 0;
+  if (typeof record.url === 'string' || typeof record.downloadUrl === 'string' || typeof record.href === 'string' || typeof record.link === 'string') score += 4;
+  if (typeof record.description === 'string' || typeof record.title === 'string' || typeof record.name === 'string') score += 2;
+  if (typeof record.mimeType === 'string') score += 1;
+  if (typeof record.sizeInKiloBytes === 'number') score += 1;
+  if (record.uploadedAt != null || record.createdAt != null || record.date != null) score += 1;
+  if (record.deletedAt != null) score += 1;
+  return score;
+}
+
+function extractBestRecordArray(value: unknown): Array<Record<string, unknown>> {
+  if (Array.isArray(value)) return value as Array<Record<string, unknown>>;
+  if (!value || typeof value !== 'object') return [];
+
+  const preferredObj = value as Record<string, unknown>;
+  const preferredCandidates = [
+    preferredObj.assignments,
+    preferredObj.items,
+    preferredObj.files,
+    preferredObj.data,
+    preferredObj.results,
+    preferredObj.content,
+    preferredObj.list,
+  ];
+  for (const candidate of preferredCandidates) {
+    if (Array.isArray(candidate)) return candidate as Array<Record<string, unknown>>;
+  }
+
+  type Candidate = { records: Array<Record<string, unknown>>; score: number };
+  const candidates: Candidate[] = [];
+  const queue: Array<{ node: unknown; depth: number }> = [{ node: value, depth: 0 }];
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current) break;
+    const { node, depth } = current;
+    if (depth > 4 || node == null) continue;
+
+    if (Array.isArray(node)) {
+      const records = node.filter((entry): entry is Record<string, unknown> => typeof entry === 'object' && entry !== null);
+      if (records.length > 0) {
+        const score = records.reduce((acc, record) => acc + scoreRecordShape(record), 0);
+        candidates.push({ records, score });
+      }
+      node.forEach((entry) => queue.push({ node: entry, depth: depth + 1 }));
+      continue;
+    }
+
+    if (typeof node === 'object') {
+      Object.values(node as Record<string, unknown>).forEach((entry) => {
+        queue.push({ node: entry, depth: depth + 1 });
+      });
+    }
+  }
+
+  if (candidates.length === 0) return [];
+
+  candidates.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return b.records.length - a.records.length;
+  });
+
+  return candidates[0].records;
+}
+
+function toRecordArray(value: unknown): Array<Record<string, unknown>> {
+  return extractBestRecordArray(value);
+}
+
+function toProxyableUrl(rawUrl?: string): string | undefined {
+  if (!rawUrl) return undefined;
+  const value = rawUrl.trim();
+  if (!value) return undefined;
+
+  if (value.startsWith('/api/polito/')) return value;
+  if (value.startsWith('/api/')) return `/api/polito/${value.replace(/^\/api\/?/, '')}`;
+  if (value.startsWith('/courses/')) return `/api/polito${value}`;
+
+  try {
+    const parsed = new URL(value);
+    if (parsed.pathname.startsWith('/api/')) {
+      const apiPath = parsed.pathname.replace(/^\/api\/?/, '');
+      return `/api/polito/${apiPath}${parsed.search}`;
+    }
+  } catch {
+    // Not an absolute URL; keep as-is.
+  }
+
+  return value;
+}
+
 function buildTeachingMetrics(items: ApiItem[]) {
   const sizeById = new Map<string, number>();
   const dateById = new Map<string, number>();
@@ -605,7 +697,7 @@ function SidebarHeader({
           </select>
         </div>
 
-        <div className="flex h-8 items-center rounded-md border border-border overflow-hidden">
+        <div className="flex min-w-[68px]  h-8 items-center rounded-md border border-border overflow-hidden">
           <button
             onClick={() => onViewModeChange('list')}
             className={`flex h-full w-8 items-center justify-center p-0 transition-colors ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
@@ -622,7 +714,7 @@ function SidebarHeader({
           </button>
         </div>
 
-        <div className="flex h-8 min-w-[128px] items-center gap-1 rounded-md border border-border bg-background px-1.5">
+        <div className="flex h-8 min-w-[98px] items-center gap-1 rounded-md border border-border bg-background px-1.5">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <select
             id="materials-sort"
@@ -838,13 +930,29 @@ export default function MaterialsTab({
   }, [activeTab, viewMode, teachingGridContext.breadcrumb.length]);
 
   const assignmentEntries = useMemo(() => {
-    const raw = Array.isArray(assignments) ? (assignments as Array<Record<string, unknown>>) : [];
+    const raw = toRecordArray(assignments);
     const mapped = raw.map((assignment, i) => {
       const rawId = assignment.id;
       const id = String(rawId ?? `assignment-${i}`);
       const apiId = rawId == null ? undefined : String(rawId);
-      const name = toString(assignment.name) ?? toString(assignment.title) ?? `Assignment ${i + 1}`;
-      const url = apiId ? `/api/polito/courses/${courseId}/assignments/${encodeURIComponent(apiId)}` : undefined;
+      const name =
+        toString(assignment.name) ??
+        toString(assignment.title) ??
+        toString(assignment.description) ??
+        `Assignment ${i + 1}`;
+
+      const apiProvidedUrl =
+        toString(assignment.url) ??
+        toString(assignment.downloadUrl) ??
+        toString(assignment.href) ??
+        toString(assignment.link);
+
+      const fallbackUrl = apiId
+        ? `/api/polito/courses/${courseId}/assignments/${encodeURIComponent(apiId)}`
+        : undefined;
+
+      const url = toProxyableUrl(apiProvidedUrl) ?? fallbackUrl;
+
       return {
         id,
         name,
@@ -858,6 +966,54 @@ export default function MaterialsTab({
     });
     return sortSelectableItems(mapped);
   }, [assignments, courseId, sortSelectableItems]);
+
+  const dropboxFileFallbackEntries = useMemo(() => {
+    const allFromTeaching = teachingSelectableAll
+      .filter((item) => item.type === 'file' && item.available)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        type: 'file' as const,
+        url: item.url,
+        mimeType: item.mimeType,
+        sizeInKiloBytes: item.sizeInKiloBytes,
+        createdAt: item.createdAt,
+        available: Boolean(item.url),
+      }));
+
+    const likelyDropbox = allFromTeaching.filter((item) => {
+      const path = (item.name + ' ' + (item.url ?? '')).toLowerCase();
+      const archivePath = (teachingSelectableAll.find((entry) => entry.id === item.id)?.archivePath ?? '').toLowerCase();
+      const full = `${archivePath} ${path}`;
+      return full.includes('dropbox') || full.includes('elaborat') || full.includes('assign') || full.includes('conseg');
+    });
+
+    return sortSelectableItems(likelyDropbox);
+  }, [sortSelectableItems, teachingSelectableAll]);
+
+  const dropboxEntries = useMemo(() => {
+    if (assignmentEntries.length > 0) return assignmentEntries;
+    return dropboxFileFallbackEntries;
+  }, [assignmentEntries, dropboxFileFallbackEntries]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    if (activeTab !== 'dropbox') return;
+
+    const payloadType = Array.isArray(assignments) ? 'array' : typeof assignments;
+    const rootPreview = sortedRootItems.slice(0, 5).map((item) => ({ id: item.id, name: item.name, type: item.type }));
+
+    console.info('[MaterialsTab][Dropbox Debug]', {
+      courseId,
+      year,
+      payloadType,
+      assignmentRawCount: Array.isArray(assignments) ? assignments.length : undefined,
+      assignmentEntries: assignmentEntries.length,
+      fallbackEntries: dropboxFileFallbackEntries.length,
+      finalEntries: dropboxEntries.length,
+      rootPreview,
+    });
+  }, [activeTab, assignmentEntries.length, assignments, courseId, dropboxEntries.length, dropboxFileFallbackEntries.length, sortedRootItems, year]);
 
   const recordingEntries = useMemo(() => {
     const vc = Array.isArray(virtualClassrooms) ? (virtualClassrooms as Array<Record<string, unknown>>) : [];
@@ -884,9 +1040,9 @@ export default function MaterialsTab({
 
   const activeSelectableItems = useMemo(() => {
     if (activeTab === 'teaching') return teachingSelectableAll;
-    if (activeTab === 'dropbox') return assignmentEntries;
+    if (activeTab === 'dropbox') return dropboxEntries;
     return recordingEntries;
-  }, [activeTab, assignmentEntries, recordingEntries, teachingSelectableAll]);
+  }, [activeTab, dropboxEntries, recordingEntries, teachingSelectableAll]);
 
   const activeSelectableById = useMemo(() => {
     const byId = new Map<string, SelectableItem>();
@@ -1076,7 +1232,7 @@ export default function MaterialsTab({
   // ── sidebar content ──────────────────────────────────────────────
   const sidebarLoading =
     (activeTab === 'teaching' && filesLoading) ||
-    (activeTab === 'dropbox' && assignLoading) ||
+    (activeTab === 'dropbox' && assignLoading && filesLoading) ||
     (activeTab === 'virtual' && (vcLoading || vlLoading));
 
   const activeSelectedCount = useMemo(
@@ -1314,15 +1470,16 @@ export default function MaterialsTab({
     }
 
     if (activeTab === 'dropbox') {
-      if (assignmentEntries.length === 0) return (
+      if (dropboxEntries.length === 0) return (
         <div className="py-10 text-center px-2">
           <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
-          <p className="text-xs text-muted-foreground">No assignments</p>
+          <p className="text-xs text-muted-foreground">No Dropbox files from student API</p>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">Official portal Dropbox uses a different endpoint that is not exposed in the current app API.</p>
         </div>
       );
       return viewMode === 'list'
-        ? assignmentEntries.map((item) => renderNonTeachingListRow(item))
-        : <div className="grid grid-cols-2 gap-2 p-1.5">{assignmentEntries.map((item) => renderGridCard(item))}</div>;
+        ? dropboxEntries.map((item) => renderNonTeachingListRow(item))
+        : <div className="grid grid-cols-2 gap-2 p-1.5">{dropboxEntries.map((item) => renderGridCard(item))}</div>;
     }
 
     if (activeTab === 'virtual') {
@@ -1350,7 +1507,7 @@ export default function MaterialsTab({
       };
       const hints: Record<MaterialsActiveTab, string> = {
         teaching: 'Expand a folder and click any file',
-        dropbox: 'Click an assignment to preview or download',
+        dropbox: 'Dropbox is shown only when API returns Dropbox-specific files',
         virtual: 'Choose a recording from the list to play it',
       };
       return (

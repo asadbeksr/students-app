@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { giphyService } from '@/lib/giphyService';
+import { useGetCourses } from '@/lib/queries/courseHooks';
 import {
   LayoutDashboard, BookOpen, Calendar, GraduationCap, ClipboardList,
   CalendarCheck, MapPin, Ticket, Users, Briefcase, ClipboardCheck,
@@ -94,9 +95,25 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ academics: true });
   const pathname = usePathname();
+  const { data: courses = [] } = useGetCourses();
   const { theme, setTheme } = useTheme();
   const { focusMode } = useToolkitStore();
   const [logoGif, setLogoGif] = useState<string | null>(null);
+
+  const courseSubItems = useMemo(() => {
+    const list = Array.isArray(courses) ? (courses as any[]) : [];
+    return list
+      .map((course: any, index: number) => {
+        const courseId = course.id ?? course.code ?? course.courseId;
+        if (!courseId) return null;
+        return {
+          href: `/courses/${courseId}`,
+          label: course.name ?? course.shortcode ?? `Course ${index + 1}`,
+          code: course.shortcode ?? course.code,
+        };
+      })
+      .filter(Boolean) as { href: string; label: string; code?: string }[];
+  }, [courses]);
 
   const toggleGroup = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -125,8 +142,8 @@ export function Sidebar() {
       >
         {/* Header with Logo and Collapse Button */}
         <div className={cn(
-          "h-[74px] border-b border-border flex items-center shrink-0 transition-[padding] duration-300",
-          isCollapsed ? 'justify-center' : 'justify-between px-3'
+          "h-[53px] border-b border-border flex items-center shrink-0 transition-[padding] duration-300",
+          isCollapsed ? 'justify-center' : 'justify-between px-2.5'
         )}>
           <div className={cn(
             "flex items-center gap-3 overflow-hidden transition-[width,opacity,padding,margin] duration-300",
@@ -135,13 +152,14 @@ export function Sidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 min-w-0 cursor-pointer group select-none">
-                  <div className="bg-primary/10 text-primary-foreground rounded-xl p-0 overflow-hidden shrink-0 w-12 h-12 flex items-center justify-center border border-primary/20 group-hover:border-primary/50 transition-all shadow-sm group-hover:shadow-md group-hover:scale-105">
+                  {/* GIF logo intentionally disabled for now; keep block for future reuse. */}
+                  {/* <div className="bg-primary/10 text-primary-foreground rounded-xl p-0 overflow-hidden shrink-0 w-12 h-12 flex items-center justify-center border border-primary/20 group-hover:border-primary/50 transition-all shadow-sm group-hover:shadow-md group-hover:scale-105">
                     {logoGif ? (
                       <img src={logoGif} alt="App Logo" className="w-full h-full object-cover" />
                     ) : (
                       <GraduationCap className="h-6 w-6 text-primary" />
                     )}
-                  </div>
+                  </div> */}
                   <div className="flex flex-col truncate">
                     <h1 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">Better Polito</h1>
                   </div>
@@ -165,10 +183,10 @@ export function Sidebar() {
                 onClick={toggleSidebar}
                 className={cn(
                   "flex items-center justify-center rounded-lg transition-[width,height] hover:bg-muted text-foreground cursor-pointer shrink-0 z-20",
-                  isCollapsed ? "w-10 h-10" : "w-9 h-9"
+                  isCollapsed ? "w-8 h-8" : "w-8 h-8"
                 )}
               >
-                <PanelLeftClose className={cn("h-5 w-5", isCollapsed && "rotate-180")} />
+                <PanelLeftClose className={cn("h-4 w-4", isCollapsed && "rotate-180")} />
               </button>
             </TooltipTrigger>
             {isCollapsed && <TooltipContent side="right" className="font-normal">Expand</TooltipContent>}
@@ -202,20 +220,57 @@ export function Sidebar() {
                   )}>
                     {group.items.map((item) => {
                       const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                      const isCoursesItem = item.href === '/courses';
+                      const shownCourseSubItems = courseSubItems.slice(0, 8);
+                      const hasMoreCourses = courseSubItems.length > shownCourseSubItems.length;
+
                       return (
-                        <Tooltip key={item.href}>
-                          <TooltipTrigger asChild>
-                            <Link href={item.href} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
-                              <SidebarItemContent
-                                icon={item.icon}
-                                label={item.label}
-                                isActive={isActive}
-                                isCollapsed={isCollapsed}
-                              />
-                            </Link>
-                          </TooltipTrigger>
-                          {isCollapsed && <TooltipContent side="right" className="font-normal">{item.label}</TooltipContent>}
-                        </Tooltip>
+                        <div key={item.href}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Link href={item.href} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
+                                <SidebarItemContent
+                                  icon={item.icon}
+                                  label={item.label}
+                                  isActive={isActive}
+                                  isCollapsed={isCollapsed}
+                                />
+                              </Link>
+                            </TooltipTrigger>
+                            {isCollapsed && <TooltipContent side="right" className="font-normal">{item.label}</TooltipContent>}
+                          </Tooltip>
+
+                          {isCoursesItem && !isCollapsed && shownCourseSubItems.length > 0 && (
+                            <div className="ml-5 mt-1 mb-1 space-y-0.5 pr-1">
+                              {shownCourseSubItems.map((course) => {
+                                const isCourseActive = pathname === course.href || pathname.startsWith(`${course.href}/`);
+
+                                return (
+                                  <Link
+                                    key={course.href}
+                                    href={course.href}
+                                    className={cn(
+                                      'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors',
+                                      isCourseActive
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    )}
+                                  >
+                                    <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isCourseActive ? 'bg-primary' : 'bg-muted-foreground/40')} />
+                                    <span className="truncate">{course.label}</span>
+                                    {course.code && <span className="ml-auto text-[10px] font-mono text-muted-foreground/70 shrink-0">{course.code}</span>}
+                                  </Link>
+                                );
+                              })}
+
+                              {hasMoreCourses && (
+                                <Link href="/courses" className="block px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                                  View all courses ({courseSubItems.length})
+                                </Link>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
