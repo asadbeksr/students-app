@@ -48,7 +48,7 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
     if (messagesEndRef.current) {
       isAutoScrollingRef.current = true;
       messagesEndRef.current.scrollIntoView({
-        behavior: smooth ? 'smooth' : 'instant',
+        behavior: smooth ? 'smooth' : 'auto',
         block: 'end'
       });
       // Reset the flag after animation completes

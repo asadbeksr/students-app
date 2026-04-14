@@ -22,6 +22,13 @@ type StaffPerson = {
   profileHref?: string;
 };
 
+type StaffBaseEntry = {
+  idRaw: string;
+  numericId?: number;
+  role?: string;
+  name?: string;
+};
+
 type GuideSectionItem = {
   title: string;
   content: string;
@@ -155,9 +162,9 @@ export default function CourseInfoPage() {
     return out;
   }, [linkedCourse?.id, linkedCourse?.year, linkedCourse?.previousEditions, c?.id, c?.year, c?.previousEditions, id]);
 
-  const staffBase = useMemo(() => {
-    const raw = Array.isArray(c?.staff) ? c.staff : [];
-    return raw.map((item: any) => {
+  const staffBase = useMemo<StaffBaseEntry[]>(() => {
+    const raw = Array.isArray(c?.staff) ? (c.staff as any[]) : [];
+    return raw.map((item: any): StaffBaseEntry => {
       const idRaw = item?.id ?? item?.personId;
       const idText = idRaw == null ? '' : String(idRaw).trim();
       const numericId = Number(idText);
@@ -170,9 +177,12 @@ export default function CourseInfoPage() {
     });
   }, [c?.staff]);
 
-  const staffIds = useMemo(() => Array.from(new Set(staffBase
-    .map((entry) => entry.numericId)
-    .filter((entry): entry is number => typeof entry === 'number'))), [staffBase]);
+  const staffIds = useMemo<number[]>(() => {
+    const ids = staffBase
+      .map((entry: { numericId?: number }) => entry.numericId)
+      .filter((entry: number | undefined): entry is number => typeof entry === 'number');
+    return Array.from(new Set<number>(ids));
+  }, [staffBase]);
 
   const staffPersonQueries = useQueries({
     queries: staffIds.map((personId) => ({
@@ -193,7 +203,7 @@ export default function CourseInfoPage() {
   }, [staffIds, staffPersonQueries]);
 
   const staff: StaffPerson[] = useMemo(() => {
-    return staffBase.map((base, index) => {
+    return staffBase.map((base: StaffBaseEntry, index: number) => {
       const person = base.numericId ? staffPersonsById.get(base.numericId) : undefined;
       const firstName = typeof person?.firstName === 'string' ? person.firstName : undefined;
       const lastName = typeof person?.lastName === 'string' ? person.lastName : undefined;
