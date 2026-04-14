@@ -1,8 +1,8 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import MaterialsTab from '@/components/materials/MaterialsTab';
-import { useGetCourse, useGetCourseNotices } from '@/lib/queries/courseHooks';
+import { useGetCourse, useGetCourseNotices, useGetCourses } from '@/lib/queries/courseHooks';
 import { useToolkitStore } from '@/lib/stores/toolkitStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +34,42 @@ function useSnapOnRelease(panelRef: ReturnType<typeof usePanelRef>, snaps: numbe
 }
 
 /* ── Academic year selector ─────────────────────────────────────── */
-const ACADEMIC_YEARS = ['2026/27', '2025/26', '2024/25', '2023/24', '2022/23'];
+type AcademicYearOption = {
+  value: string;
+  label: string;
+  courseId: number;
+  apiYear?: string;
+};
 
-function AcademicYearSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function formatAcademicYearLabel(year: number): string {
+  return `${year - 1}/${String(year).slice(-2)}`;
+}
+
+function toApiYear(academicYear: string): string | undefined {
+  if (/^\d{4}$/.test(academicYear)) return academicYear;
+
+  const period = academicYear.match(/^(\d{4})\/(\d{2}|\d{4})$/);
+  if (!period) return undefined;
+
+  const startYear = Number(period[1]);
+  const trailing = period[2];
+
+  if (trailing.length === 4) return trailing;
+
+  const century = Math.floor(startYear / 100) * 100;
+  const endYear = century + Number(trailing);
+  return String(endYear < startYear ? endYear + 100 : endYear);
+}
+
+function AcademicYearSelect({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: AcademicYearOption[];
+}) {
   return (
     <div className="relative inline-flex items-center">
       <select
@@ -44,8 +77,8 @@ function AcademicYearSelect({ value, onChange }: { value: string; onChange: (v: 
         onChange={(e) => onChange(e.target.value)}
         className="appearance-none bg-muted/50 border border-border/60 text-xs font-medium text-foreground rounded-full pl-3 pr-7 py-1.5 cursor-pointer hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
       >
-        {ACADEMIC_YEARS.map((y) => (
-          <option key={y} value={y}>{y}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
       <ChevronDown className="absolute right-2 h-3 w-3 text-muted-foreground pointer-events-none" />
@@ -109,11 +142,12 @@ export default function CourseDetailPage() {
   const courseId = params.courseId as string;
   const id = parseInt(courseId);
   const { data: course, isLoading } = useGetCourse(id);
+  const { data: courses = [] } = useGetCourses();
   const { data: notices = [] } = useGetCourseNotices(id);
   const { focusMode } = useToolkitStore();
 
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [academicYear, setAcademicYear] = useState('2025/26');
+  const [selectedAcademicValue, setSelectedAcademicValue] = useState<string>('');
   const chatRef = usePanelRef();
   const chatOnResize = useSnapOnRelease(chatRef, CHAT_SNAPS);
 
@@ -124,6 +158,90 @@ export default function CourseDetailPage() {
   }, []);
 
   const c = course as any;
+  const coursesPool = useMemo(() => {
+    const list = Array.isArray(courses) ? (courses as any[]) : [];
+    const modules = list.flatMap((courseItem) => Array.isArray(courseItem?.modules) ? courseItem.modules : []);
+    return [...modules, ...list].filter(Boolean);
+  }, [courses]);
+
+  const linkedCourse = useMemo(() => {
+    return coursesPool.find((courseItem: any) => {
+      if (Number(courseItem?.id) === id) return true;
+      const previous = Array.isArray(courseItem?.previousEditions) ? courseItem.previousEditions : [];
+      return previous.some((edition: any) => Number(edition?.id) === id);
+    });
+  }, [coursesPool, id]);
+
+  const yearOptions = useMemo<AcademicYearOption[]>(() => {
+    const options: AcademicYearOption[] = [];
+    const seen = new Set<string>();
+
+    const pushOption = (editionId: unknown, editionYear: unknown) => {
+      const numericId = Number(editionId);
+      if (!Number.isFinite(numericId) || numericId <= 0) return;
+
+      const yearNumber = Number(editionYear);
+      const label = Number.isFinite(yearNumber) && yearNumber > 1900
+        ? formatAcademicYearLabel(yearNumber)
+        : `Edition ${numericId}`;
+
+      const value = String(numericId);
+      if (seen.has(value)) return;
+      seen.add(value);
+
+      options.push({
+        value,
+        label,
+        courseId: numericId,
+        apiYear: Number.isFinite(yearNumber) && yearNumber > 1900 ? String(yearNumber) : undefined,
+      });
+    };
+
+    // Prefer official-style linkage from the full courses list.
+    pushOption(linkedCourse?.id ?? c?.id ?? id, linkedCourse?.year ?? c?.year);
+
+    const previous = Array.isArray(linkedCourse?.previousEditions)
+      ? linkedCourse.previousEditions
+      : Array.isArray(c?.previousEditions)
+        ? c.previousEditions
+        : [];
+    previous.forEach((edition: any) => pushOption(edition?.id, edition?.year));
+
+    options.sort((a, b) => {
+      const ay = Number(a.apiYear ?? 0);
+      const by = Number(b.apiYear ?? 0);
+      return by - ay;
+    });
+
+    if (options.length === 0) {
+      options.push({ value: String(id), label: 'Current', courseId: id });
+    }
+
+    return options;
+  }, [linkedCourse?.id, linkedCourse?.year, linkedCourse?.previousEditions, c?.id, c?.year, c?.previousEditions, id]);
+
+  useEffect(() => {
+    if (!yearOptions.length) return;
+    const stillValid = yearOptions.some((opt) => opt.value === selectedAcademicValue);
+    if (!stillValid) {
+      const routeEdition = yearOptions.find((opt) => opt.courseId === id);
+      setSelectedAcademicValue((routeEdition ?? yearOptions[0]).value);
+    }
+  }, [id, selectedAcademicValue, yearOptions]);
+
+  const selectedYearOption = useMemo(() => {
+    return yearOptions.find((opt) => opt.value === selectedAcademicValue) ?? yearOptions[0];
+  }, [selectedAcademicValue, yearOptions]);
+
+  const selectedApiYear = selectedYearOption?.apiYear ?? toApiYear(selectedYearOption?.label ?? '');
+  const selectedEditionCourseId = selectedYearOption?.courseId ?? id;
+  const courseName = c?.name ?? 'Course';
+  const courseShortcode = c?.shortcode ?? 'N/A';
+  const courseCfu = c?.cfu ?? c?.credits;
+  const courseTeachingPeriod = c?.teachingPeriod ?? c?.period;
+  const courseYear = c?.year ?? c?.academicYear;
+  const modulesCount = Array.isArray(c?.modules) ? c.modules.length : 0;
+  const previousEditionsCount = Array.isArray(c?.previousEditions) ? c.previousEditions.length : 0;
 
   if (isLoading) {
     return (
@@ -158,18 +276,33 @@ export default function CourseDetailPage() {
             {/* Course info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base font-semibold text-foreground truncate leading-tight">{c.name}</h1>
-                {c.credits && (
+                <h1 className="text-base font-semibold text-foreground truncate leading-tight">{courseName}</h1>
+                {courseCfu && (
                   <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
-                    {c.credits} CFU
+                    {courseCfu} CFU
+                  </Badge>
+                )}
+                {courseYear && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
+                    Year {courseYear}
+                  </Badge>
+                )}
+                {modulesCount > 0 && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
+                    {modulesCount} module{modulesCount > 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {previousEditionsCount > 0 && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
+                    {previousEditionsCount} previous edition{previousEditionsCount > 1 ? 's' : ''}
                   </Badge>
                 )}
               </div>
               <div className="flex items-center gap-3 mt-1 flex-wrap">
-                <span className="text-xs text-muted-foreground font-mono">{c.shortcode}</span>
-                {c.period && (
+                <span className="text-xs text-muted-foreground font-mono">{courseShortcode}</span>
+                {courseTeachingPeriod && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <CalendarDays className="h-3 w-3" />Period {c.period}
+                    <CalendarDays className="h-3 w-3" />Period {courseTeachingPeriod}
                   </span>
                 )}
                 {c.courseType && (
@@ -199,7 +332,11 @@ export default function CourseDetailPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-2 shrink-0 pt-0.5">
-              <AcademicYearSelect value={academicYear} onChange={setAcademicYear} />
+              <AcademicYearSelect
+                value={selectedYearOption?.value ?? ''}
+                onChange={setSelectedAcademicValue}
+                options={yearOptions}
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -223,7 +360,11 @@ export default function CourseDetailPage() {
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizablePanelGroup orientation="horizontal">
           <ResizablePanel defaultSize={isChatOpen ? "65%" : "100%"} className="flex flex-col min-w-0 h-full">
-            <MaterialsTab courseId={courseId} year={academicYear} />
+            <MaterialsTab
+              key={`materials-${selectedEditionCourseId}-${selectedApiYear ?? 'na'}`}
+              courseId={String(selectedEditionCourseId)}
+              year={selectedApiYear}
+            />
           </ResizablePanel>
 
           {isChatOpen && (

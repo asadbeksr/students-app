@@ -20,7 +20,6 @@ export const useGetCourseFiles = (courseId: number, year?: string) => useQuery({
   queryKey: [COURSE_QUERY_PREFIX, courseId, 'files', year],
   queryFn: () => (getApiClient() as any).getCourseFiles(courseId, year).then((r: any) => r.data),
   enabled: !!courseId,
-  placeholderData: (prev: any) => prev,
 });
 
 export const useGetCourseAssignments = (courseId: number) => useQuery({

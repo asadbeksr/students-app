@@ -34,16 +34,16 @@ async function handler(req: NextRequest, context: PolitoRouteContext) {
   const isBinary = !contentType.includes('application/json') && !contentType.includes('text/');
 
   // ── Dev logging ──────────────────────────────────────────────────────────
-  // if (process.env.NODE_ENV !== 'production') {
-  //   const label = `[PoliTO API] ${req.method} /${apiPath}${search} → ${res.status} (${contentType})`;
-  //   if (isBinary) {
-  //     console.log(label, '[binary]');
-  //   } else {
-  //     const text = await res.clone().text();
-  //     try { console.log(label); console.dir(JSON.parse(text), { depth: null }); }
-  //     catch { console.log(label, text.slice(0, 500)); }
-  //   }
-  // }
+  if (process.env.NODE_ENV !== 'production') {
+    const label = `[PoliTO API] ${req.method} /${apiPath}${search} → ${res.status} (${contentType})`;
+    if (isBinary) {
+      console.log(label, '[binary]');
+    } else {
+      const text = await res.clone().text();
+      try { console.log(label); console.dir(JSON.parse(text), { depth: null }); }
+      catch { console.log(label, text.slice(0, 500)); }
+    }
+  }
   // ─────────────────────────────────────────────────────────────────────────
 
   // Stream binary responses (PDFs, images, etc.) as raw bytes
