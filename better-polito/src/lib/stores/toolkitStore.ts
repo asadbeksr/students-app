@@ -13,11 +13,12 @@ interface PomodoroState {
   sessionsCompleted: number;
   soundEnabled: boolean;
   panelOpen: boolean;
+  pausedPhase: 'work' | 'break'; // track phase before pause to fix resume bug
 }
 
 interface ScratchpadState {
   isOpen: boolean;
-  notes: Record<string, string>; // key: 'global' | courseId
+  notes: Record<string, string>;
   activeKey: string;
 }
 
@@ -31,7 +32,6 @@ interface ToolkitStore {
   scratchpad: ScratchpadState;
   focusMode: FocusModeState;
 
-  // Pomodoro actions
   startTimer: () => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
@@ -43,14 +43,12 @@ interface ToolkitStore {
   setBreakMins: (m: number) => void;
   togglePomodoroPanel: () => void;
 
-  // Scratchpad actions
   openScratchpad: (key?: string) => void;
   closeScratchpad: () => void;
   toggleScratchpad: () => void;
   updateNote: (key: string, content: string) => void;
   setActiveKey: (key: string) => void;
 
-  // Focus mode actions
   toggleFocusMode: () => void;
   setBlockNav: (v: boolean) => void;
 }
@@ -68,6 +66,7 @@ export const useToolkitStore = create<ToolkitStore>()(
         sessionsCompleted: 0,
         soundEnabled: true,
         panelOpen: false,
+        pausedPhase: 'work',
       },
       scratchpad: {
         isOpen: false,
@@ -81,21 +80,32 @@ export const useToolkitStore = create<ToolkitStore>()(
 
       // ── Pomodoro ──────────────────────────────────────────────────────────
 
+      // close panel on start so the floating button becomes the timer
       startTimer: () =>
         set(s => ({
           pomodoro: {
             ...s.pomodoro,
             mode: 'work',
             secondsLeft: s.pomodoro.workMins * 60,
-            panelOpen: true,
+            panelOpen: false,
+            pausedPhase: 'work',
           },
         })),
 
+      // save current phase so resume restores correctly
       pauseTimer: () =>
-        set(s => ({ pomodoro: { ...s.pomodoro, mode: 'paused' } })),
+        set(s => ({
+          pomodoro: {
+            ...s.pomodoro,
+            mode: 'paused',
+            pausedPhase: s.pomodoro.mode as 'work' | 'break',
+          },
+        })),
 
       resumeTimer: () =>
-        set(s => ({ pomodoro: { ...s.pomodoro, mode: s.pomodoro.secondsLeft <= s.pomodoro.breakMins * 60 ? 'break' : 'work' } })),
+        set(s => ({
+          pomodoro: { ...s.pomodoro, mode: s.pomodoro.pausedPhase },
+        })),
 
       resetTimer: () =>
         set(s => ({
@@ -105,8 +115,8 @@ export const useToolkitStore = create<ToolkitStore>()(
       skipPhase: () =>
         set(s => {
           const p = s.pomodoro;
-          if (p.mode === 'work') {
-            return { pomodoro: { ...p, mode: 'break', secondsLeft: p.breakMins * 60 } };
+          if (p.mode === 'work' || p.pausedPhase === 'work') {
+            return { pomodoro: { ...p, mode: 'break', secondsLeft: p.breakMins * 60, pausedPhase: 'break' as const } };
           }
           return { pomodoro: { ...p, mode: 'idle', secondsLeft: p.workMins * 60, sessionsCompleted: p.sessionsCompleted + 1 } };
         }),
@@ -117,9 +127,8 @@ export const useToolkitStore = create<ToolkitStore>()(
           if (p.mode !== 'work' && p.mode !== 'break') return s;
 
           if (p.secondsLeft <= 1) {
-            // phase complete
             if (p.mode === 'work') {
-              return { pomodoro: { ...p, mode: 'break', secondsLeft: p.breakMins * 60 } };
+              return { pomodoro: { ...p, mode: 'break', secondsLeft: p.breakMins * 60, pausedPhase: 'break' as const } };
             } else {
               return { pomodoro: { ...p, mode: 'idle', secondsLeft: p.workMins * 60, sessionsCompleted: p.sessionsCompleted + 1 } };
             }
@@ -171,7 +180,6 @@ export const useToolkitStore = create<ToolkitStore>()(
     }),
     {
       name: 'better-polito:toolkit',
-      // only persist notes, settings, sessions — not panel open states or timer running
       partialize: (s) => ({
         pomodoro: {
           workMins: s.pomodoro.workMins,
@@ -182,6 +190,16 @@ export const useToolkitStore = create<ToolkitStore>()(
         scratchpad: { notes: s.scratchpad.notes },
         focusMode: { blockNav: s.focusMode.blockNav },
       }),
+      // deep-merge so persisted partial objects don't wipe runtime fields (secondsLeft, mode, etc.)
+      merge: (persisted, current) => {
+        const p = persisted as Partial<ToolkitStore>;
+        return {
+          ...current,
+          pomodoro:  { ...current.pomodoro,  ...p.pomodoro },
+          scratchpad: { ...current.scratchpad, ...p.scratchpad },
+          focusMode: { ...current.focusMode,  ...p.focusMode },
+        };
+      },
     },
   ),
 );
@@ -202,7 +220,7 @@ export function playBeep(type: 'work' | 'break' = 'work') {
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.value = type === 'work' ? 523 : 440; // C5 for break start, A4 for session end
+    osc.frequency.value = type === 'work' ? 523 : 440;
     gain.gain.setValueAtTime(0.12, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
     osc.start(ctx.currentTime);

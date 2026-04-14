@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navGroups = [
+const navGroups: { id: string; title?: string; items: { href: string; label: string; icon: React.ElementType }[] }[] = [
   {
     id: 'academics',
     title: 'Academics',
@@ -36,35 +36,34 @@ const navGroups = [
       { href: '/transcript', label: 'Transcript', icon: GraduationCap },
     ],
   },
-  {
-    id: 'campus',
-    title: 'Campus & Services',
-    items: [
-      { href: '/messages', label: 'Messages', icon: MessageSquare },
-      { href: '/bookings', label: 'Bookings', icon: CalendarCheck },
-      { href: '/places', label: 'Campus Map', icon: MapPin },
-      { href: '/services', label: 'Services', icon: Briefcase },
-      { href: '/tickets', label: 'Tickets', icon: Ticket },
-    ],
-  },
-  {
-    id: 'directory',
-    title: 'Directory & Account',
-    items: [
-      { href: '/people', label: 'People', icon: Users },
-      { href: '/surveys', label: 'Surveys', icon: ClipboardCheck },
-      { href: '/profile', label: 'Profile', icon: User },
-    ],
-  },
-  {
-    id: 'ai',
-    title: 'AI Features',
-    items: [
-      { href: '/ai/chatbot', label: 'AI Assistant', icon: Bot },
-      { href: '/ai/study-planner', label: 'Study Planner', icon: Brain },
-      { href: '/ai/analytics', label: 'Analytics', icon: BarChart3 },
-    ],
-  }
+  // {
+  //   id: 'campus',
+  //   title: 'Campus & Services',
+  //   items: [
+  //     { href: '/messages', label: 'Messages', icon: MessageSquare },
+  //     { href: '/bookings', label: 'Bookings', icon: CalendarCheck },
+  //     { href: '/places', label: 'Campus Map', icon: MapPin },
+  //     { href: '/services', label: 'Services', icon: Briefcase },
+  //     { href: '/tickets', label: 'Tickets', icon: Ticket },
+  //   ],
+  // },
+  // {
+  //   id: 'directory',
+  //   title: 'Directory & Account',
+  //   items: [
+  //     { href: '/people', label: 'People', icon: Users },
+  //     { href: '/surveys', label: 'Surveys', icon: ClipboardCheck },
+  //   ],
+  // },
+  // {
+  //   id: 'ai',
+  //   title: 'AI Features',
+  //   items: [
+  //     { href: '/ai/chatbot', label: 'AI Assistant', icon: Bot },
+  //     { href: '/ai/study-planner', label: 'Study Planner', icon: Brain },
+  //     { href: '/ai/analytics', label: 'Analytics', icon: BarChart3 },
+  //   ],
+  // }
 ];
 
 function SidebarItemContent({ icon: Icon, label, isActive, isCollapsed }: { icon: React.ElementType, label: string, isActive?: boolean, isCollapsed?: boolean }) {
@@ -145,7 +144,6 @@ export function Sidebar() {
                   </div>
                   <div className="flex flex-col truncate">
                     <h1 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">Better Polito</h1>
-                    <span className="text-[10px] font-medium text-muted-foreground mt-[2px]">unofficial portal</span>
                   </div>
                 </div>
               </DropdownMenuTrigger>
@@ -183,79 +181,80 @@ export function Sidebar() {
             {navGroups.map((group) => {
               const isOpen = isCollapsed ? true : !!openGroups[group.id];
               return (
-              <div key={group.id} className="mb-4">
-                <button 
-                  onClick={(e) => !isCollapsed && toggleGroup(group.id, e)}
-                  disabled={isCollapsed}
-                  className={cn(
-                    "flex items-center justify-between w-full text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap overflow-hidden transition-[height,opacity,padding,margin] duration-300",
-                    isCollapsed ? "h-0 w-0 opacity-0 p-0 m-0" : "h-4 w-full opacity-100 px-3 mb-2 cursor-pointer hover:text-foreground"
-                  )}
-                >
-                  <span>{group.title}</span>
-                  {!isCollapsed && (
-                    <ChevronDown className={cn("h-3 w-3 shrink-0 transition-transform duration-200", !isOpen && "-rotate-90")} />
-                  )}
-                </button>
+                <div key={group.id} className="mb-4">
+                  <button
+                    onClick={(e) => !isCollapsed && toggleGroup(group.id, e)}
+                    disabled={isCollapsed}
+                    className={cn(
+                      "flex items-center justify-between w-full text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap overflow-hidden transition-[height,opacity,padding,margin] duration-300",
+                      isCollapsed ? "h-0 w-0 opacity-0 p-0 m-0" : "h-4 w-full opacity-100 px-3 mb-2 cursor-pointer hover:text-foreground"
+                    )}
+                  >
+                    {group?.title && <span>{group?.title}</span>}
+                    {!isCollapsed && (
+                      <ChevronDown className={cn("h-3 w-3 shrink-0 transition-transform duration-200", !isOpen && "-rotate-90")} />
+                    )}
+                  </button>
 
-                <div className={cn(
-                  "space-y-1 overflow-hidden transition-all duration-300",
-                  isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
-                )}>
-                  {group.items.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                    return (
-                      <Tooltip key={item.href}>
-                        <TooltipTrigger asChild>
-                          <Link href={item.href} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
-                            <SidebarItemContent
-                              icon={item.icon}
-                              label={item.label}
-                              isActive={isActive}
-                              isCollapsed={isCollapsed}
-                            />
-                          </Link>
-                        </TooltipTrigger>
-                        {isCollapsed && <TooltipContent side="right" className="font-normal">{item.label}</TooltipContent>}
-                      </Tooltip>
-                    );
-                  })}
+                  <div className={cn(
+                    "space-y-1 overflow-hidden transition-all duration-300",
+                    isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                  )}>
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                      return (
+                        <Tooltip key={item.href}>
+                          <TooltipTrigger asChild>
+                            <Link href={item.href} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
+                              <SidebarItemContent
+                                icon={item.icon}
+                                label={item.label}
+                                isActive={isActive}
+                                isCollapsed={isCollapsed}
+                              />
+                            </Link>
+                          </TooltipTrigger>
+                          {isCollapsed && <TooltipContent side="right" className="font-normal">{item.label}</TooltipContent>}
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )})}
+              )
+            })}
           </ScrollArea>
         </div>
 
         {/* Bottom Section */}
         <div className={cn("shrink-0 border-t border-border py-4 transition-[padding] duration-300", isCollapsed ? 'px-0' : 'px-2')}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/profile" className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
-                  <SidebarItemContent
-                    icon={User}
-                    label="Profile"
-                    isActive={pathname === '/profile'}
-                    isCollapsed={isCollapsed}
-                  />
-                </Link>
-              </TooltipTrigger>
-              {isCollapsed && <TooltipContent side="right" className="font-normal">Profile</TooltipContent>}
-            </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/profile" className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
+                <SidebarItemContent
+                  icon={User}
+                  label="Profile"
+                  isActive={pathname === '/profile'}
+                  isCollapsed={isCollapsed}
+                />
+              </Link>
+            </TooltipTrigger>
+            {isCollapsed && <TooltipContent side="right" className="font-normal">Profile</TooltipContent>}
+          </Tooltip>
 
-            {/* Dark Mode Toggle */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
-                  <SidebarItemContent
-                    icon={isDark ? Sun : Moon}
-                    label={isDark ? 'Light Mode' : 'Dark Mode'}
-                    isCollapsed={isCollapsed}
-                  />
-                </button>
-              </TooltipTrigger>
-              {isCollapsed && <TooltipContent side="right" className="font-normal">{isDark ? 'Light Mode' : 'Dark Mode'}</TooltipContent>}
-            </Tooltip>
-          </div>
+          {/* Dark Mode Toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className={cn("block", isCollapsed ? "w-fit" : "w-full")}>
+                <SidebarItemContent
+                  icon={isDark ? Sun : Moon}
+                  label={isDark ? 'Light Mode' : 'Dark Mode'}
+                  isCollapsed={isCollapsed}
+                />
+              </button>
+            </TooltipTrigger>
+            {isCollapsed && <TooltipContent side="right" className="font-normal">{isDark ? 'Light Mode' : 'Dark Mode'}</TooltipContent>}
+          </Tooltip>
+        </div>
       </aside>
     </TooltipProvider>
   );

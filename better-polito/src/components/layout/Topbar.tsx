@@ -1,8 +1,7 @@
 'use client';
 import { useSession } from 'next-auth/react';
-import { Menu, Bell, PenLine, Timer, Focus } from 'lucide-react';
+import { Menu, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +13,6 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import { useGetNotifications, useMarkNotificationAsRead } from '@/lib/queries/studentHooks';
 import { useMemo } from 'react';
-import { useToolkitStore } from '@/lib/stores/toolkitStore';
 import { PomodoroChip } from '@/components/toolkit/PomodoroTimer';
 
 function NotificationBell() {
@@ -110,11 +108,9 @@ interface TopbarProps {
 export function Topbar({ onMobileMenuOpen }: TopbarProps) {
   const { data: session } = useSession();
   const username = session?.user?.name ?? '';
-  const initials = username.slice(0, 2).toUpperCase();
 
   const pathname = usePathname();
   const headerInfo = getHeaderInfo(pathname);
-  const { togglePomodoroPanel, toggleScratchpad, toggleFocusMode, focusMode, pomodoro } = useToolkitStore();
 
   // Hide Topbar explicitly on Desktop for Course Details (it provides its own desktop header)
   const isCourseDetail = !!pathname.match(/^\/courses\/[^/]+$/);
@@ -122,7 +118,7 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
   return (
     <div className={cn("bg-card border-b border-border shrink-0 sticky top-0 z-40 transition-colors", isCourseDetail ? "flex md:hidden" : "block")}>
       <div className="min-h-[73px] w-full px-3 md:px-6 py-3 md:py-0 flex items-center md:flex-row gap-3 md:gap-6">
-        
+
         {/* Mobile menu and Brand */}
         <div className="flex items-center gap-2 lg:hidden shrink-0">
           <Button
@@ -165,39 +161,6 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
 
         {/* Pomodoro live chip */}
         <PomodoroChip />
-
-        {/* Toolkit buttons */}
-        <div className="hidden sm:flex items-center gap-1 shrink-0">
-          {/* Pomodoro open */}
-          <Button
-            variant="ghost" size="icon"
-            onClick={togglePomodoroPanel}
-            title="Pomodoro timer"
-            className={cn("rounded-xl w-8 h-8", pomodoro.panelOpen && "bg-[#FF6B8B]/10 text-[#FF6B8B]")}
-          >
-            <Timer className="w-4 h-4" />
-          </Button>
-
-          {/* Scratchpad */}
-          <Button
-            variant="ghost" size="icon"
-            onClick={toggleScratchpad}
-            title="Scratchpad (Ctrl+Shift+N)"
-            className="rounded-xl w-8 h-8"
-          >
-            <PenLine className="w-4 h-4" />
-          </Button>
-
-          {/* Focus Mode */}
-          <Button
-            variant="ghost" size="icon"
-            onClick={toggleFocusMode}
-            title="Focus mode"
-            className={cn("rounded-xl w-8 h-8", focusMode.isActive && "bg-[#424AFB]/10 text-[#424AFB]")}
-          >
-            <Focus className="w-4 h-4" />
-          </Button>
-        </div>
 
         {/* Notification Bell */}
         <NotificationBell />

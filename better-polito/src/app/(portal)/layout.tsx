@@ -4,19 +4,18 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
-import { Footer } from '@/components/layout/Footer';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { CommandPalette } from '@/components/layout/CommandPalette';
 import { PomodoroPanel } from '@/components/toolkit/PomodoroTimer';
 import { Scratchpad } from '@/components/toolkit/Scratchpad';
+import { ToolkitDock } from '@/components/toolkit/ToolkitDock';
 import { useToolkitStore } from '@/lib/stores/toolkitStore';
-import { Focus } from 'lucide-react';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const { status } = useSession();
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const { focusMode, toggleFocusMode } = useToolkitStore();
+  const { focusMode } = useToolkitStore();
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -26,10 +25,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 rounded-lg bg-foreground animate-pulse" />
-          <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="min-h-screen bg-background">
+        <div className="fixed top-0 left-0 right-0 h-[2px] overflow-hidden bg-border/30">
+          <div
+            className="h-full w-1/3 bg-primary/70 rounded-full"
+            style={{ animation: 'loading-bar 1.2s ease-in-out infinite' }}
+          />
         </div>
       </div>
     );
@@ -42,16 +43,18 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <CommandPalette />
       <PomodoroPanel />
       <Scratchpad />
+      <ToolkitDock />
       <Sidebar />
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Topbar onMobileMenuOpen={() => setMobileNavOpen(true)} />
+        {!focusMode.isActive && (
+          <Topbar onMobileMenuOpen={() => setMobileNavOpen(true)} />
+        )}
 
-        <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-6">
+        <main className="relative flex-1 min-h-0 overflow-hidden px-4 pt-4 lg:px-6 lg:pt-6">
           {children}
         </main>
-        {/* <Footer /> */}
       </div>
     </div>
   );

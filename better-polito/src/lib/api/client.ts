@@ -133,7 +133,10 @@ class ApiClient {
   // GET /courses, /courses/{id}, /courses/{id}/... — all confirmed in spec
   async getCourses() { return this.request<{ data: unknown[] }>('/courses'); }
   async getCourse(courseId: number) { return this.request<{ data: unknown }>(`/courses/${courseId}`); }
-  async getCourseFiles(courseId: number) { return this.request<{ data: unknown }>(`/courses/${courseId}/files`); }
+  async getCourseFiles(courseId: number, year?: string) {
+    const qs = year ? `?year=${encodeURIComponent(year)}` : '';
+    return this.request<{ data: unknown }>(`/courses/${courseId}/files${qs}`);
+  }
   async getCourseAssignments(courseId: number) { return this.request<{ data: unknown[] }>(`/courses/${courseId}/assignments`); }
   async getCourseNotices(courseId: number) { return this.request<{ data: unknown[] }>(`/courses/${courseId}/notices`); }
   async getCourseGuide(courseId: number) { return this.request<{ data: unknown }>(`/courses/${courseId}/guide`); }

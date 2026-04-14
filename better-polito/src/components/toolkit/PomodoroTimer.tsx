@@ -11,13 +11,6 @@ export function PomodoroPanel() {
   const { pomodoro, startTimer, pauseTimer, resumeTimer, resetTimer, skipPhase, toggleSound, setWorkMins, setBreakMins, togglePomodoroPanel } = useToolkitStore();
   const prevModeRef = useRef(pomodoro.mode);
 
-  // tick interval
-  useEffect(() => {
-    if (pomodoro.mode !== 'work' && pomodoro.mode !== 'break') return;
-    const id = setInterval(() => useToolkitStore.getState().tickTimer(), 1000);
-    return () => clearInterval(id);
-  }, [pomodoro.mode]);
-
   // sound on phase transition
   useEffect(() => {
     const prev = prevModeRef.current;
@@ -50,8 +43,14 @@ export function PomodoroPanel() {
   const accentColor = isBreak ? '#34C759' : '#FF6B8B';
   const circumference = 2 * Math.PI * 40;
 
+  const dotsFilled = pomodoro.sessionsCompleted === 0 
+    ? 0 
+    : pomodoro.sessionsCompleted % 4 === 0 
+      ? 4 
+      : pomodoro.sessionsCompleted % 4;
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 glass-heavy rounded-3xl p-5 w-72 shadow-glass-lg">
+    <div className="fixed bottom-24 right-6 z-50 glass-heavy rounded-3xl p-5 w-72 shadow-glass-lg">
       {/* header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -96,9 +95,9 @@ export function PomodoroPanel() {
 
         {/* sessions */}
         <div className="flex items-center gap-1.5">
-          {Array.from({ length: Math.max(4, pomodoro.sessionsCompleted + 1) }).map((_, i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <span key={i} className={cn('w-2 h-2 rounded-full transition-colors',
-              i < pomodoro.sessionsCompleted ? 'bg-[#FF6B8B]' : 'bg-muted')} />
+              i < dotsFilled ? 'bg-[#FF6B8B]' : 'bg-muted')} />
           ))}
           <span className="text-[11px] text-muted-foreground ml-1">{pomodoro.sessionsCompleted} done</span>
         </div>

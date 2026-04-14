@@ -1,0 +1,4 @@
+{"t":0,"agent":"system","event":"keyword_detected","keyword":"ai-slop-cleaner"}
+{"t":0,"agent":"a14236f","agent_type":"executor","event":"agent_start","parent_mode":"none"}
+{"t":0,"agent":"a14236f","agent_type":"executor","event":"agent_stop","success":true,"duration_ms":133566}
+{"t":0,"agent":"a6ee2bf","agent_type":"unknown","event":"agent_stop","success":true}
