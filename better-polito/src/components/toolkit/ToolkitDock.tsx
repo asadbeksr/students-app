@@ -2,13 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Timer, PenLine, Focus, Zap } from 'lucide-react';
+import { Timer, PenLine, Focus, Zap, Bot } from 'lucide-react';
 import { useToolkitStore, formatTime } from '@/lib/stores/toolkitStore';
 import { cn } from '@/lib/utils/cn';
 
 // ─── tool definitions ─────────────────────────────────────────────────────────
 
 const TOOLS = [
+  {
+    id: 'ai',
+    icon: Bot,
+    label: 'AI Assistant',
+    accent: '#FF8C42',
+    action: () => {},
+    isActive: () => false,
+  },
   {
     id: 'focus',
     icon: Focus,
@@ -101,7 +109,11 @@ export function ToolkitDock() {
                 whileHover={{ scale: 1.12, y: -2 }}
                 whileTap={{ scale: 0.90 }}
                 onClick={() => {
-                  tool.action(useToolkitStore.getState());
+                  if (tool.id === 'ai') {
+                    window.dispatchEvent(new CustomEvent('course-ai-assistant-toggle'));
+                  } else {
+                    tool.action(useToolkitStore.getState());
+                  }
                   setIsOpen(false);
                 }}
                 className={cn(

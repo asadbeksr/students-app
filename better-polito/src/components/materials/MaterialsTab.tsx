@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
   useGetCourseFiles,
@@ -13,8 +13,9 @@ import { Button } from '@/components/ui/button';
 import {
   Folder, FolderOpen, File, FileText, FileImage, FileBarChart,
   Video, Presentation, Music, Download, Loader2,
-  PanelLeftClose, PanelLeftOpen, ChevronRight, ChevronDown, Code,
+  PanelLeftClose, PanelLeftOpen, ChevronRight, ChevronDown, ChevronLeft, Code,
   Package, Monitor, ExternalLink, X, CheckSquare2, Square,
+  LayoutGrid, List, ArrowUpDown,
 } from 'lucide-react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
@@ -115,30 +116,148 @@ interface SelectedFile {
 interface SelectableItem {
   id: string;
   name: string;
-  url: string;
+  type: 'file' | 'directory';
+  url?: string;
   mimeType?: string;
+  sizeInKiloBytes?: number;
+  createdAt?: string;
+  available: boolean;
+  archivePath?: string;
+  ancestorFolderIds?: string[];
+  depth?: number;
+  descendantFileCount?: number;
 }
 
-/* ─── flatten visible tree leaves ────────────────────────────────── */
-function flattenVisibleLeaves(items: ApiItem[], expandedFolders: Set<string>): ApiItem[] {
-  const result: ApiItem[] = [];
-  for (const item of items) {
+type SortBy = 'name' | 'size' | 'date';
+type ViewMode = 'list' | 'grid';
+
+interface FlatTeachingNode extends ApiItem {
+  path: string;
+  depth: number;
+  ancestorFolderIds: string[];
+}
+
+function parseDateMs(date?: string): number {
+  if (!date) return 0;
+  const ts = Date.parse(date);
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function buildTeachingMetrics(items: ApiItem[]) {
+  const sizeById = new Map<string, number>();
+  const dateById = new Map<string, number>();
+
+  const walk = (item: ApiItem): { size: number; date: number } => {
     if (item.type === 'file') {
-      result.push(item);
-    } else if (item.type === 'directory' && expandedFolders.has(item.id)) {
-      const sorted = [...(item.files ?? [])].sort((a, b) => {
-        if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      });
-      result.push(...flattenVisibleLeaves(sorted, expandedFolders));
+      const size = item.sizeInKiloBytes ?? 0;
+      const date = parseDateMs(item.createdAt);
+      sizeById.set(item.id, size);
+      dateById.set(item.id, date);
+      return { size, date };
+    }
+
+    const children = item.files ?? [];
+    let size = 0;
+    let date = parseDateMs(item.createdAt);
+    for (const child of children) {
+      const childMetrics = walk(child);
+      size += childMetrics.size;
+      date = Math.max(date, childMetrics.date);
+    }
+    sizeById.set(item.id, size);
+    dateById.set(item.id, date);
+    return { size, date };
+  };
+
+  items.forEach(walk);
+  return { sizeById, dateById };
+}
+
+function compareTreeItems(
+  a: ApiItem,
+  b: ApiItem,
+  sortBy: SortBy,
+  sizeById: Map<string, number>,
+  dateById: Map<string, number>,
+) {
+  if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+
+  if (sortBy === 'size') {
+    const diff = (sizeById.get(b.id) ?? 0) - (sizeById.get(a.id) ?? 0);
+    if (diff !== 0) return diff;
+  }
+
+  if (sortBy === 'date') {
+    const diff = (dateById.get(b.id) ?? 0) - (dateById.get(a.id) ?? 0);
+    if (diff !== 0) return diff;
+  }
+
+  return a.name.localeCompare(b.name);
+}
+
+function sortTreeItems(
+  items: ApiItem[],
+  sortBy: SortBy,
+  sizeById: Map<string, number>,
+  dateById: Map<string, number>,
+): ApiItem[] {
+  return [...items]
+    .sort((a, b) => compareTreeItems(a, b, sortBy, sizeById, dateById))
+    .map((item) => item.type === 'directory'
+      ? { ...item, files: sortTreeItems(item.files ?? [], sortBy, sizeById, dateById) }
+      : item);
+}
+
+function flattenAllTeachingNodes(
+  items: ApiItem[],
+  depth = 0,
+  parentPath = '',
+  ancestorFolderIds: string[] = [],
+): FlatTeachingNode[] {
+  const result: FlatTeachingNode[] = [];
+  for (const item of items) {
+    const path = parentPath ? `${parentPath}/${item.name}` : item.name;
+    result.push({ ...item, path, depth, ancestorFolderIds });
+    if (item.type === 'directory' && item.files?.length) {
+      result.push(...flattenAllTeachingNodes(
+        item.files,
+        depth + 1,
+        path,
+        [...ancestorFolderIds, item.id],
+      ));
+    }
+  }
+  return result;
+}
+
+function flattenVisibleTeachingNodes(
+  items: ApiItem[],
+  expandedFolders: Set<string>,
+  depth = 0,
+  parentPath = '',
+  ancestorFolderIds: string[] = [],
+): FlatTeachingNode[] {
+  const result: FlatTeachingNode[] = [];
+  for (const item of items) {
+    const path = parentPath ? `${parentPath}/${item.name}` : item.name;
+    result.push({ ...item, path, depth, ancestorFolderIds });
+    if (item.type === 'directory' && expandedFolders.has(item.id) && item.files?.length) {
+      result.push(...flattenVisibleTeachingNodes(
+        item.files,
+        expandedFolders,
+        depth + 1,
+        path,
+        [...ancestorFolderIds, item.id],
+      ));
     }
   }
   return result;
 }
 
 /* ─── row checkbox ────────────────────────────────────────────────── */
-function RowCheckbox({ checked, anySelected, onClick }: {
+function RowCheckbox({ checked, indeterminate = false, anySelected, onClick }: {
   checked: boolean;
+  indeterminate?: boolean;
   anySelected: boolean;
   onClick: (e: React.MouseEvent) => void;
 }) {
@@ -151,6 +270,8 @@ function RowCheckbox({ checked, anySelected, onClick }: {
     >
       {checked
         ? <CheckSquare2 className="w-4 h-4" />
+        : indeterminate
+          ? <CheckSquare2 className="w-4 h-4 text-primary/60" />
         : <Square className="w-4 h-4" />}
     </span>
   );
@@ -158,25 +279,43 @@ function RowCheckbox({ checked, anySelected, onClick }: {
 
 /* ─── selection action bar ────────────────────────────────────────── */
 function SelectionBar({
-  count,
+  totalCount,
+  selectedCount,
   onDownload,
   onSelectAll,
   onClear,
   isDownloading,
 }: {
-  count: number;
+  totalCount: number;
+  selectedCount: number;
   onDownload: () => void;
   onSelectAll: () => void;
   onClear: () => void;
   isDownloading: boolean;
 }) {
+  const allSelected = totalCount > 0 && selectedCount === totalCount;
+  const indeterminate = selectedCount > 0 && selectedCount < totalCount;
+
   return (
     <div
-      className={`absolute bottom-0 inset-x-0 z-20 border-t border-border bg-card/95 backdrop-blur-sm px-2 py-1.5 flex items-center gap-1 transition-all duration-200 ${count > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
+      className={`absolute bottom-0 inset-x-0 z-20 border-t border-border bg-card/95 backdrop-blur-sm px-2 py-1.5 flex items-center gap-1 transition-all duration-200 ${totalCount > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
         }`}
     >
+      <button
+        onClick={allSelected ? onClear : onSelectAll}
+        className="shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+        title={allSelected ? 'Deselect all' : 'Select all'}
+      >
+        {allSelected
+          ? <CheckSquare2 className="w-4 h-4 text-primary" />
+          : indeterminate
+            ? <CheckSquare2 className="w-4 h-4 text-primary/50" />
+            : <Square className="w-4 h-4" />}
+      </button>
       <span className="text-xs font-semibold text-foreground tabular-nums flex-1 pl-1">
-        {count} selected
+        {selectedCount > 0
+          ? `${selectedCount} of ${totalCount} selected`
+          : `${totalCount} item${totalCount !== 1 ? 's' : ''}`}
       </span>
       <button
         onClick={onSelectAll}
@@ -187,20 +326,22 @@ function SelectionBar({
       <button
         onClick={onDownload}
         disabled={isDownloading}
-        className="flex items-center gap-1 text-[11px] font-medium text-foreground bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded transition-colors disabled:opacity-50"
+        className="flex items-center gap-1 text-[11px] font-medium bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded transition-colors disabled:opacity-50"
       >
         {isDownloading
           ? <Loader2 className="h-3 w-3 animate-spin" />
           : <Download className="h-3 w-3" />}
         Download
       </button>
-      <button
-        onClick={onClear}
-        className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded transition-colors"
-        title="Clear selection (Esc)"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+      {selectedCount > 0 && (
+        <button
+          onClick={onClear}
+          className="text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 rounded hover:bg-muted/60 transition-colors"
+          title="Clear selection (Esc)"
+        >
+          Clear
+        </button>
+      )}
     </div>
   );
 }
@@ -345,25 +486,33 @@ function MediaPreview({ file, courseId, onClose }: { file: SelectedFile; courseI
 function TreeNode({
   item, depth, expandedFolders, onToggleFolder, selectedFileId, onSelectFile,
   selection, anySelected, onToggleSelect,
+  folderSelectionState,
+  folderFileCounts,
 }: {
   item: ApiItem; depth: number; expandedFolders: Set<string>;
   onToggleFolder: (id: string) => void; selectedFileId: string | null;
   onSelectFile: (item: ApiItem, e: React.MouseEvent) => void;
   selection: Set<string>; anySelected: boolean;
   onToggleSelect: (id: string, shiftKey: boolean) => void;
+  folderSelectionState: Map<string, { checked: boolean; indeterminate: boolean }>;
+  folderFileCounts: Map<string, number>;
 }) {
   const indent = depth * 12;
 
   if (item.type === 'directory') {
     const isExpanded = expandedFolders.has(item.id);
-    const children = [...(item.files ?? [])].sort((a, b) => {
-      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+    const folderState = folderSelectionState.get(item.id) ?? { checked: false, indeterminate: false };
+    const children = item.files ?? [];
     return (
       <div>
         <button onClick={() => onToggleFolder(item.id)} style={{ paddingLeft: `${8 + indent}px` }}
           className="w-full flex items-center gap-1.5 pr-2.5 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left group">
+          <RowCheckbox
+            checked={folderState.checked}
+            indeterminate={folderState.indeterminate}
+            anySelected={anySelected}
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(item.id, e.shiftKey); }}
+          />
           <span className="shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
             {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
           </span>
@@ -380,6 +529,8 @@ function TreeNode({
                   expandedFolders={expandedFolders} onToggleFolder={onToggleFolder}
                   selectedFileId={selectedFileId} onSelectFile={onSelectFile}
                   selection={selection} anySelected={anySelected} onToggleSelect={onToggleSelect}
+                  folderSelectionState={folderSelectionState}
+                  folderFileCounts={folderFileCounts}
                 />
               ))}
           </div>
@@ -418,69 +569,82 @@ function SidebarHeader({
   activeTab,
   onTabChange,
   onCollapse,
-  totalCount,
-  selectedCount,
-  onSelectAll,
-  onClearAll,
+  sortBy,
+  onSortChange,
+  viewMode,
+  onViewModeChange,
 }: {
   activeTab: MaterialsActiveTab;
   onTabChange: (tab: MaterialsActiveTab) => void;
   onCollapse: () => void;
-  totalCount: number;
-  selectedCount: number;
-  onSelectAll: () => void;
-  onClearAll: () => void;
+  sortBy: SortBy;
+  onSortChange: (sortBy: SortBy) => void;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }) {
-  const allSelected = totalCount > 0 && selectedCount === totalCount;
-  const indeterminate = selectedCount > 0 && selectedCount < totalCount;
+  const activeTabIcon = activeTab === 'teaching'
+    ? <FolderOpen className="h-3.5 w-3.5 text-primary" />
+    : activeTab === 'dropbox'
+      ? <Package className="h-3.5 w-3.5 text-blue-500" />
+      : <Monitor className="h-3.5 w-3.5 text-blue-500" />;
+
   return (
     <div className="border-b border-border shrink-0">
-      {/* tab row */}
-      <div className="flex items-center px-1.5 pt-1.5 gap-0.5">
-        {(['teaching', 'dropbox', 'virtual'] as MaterialsActiveTab[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => onTabChange(tab)}
-            className={`flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${activeTab === tab
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
+      <div className="flex items-center gap-1 px-1.5 py-1.5">
+        <div className="flex h-8 min-w-[128px] items-center gap-1 rounded-md border border-border bg-background px-1.5">
+          {activeTabIcon}
+          <select
+            value={activeTab}
+            onChange={(e) => onTabChange(e.target.value as MaterialsActiveTab)}
+            className="h-full w-full min-w-0 border-0 bg-transparent px-0 text-[11px] font-medium text-foreground focus:ring-0"
+            aria-label="Materials section"
           >
-            {TAB_LABELS[tab]}
+            {(['teaching', 'dropbox', 'virtual'] as MaterialsActiveTab[]).map((tab) => (
+              <option key={tab} value={tab}>{TAB_LABELS[tab]}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex h-8 items-center rounded-md border border-border overflow-hidden">
+          <button
+            onClick={() => onViewModeChange('list')}
+            className={`flex h-full w-8 items-center justify-center p-0 transition-colors ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+            title="List view"
+          >
+            <List className="w-3.5 h-3.5" />
           </button>
-        ))}
+          <button
+            onClick={() => onViewModeChange('grid')}
+            className={`flex h-full w-8 items-center justify-center p-0 transition-colors ${viewMode === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+            title="Grid view"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="flex h-8 min-w-[128px] items-center gap-1 rounded-md border border-border bg-background px-1.5">
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <select
+            id="materials-sort"
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value as SortBy)}
+            className="h-full w-full min-w-0 border-0 bg-transparent px-0 text-[11px] text-foreground focus:ring-0"
+            aria-label="Sort materials"
+          >
+            <option value="name">Name</option>
+            <option value="size">Size</option>
+            <option value="date">Date</option>
+          </select>
+        </div>
+
         <button
           onClick={onCollapse}
-          className="shrink-0 p-1.5 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+          className="ml-auto h-8 w-8 shrink-0 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           title="Hide sidebar"
         >
           <PanelLeftClose className="h-3.5 w-3.5" />
         </button>
       </div>
-      {/* select-all row */}
-      {totalCount > 0 && (
-        <div className="flex items-center gap-2 px-2.5 py-1 border-t border-border/50">
-          <button
-            onClick={allSelected ? onClearAll : onSelectAll}
-            className="shrink-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            title={allSelected ? 'Deselect all' : 'Select all'}
-          >
-            {allSelected
-              ? <CheckSquare2 className="w-4 h-4 text-primary" />
-              : indeterminate
-                ? <CheckSquare2 className="w-4 h-4 text-primary/50" />
-                : <Square className="w-4 h-4" />}
-          </button>
-          <span className="text-[11px] text-muted-foreground flex-1">
-            {selectedCount > 0 ? `${selectedCount} of ${totalCount} selected` : `${totalCount} item${totalCount !== 1 ? 's' : ''}`}
-          </span>
-          {selectedCount > 0 && (
-            <button onClick={onClearAll} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-              Clear
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -496,6 +660,8 @@ export default function MaterialsTab({
   initialTab?: MaterialsActiveTab;
 }) {
   const [activeTab, setActiveTab] = useState<MaterialsActiveTab>(initialTab);
+  const [sortBy, setSortBy] = useState<SortBy>('name');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const numericId = parseInt(courseId, 10);
 
   // Data for all tabs — let react-query cache them
@@ -512,6 +678,8 @@ export default function MaterialsTab({
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
   const lastSelectedIdRef = useRef<string | null>(null);
+  const [gridFolderStack, setGridFolderStack] = useState<string[]>([]);
+  const breadcrumbScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Sidebar panel
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -526,60 +694,229 @@ export default function MaterialsTab({
     });
   };
 
-  const sortedRootItems = [...(rootItems as ApiItem[])].sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
+  const toString = (value: unknown): string | undefined => typeof value === 'string' ? value : undefined;
+  const toNumber = (value: unknown): number | undefined => typeof value === 'number' ? value : undefined;
 
-  const vcItems: any[] = Array.isArray(virtualClassrooms) ? virtualClassrooms : [];
-  const vlItems: any[] = Array.isArray(videolectures) ? videolectures : [];
-  const allRecordings = [
-    ...vcItems.map((r: any) => ({ ...r, _src: 'vc' })),
-    ...vlItems.map((r: any) => ({ ...r, _src: 'vl' })),
-  ];
+  const sortSelectableItems = useCallback((items: SelectableItem[]) => {
+    return [...items].sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
 
-  const assignItems: any[] = Array.isArray(assignments) ? assignments : [];
+      if (sortBy === 'size') {
+        const diff = (b.sizeInKiloBytes ?? 0) - (a.sizeInKiloBytes ?? 0);
+        if (diff !== 0) return diff;
+      }
 
-  // ── flat list of selectable items (per tab) ────────────────────
-  const allSelectableItems = useCallback((): SelectableItem[] => {
-    if (activeTab === 'teaching') {
-      return flattenVisibleLeaves(sortedRootItems, expandedFolders).map(item => ({
-        id: item.id,
-        name: item.name,
-        url: `/api/polito/courses/${courseId}/files/${item.id}`,
-        mimeType: item.mimeType,
-      }));
+      if (sortBy === 'date') {
+        const diff = parseDateMs(b.createdAt) - parseDateMs(a.createdAt);
+        if (diff !== 0) return diff;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [sortBy]);
+
+  const teachingRootItems = Array.isArray(rootItems) ? (rootItems as ApiItem[]) : [];
+  const teachingMetrics = useMemo(() => buildTeachingMetrics(teachingRootItems), [teachingRootItems]);
+  const sortedRootItems = useMemo(
+    () => sortTreeItems(
+      teachingRootItems,
+      sortBy,
+      teachingMetrics.sizeById,
+      teachingMetrics.dateById,
+    ),
+    [teachingRootItems, sortBy, teachingMetrics],
+  );
+
+  const allTeachingNodes = useMemo(() => flattenAllTeachingNodes(sortedRootItems), [sortedRootItems]);
+  const { descendantIdsByFolder, descendantFileIdsByFolder } = useMemo(() => {
+    const idsMap = new Map<string, string[]>();
+    const filesMap = new Map<string, string[]>();
+
+    allTeachingNodes.forEach((node) => {
+      if (node.type === 'directory') {
+        idsMap.set(node.id, [node.id]);
+        filesMap.set(node.id, []);
+      }
+    });
+
+    allTeachingNodes.forEach((node) => {
+      node.ancestorFolderIds.forEach((folderId) => {
+        const branchIds = idsMap.get(folderId);
+        if (branchIds) branchIds.push(node.id);
+        if (node.type === 'file') {
+          const branchFiles = filesMap.get(folderId);
+          if (branchFiles) branchFiles.push(node.id);
+        }
+      });
+    });
+
+    return { descendantIdsByFolder: idsMap, descendantFileIdsByFolder: filesMap };
+  }, [allTeachingNodes]);
+
+  const teachingSelectableAll = useMemo((): SelectableItem[] => {
+    return allTeachingNodes.map((node) => {
+      if (node.type === 'file') {
+        return {
+          id: node.id,
+          name: node.name,
+          type: 'file',
+          url: `/api/polito/courses/${courseId}/files/${node.id}`,
+          mimeType: node.mimeType,
+          sizeInKiloBytes: node.sizeInKiloBytes,
+          createdAt: node.createdAt,
+          available: true,
+          archivePath: node.path,
+          ancestorFolderIds: node.ancestorFolderIds,
+          depth: node.depth,
+        };
+      }
+
+      const descendantFiles = descendantFileIdsByFolder.get(node.id) ?? [];
+      return {
+        id: node.id,
+        name: node.name,
+        type: 'directory',
+        sizeInKiloBytes: teachingMetrics.sizeById.get(node.id) ?? 0,
+        createdAt: node.createdAt,
+        available: descendantFiles.length > 0,
+        archivePath: node.path,
+        ancestorFolderIds: node.ancestorFolderIds,
+        depth: node.depth,
+        descendantFileCount: descendantFiles.length,
+      };
+    });
+  }, [allTeachingNodes, courseId, descendantFileIdsByFolder, teachingMetrics]);
+
+  const teachingById = useMemo(() => {
+    const byId = new Map<string, SelectableItem>();
+    teachingSelectableAll.forEach((item) => byId.set(item.id, item));
+    return byId;
+  }, [teachingSelectableAll]);
+
+  useEffect(() => {
+    setGridFolderStack((prev) => {
+      let nodes: ApiItem[] = sortedRootItems;
+      const next: string[] = [];
+
+      for (const folderId of prev) {
+        const match = nodes.find((node) => node.type === 'directory' && node.id === folderId);
+        if (!match || match.type !== 'directory') break;
+        next.push(folderId);
+        nodes = match.files ?? [];
+      }
+
+      return next.length === prev.length ? prev : next;
+    });
+  }, [sortedRootItems]);
+
+  const teachingGridContext = useMemo(() => {
+    const breadcrumb: Array<{ id: string | null; name: string }> = [{ id: null, name: 'Materials' }];
+    let nodes: ApiItem[] = sortedRootItems;
+
+    for (const folderId of gridFolderStack) {
+      const folder = nodes.find((node) => node.type === 'directory' && node.id === folderId);
+      if (!folder || folder.type !== 'directory') break;
+      breadcrumb.push({ id: folder.id, name: folder.name });
+      nodes = folder.files ?? [];
     }
-    if (activeTab === 'dropbox') {
-      return assignItems.map((a: any, i: number) => ({
-        id: String(a.id ?? i),
-        name: a.name ?? a.title ?? `Assignment ${i + 1}`,
-        url: `/api/polito/courses/${courseId}/assignments/${a.id}`,
-        mimeType: a.mimeType,
-      }));
-    }
-    // virtual
-    return allRecordings.map((r: any, i: number) => ({
-      id: String(r.id ?? i),
-      name: r.title ?? r.name ?? `Recording ${i + 1}`,
-      url: r.url ?? r.streamUrl ?? r.videoUrl ?? '',
-      mimeType: 'video/mp4',
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, sortedRootItems, expandedFolders, assignItems, allRecordings, courseId]);
 
-  // ── id-ordered list for range select ──────────────────────────
-  const flatIds = useCallback(() => allSelectableItems().map(i => i.id), [allSelectableItems]);
+    return { breadcrumb, nodes };
+  }, [gridFolderStack, sortedRootItems]);
 
-  // ── toggle one item ────────────────────────────────────────────
+  const teachingGridItems = useMemo(
+    () => teachingGridContext.nodes
+      .map((node) => teachingById.get(node.id))
+      .filter((item): item is SelectableItem => Boolean(item)),
+    [teachingById, teachingGridContext.nodes],
+  );
+
+  useEffect(() => {
+    if (activeTab !== 'teaching' || viewMode !== 'grid') return;
+    const el = breadcrumbScrollRef.current;
+    if (!el) return;
+    el.scrollLeft = el.scrollWidth;
+  }, [activeTab, viewMode, teachingGridContext.breadcrumb.length]);
+
+  const assignmentEntries = useMemo(() => {
+    const raw = Array.isArray(assignments) ? (assignments as Array<Record<string, unknown>>) : [];
+    const mapped = raw.map((assignment, i) => {
+      const rawId = assignment.id;
+      const id = String(rawId ?? `assignment-${i}`);
+      const apiId = rawId == null ? undefined : String(rawId);
+      const name = toString(assignment.name) ?? toString(assignment.title) ?? `Assignment ${i + 1}`;
+      const url = apiId ? `/api/polito/courses/${courseId}/assignments/${encodeURIComponent(apiId)}` : undefined;
+      return {
+        id,
+        name,
+        type: 'file' as const,
+        url,
+        mimeType: toString(assignment.mimeType),
+        sizeInKiloBytes: toNumber(assignment.sizeInKiloBytes),
+        createdAt: toString(assignment.createdAt) ?? toString(assignment.date),
+        available: Boolean(url),
+      };
+    });
+    return sortSelectableItems(mapped);
+  }, [assignments, courseId, sortSelectableItems]);
+
+  const recordingEntries = useMemo(() => {
+    const vc = Array.isArray(virtualClassrooms) ? (virtualClassrooms as Array<Record<string, unknown>>) : [];
+    const vl = Array.isArray(videolectures) ? (videolectures as Array<Record<string, unknown>>) : [];
+    const raw = [...vc, ...vl];
+    const mapped = raw.map((recording, i) => {
+      const rawId = recording.id;
+      const id = String(rawId ?? `recording-${i}`);
+      const title = toString(recording.title) ?? toString(recording.name) ?? `Recording ${i + 1}`;
+      const url = toString(recording.url) ?? toString(recording.streamUrl) ?? toString(recording.videoUrl);
+      const createdAt = toString(recording.date) ?? toString(recording.createdAt) ?? toString(recording.recordingDate);
+      return {
+        id,
+        name: title,
+        type: 'file' as const,
+        url,
+        mimeType: 'video/mp4',
+        createdAt,
+        available: Boolean(url),
+      };
+    });
+    return sortSelectableItems(mapped);
+  }, [sortSelectableItems, videolectures, virtualClassrooms]);
+
+  const activeSelectableItems = useMemo(() => {
+    if (activeTab === 'teaching') return teachingSelectableAll;
+    if (activeTab === 'dropbox') return assignmentEntries;
+    return recordingEntries;
+  }, [activeTab, assignmentEntries, recordingEntries, teachingSelectableAll]);
+
+  const activeSelectableById = useMemo(() => {
+    const byId = new Map<string, SelectableItem>();
+    activeSelectableItems.forEach((item) => byId.set(item.id, item));
+    return byId;
+  }, [activeSelectableItems]);
+
+  const flatIds = useCallback(() => activeSelectableItems.map((item) => item.id), [activeSelectableItems]);
+
   const toggleSelect = useCallback((id: string) => {
-    setSelection(prev => {
+    setSelection((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const current = activeSelectableById.get(id);
+
+      if (activeTab === 'teaching' && current?.type === 'directory') {
+        const branchIds = descendantIdsByFolder.get(id) ?? [id];
+        const allInBranchSelected = branchIds.every((branchId) => next.has(branchId));
+        branchIds.forEach((branchId) => {
+          if (allInBranchSelected) next.delete(branchId);
+          else next.add(branchId);
+        });
+      } else {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+      }
+
       return next;
     });
     lastSelectedIdRef.current = id;
-  }, []);
+  }, [activeSelectableById, activeTab, descendantIdsByFolder]);
 
   // ── range select ───────────────────────────────────────────────
   const rangeSelect = useCallback((toId: string) => {
@@ -623,6 +960,17 @@ export default function MaterialsTab({
     openPreview();
   }, [toggleSelect, rangeSelect]);
 
+  const openPreviewFromItem = useCallback((item: SelectableItem) => {
+    if (item.type !== 'file' || !item.url) return;
+    setSelectedFile({
+      id: item.id,
+      name: item.name,
+      mimeType: item.mimeType,
+      url: item.url,
+      externalUrl: activeTab === 'virtual' ? item.url : undefined,
+    });
+  }, [activeTab]);
+
   // ── select all ────────────────────────────────────────────────
   const selectAll = useCallback(() => {
     setSelection(new Set(flatIds()));
@@ -650,32 +998,79 @@ export default function MaterialsTab({
 
   // ── download selected ─────────────────────────────────────────
   const downloadSelected = useCallback(async () => {
-    const items = allSelectableItems().filter(i => selection.has(i.id));
-    if (!items.length) return;
-    setIsDownloading(true);
-    for (const item of items) {
-      try {
-        const a = document.createElement('a');
-        a.href = item.url;
-        a.download = item.name;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        // small stagger to avoid browser blocking multiple downloads
-        await new Promise(r => setTimeout(r, 350));
-      } catch {
-        // continue with others
-      }
+    const selectedFiles: SelectableItem[] = [];
+
+    if (activeTab === 'teaching') {
+      const uniqueFiles = new Map<string, SelectableItem>();
+      teachingSelectableAll.forEach((item) => {
+        if (item.type !== 'file' || !item.available || !item.url) return;
+        const selectedDirectly = selection.has(item.id);
+        const selectedByFolder = (item.ancestorFolderIds ?? []).some((folderId) => selection.has(folderId));
+        if (selectedDirectly || selectedByFolder) uniqueFiles.set(item.id, item);
+      });
+      selectedFiles.push(...uniqueFiles.values());
+    } else {
+      activeSelectableItems.forEach((item) => {
+        if (item.type !== 'file') return;
+        if (!selection.has(item.id)) return;
+        if (!item.available || !item.url) return;
+        selectedFiles.push(item);
+      });
     }
-    setIsDownloading(false);
-  }, [allSelectableItems, selection]);
+
+    if (!selectedFiles.length) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch('/api/materials/zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          archiveName: `${TAB_LABELS[activeTab].toLowerCase()}-${courseId}.zip`,
+          files: selectedFiles.map((item) => ({
+            url: item.url,
+            name: item.name,
+            archivePath: item.archivePath ?? item.name,
+          })),
+        }),
+      });
+
+      if (!response.ok) throw new Error(`ZIP creation failed (${response.status})`);
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${TAB_LABELS[activeTab].toLowerCase()}-${courseId}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // keep UI responsive; user can retry.
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [activeSelectableItems, activeTab, courseId, selection, teachingSelectableAll]);
 
   // clear selection when changing tab
   const onTabChange = (tab: MaterialsActiveTab) => {
     setActiveTab(tab);
     setSelectedFile(null);
     clearSelection();
+    setGridFolderStack([]);
+  };
+
+  const openGridFolder = (folderId: string) => {
+    setGridFolderStack((prev) => [...prev, folderId]);
+  };
+
+  const openGridCrumb = (index: number) => {
+    setGridFolderStack((prev) => prev.slice(0, index));
+  };
+
+  const goGridParent = () => {
+    setGridFolderStack((prev) => prev.slice(0, -1));
   };
 
   // ── sidebar content ──────────────────────────────────────────────
@@ -684,7 +1079,130 @@ export default function MaterialsTab({
     (activeTab === 'dropbox' && assignLoading) ||
     (activeTab === 'virtual' && (vcLoading || vlLoading));
 
-  const anySelected = selection.size > 0;
+  const activeSelectedCount = useMemo(
+    () => activeSelectableItems.filter((item) => selection.has(item.id)).length,
+    [activeSelectableItems, selection],
+  );
+
+  const anySelected = activeSelectedCount > 0;
+
+  const folderFileCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    descendantFileIdsByFolder.forEach((value, key) => map.set(key, value.length));
+    return map;
+  }, [descendantFileIdsByFolder]);
+
+  const folderSelectionState = useMemo(() => {
+    const state = new Map<string, { checked: boolean; indeterminate: boolean }>();
+    teachingSelectableAll.forEach((item) => {
+      if (item.type !== 'directory') return;
+      const branchIds = descendantIdsByFolder.get(item.id) ?? [item.id];
+      const selectedCount = branchIds.filter((id) => selection.has(id)).length;
+      state.set(item.id, {
+        checked: branchIds.length > 0 && selectedCount === branchIds.length,
+        indeterminate: selectedCount > 0 && selectedCount < branchIds.length,
+      });
+    });
+    return state;
+  }, [descendantIdsByFolder, selection, teachingSelectableAll]);
+
+  const renderNonTeachingListRow = (item: SelectableItem) => {
+    const isChecked = selection.has(item.id);
+    const isPreview = selectedFile?.id === item.id;
+    const dateLabel = item.createdAt
+      ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : null;
+    const rowIcon = activeTab === 'dropbox'
+      ? <Package className="h-4 w-4 shrink-0 text-blue-400" />
+      : <Video className="h-4 w-4 shrink-0 text-blue-500" />;
+
+    return (
+      <button
+        key={item.id}
+        onClick={(e) => handleItemClick(item, e, () => openPreviewFromItem(item))}
+        className={`group w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-colors text-left ${isChecked ? 'bg-primary/10 text-foreground' : isPreview ? 'bg-muted/80 text-foreground' : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground'}`}
+      >
+        <RowCheckbox
+          checked={isChecked}
+          anySelected={anySelected}
+          onClick={(e) => { e.stopPropagation(); if (e.shiftKey) rangeSelect(item.id); else toggleSelect(item.id); }}
+        />
+        {rowIcon}
+        <span className="truncate flex-1 min-w-0">{item.name}</span>
+        {item.sizeInKiloBytes ? <span className="text-[10px] text-muted-foreground/40 tabular-nums shrink-0">{formatBytes(item.sizeInKiloBytes)}</span> : null}
+        {dateLabel ? <span className="text-[10px] text-muted-foreground/40 tabular-nums shrink-0">{dateLabel}</span> : null}
+      </button>
+    );
+  };
+
+  const renderGridCard = (item: SelectableItem) => {
+    const isChecked = selection.has(item.id);
+    const isPreview = selectedFile?.id === item.id;
+    const sizeLabel = item.sizeInKiloBytes ? formatBytes(item.sizeInKiloBytes) : null;
+    const dateLabel = item.createdAt
+      ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : null;
+    const fileCount = item.type === 'directory' ? item.descendantFileCount ?? 0 : null;
+
+    const onClick = (e: React.MouseEvent) => {
+      const meta = e.metaKey || e.ctrlKey;
+      const shift = e.shiftKey;
+
+      if (meta) {
+        e.preventDefault();
+        toggleSelect(item.id);
+        return;
+      }
+      if (shift) {
+        e.preventDefault();
+        rangeSelect(item.id);
+        return;
+      }
+
+      if (item.type === 'directory') {
+        if (activeTab === 'teaching' && viewMode === 'grid') openGridFolder(item.id);
+        else toggleFolder(item.id);
+        return;
+      }
+
+      setSelection(new Set());
+      lastSelectedIdRef.current = item.id;
+      openPreviewFromItem(item);
+    };
+
+    return (
+      <button
+        key={item.id}
+        onClick={onClick}
+        className={`group relative w-full min-w-0 overflow-hidden rounded-md border text-left p-2 transition-colors ${isChecked ? 'border-primary bg-primary/10' : isPreview ? 'border-border bg-muted/60' : 'border-border/70 hover:bg-muted/50'}`}
+      >
+        <div className="absolute right-2 top-2 z-10">
+          <RowCheckbox
+            checked={isChecked}
+            indeterminate={item.type === 'directory' ? (folderSelectionState.get(item.id)?.indeterminate ?? false) : false}
+            anySelected={anySelected}
+            onClick={(e) => { e.stopPropagation(); if (e.shiftKey) rangeSelect(item.id); else toggleSelect(item.id); }}
+          />
+        </div>
+        <div className="pr-6">
+          {item.type === 'directory'
+            ? <Folder className="h-6 w-6 text-primary fill-primary/15" />
+            : activeTab === 'virtual'
+              ? <Video className="h-6 w-6 text-blue-500" />
+              : activeTab === 'dropbox'
+                ? <Package className="h-6 w-6 text-blue-400" />
+                : <FileIcon mimeType={item.mimeType} name={item.name} className="w-6 h-6" />}
+        </div>
+        <p className="mt-2 min-w-0 text-xs font-medium leading-tight line-clamp-2 break-words">{item.name}</p>
+        <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground/70">
+          {fileCount !== null ? <span>{fileCount} files</span> : null}
+          {item.type === 'directory' ? <span>Folder</span> : null}
+          {sizeLabel ? <span>{sizeLabel}</span> : null}
+          {dateLabel ? <span>{dateLabel}</span> : null}
+        </div>
+      </button>
+    );
+  };
 
   const renderSidebar = () => {
     if (sidebarLoading) {
@@ -709,16 +1227,33 @@ export default function MaterialsTab({
           <FolderOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
           <p className="text-xs text-muted-foreground">No files available</p>
         </div>
-      ) : sortedRootItems.map(item => (
+      ) : viewMode === 'list' ? sortedRootItems.map((item) => (
         <TreeNode
-          key={item.id} item={item} depth={0}
-          expandedFolders={expandedFolders} onToggleFolder={toggleFolder}
+          key={item.id}
+          item={item}
+          depth={0}
+          expandedFolders={expandedFolders}
+          onToggleFolder={toggleFolder}
           selectedFileId={selectedFile?.id ?? null}
           onSelectFile={(treeItem, e) =>
             handleItemClick(
-              { id: treeItem.id, name: treeItem.name, url: `/api/polito/courses/${courseId}/files/${treeItem.id}`, mimeType: treeItem.mimeType },
+              {
+                id: treeItem.id,
+                name: treeItem.name,
+                type: 'file',
+                url: `/api/polito/courses/${courseId}/files/${treeItem.id}`,
+                mimeType: treeItem.mimeType,
+                sizeInKiloBytes: treeItem.sizeInKiloBytes,
+                createdAt: treeItem.createdAt,
+                available: true,
+              },
               e,
-              () => setSelectedFile({ id: treeItem.id, name: treeItem.name, mimeType: treeItem.mimeType, url: `/api/polito/courses/${courseId}/files/${treeItem.id}` }),
+              () => setSelectedFile({
+                id: treeItem.id,
+                name: treeItem.name,
+                mimeType: treeItem.mimeType,
+                url: `/api/polito/courses/${courseId}/files/${treeItem.id}`,
+              }),
             )
           }
           selection={selection}
@@ -727,70 +1262,79 @@ export default function MaterialsTab({
             if (shiftKey) rangeSelect(id);
             else toggleSelect(id);
           }}
+          folderSelectionState={folderSelectionState}
+          folderFileCounts={folderFileCounts}
         />
-      ));
+      )) : (
+        <div className="w-full min-w-0 overflow-x-hidden p-1.5 space-y-2">
+          <div className="flex w-full min-w-0 items-center gap-1 rounded-md border border-border bg-muted/30 px-1 py-0.5">
+            <button
+              onClick={goGridParent}
+              disabled={gridFolderStack.length === 0}
+              className="h-6 w-6 shrink-0 rounded-md border border-border/60 bg-background text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-background"
+              title="Go to parent folder"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 mx-auto" />
+            </button>
+            <div
+              ref={breadcrumbScrollRef}
+              onWheel={(e) => {
+                if (!breadcrumbScrollRef.current) return;
+                breadcrumbScrollRef.current.scrollLeft += e.deltaY;
+              }}
+              className="flex flex-1 min-w-0 max-w-full items-center gap-0.5 overflow-x-auto overflow-y-hidden whitespace-nowrap overscroll-x-contain scroll-smooth"
+            >
+              {teachingGridContext.breadcrumb.map((crumb, index) => (
+                <div key={crumb.id ?? 'root'} className="flex items-center gap-0.5 shrink-0">
+                  {index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground/60" />}
+                  <button
+                    onClick={() => openGridCrumb(index)}
+                    className={`px-1.5 py-0.5 text-[10px] leading-none rounded-md transition-colors ${index === teachingGridContext.breadcrumb.length - 1 ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'}`}
+                    title={crumb.name}
+                  >
+                    {crumb.name}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {teachingGridItems.length === 0 ? (
+            <div className="py-10 text-center">
+              <FolderOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
+              <p className="text-xs text-muted-foreground">This folder is empty</p>
+            </div>
+          ) : (
+            <div className="grid min-w-0 grid-cols-2 gap-2">
+              {teachingGridItems.map((item) => renderGridCard(item))}
+            </div>
+          )}
+        </div>
+      );
     }
 
     if (activeTab === 'dropbox') {
-      if (assignItems.length === 0) return (
+      if (assignmentEntries.length === 0) return (
         <div className="py-10 text-center px-2">
           <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
           <p className="text-xs text-muted-foreground">No assignments</p>
         </div>
       );
-      return assignItems.map((a: any, i: number) => {
-        const id = String(a.id ?? i);
-        const name = a.name ?? a.title ?? `Assignment ${i + 1}`;
-        const url = `/api/polito/courses/${courseId}/assignments/${a.id}`;
-        const isChecked = selection.has(id);
-        const isPreview = selectedFile?.id === id;
-        return (
-          <button key={id}
-            onClick={(e) => handleItemClick({ id, name, url, mimeType: a.mimeType }, e,
-              () => setSelectedFile({ id, name, mimeType: a.mimeType, url }))}
-            className={`group w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-colors text-left ${isChecked ? 'bg-primary/10 text-foreground' : isPreview ? 'bg-muted/80 text-foreground' : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground'
-              }`}>
-            <RowCheckbox checked={isChecked} anySelected={anySelected}
-              onClick={(e) => { e.stopPropagation(); if (e.shiftKey) rangeSelect(id); else toggleSelect(id); }} />
-            <Package className="h-4 w-4 shrink-0 text-blue-400" />
-            <span className="truncate flex-1 min-w-0">{name}</span>
-            {a.sizeInKiloBytes && <span className="text-[10px] text-muted-foreground/40 tabular-nums shrink-0">{formatBytes(a.sizeInKiloBytes)}</span>}
-          </button>
-        );
-      });
+      return viewMode === 'list'
+        ? assignmentEntries.map((item) => renderNonTeachingListRow(item))
+        : <div className="grid grid-cols-2 gap-2 p-1.5">{assignmentEntries.map((item) => renderGridCard(item))}</div>;
     }
 
     if (activeTab === 'virtual') {
-      if (allRecordings.length === 0) return (
+      if (recordingEntries.length === 0) return (
         <div className="py-10 text-center px-2">
           <Monitor className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
           <p className="text-xs text-muted-foreground">No recordings</p>
         </div>
       );
-      return allRecordings.map((r: any, i: number) => {
-        const id = String(r.id ?? i);
-        const title = r.title ?? r.name ?? `Recording ${i + 1}`;
-        const date = r.date ?? r.createdAt ?? r.recordingDate;
-        const url = r.url ?? r.streamUrl ?? r.videoUrl ?? '';
-        const isChecked = selection.has(id);
-        const isPreview = selectedFile?.id === id;
-        const dateLabel = date
-          ? new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-          : null;
-        return (
-          <button key={id}
-            onClick={(e) => handleItemClick({ id, name: title, url, mimeType: 'video/mp4' }, e,
-              () => setSelectedFile({ id, name: title, mimeType: 'video/mp4', url, externalUrl: url }))}
-            className={`group w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm transition-colors text-left ${isChecked ? 'bg-primary/10 text-foreground' : isPreview ? 'bg-muted/80 text-foreground' : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground'
-              }`}>
-            <RowCheckbox checked={isChecked} anySelected={anySelected}
-              onClick={(e) => { e.stopPropagation(); if (e.shiftKey) rangeSelect(id); else toggleSelect(id); }} />
-            <Video className="h-4 w-4 shrink-0 text-blue-500" />
-            <span className="truncate flex-1 min-w-0">{title}</span>
-            {dateLabel && <span className="text-[10px] text-muted-foreground/40 tabular-nums shrink-0">{dateLabel}</span>}
-          </button>
-        );
-      });
+      return viewMode === 'list'
+        ? recordingEntries.map((item) => renderNonTeachingListRow(item))
+        : <div className="grid grid-cols-2 gap-2 p-1.5">{recordingEntries.map((item) => renderGridCard(item))}</div>;
     }
 
     return null;
@@ -859,10 +1403,10 @@ export default function MaterialsTab({
           activeTab={activeTab}
           onTabChange={onTabChange}
           onCollapse={() => sidebarRef.current?.collapse()}
-          totalCount={allSelectableItems().length}
-          selectedCount={selection.size}
-          onSelectAll={selectAll}
-          onClearAll={clearSelection}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
         {/* scroll area with pb for action bar */}
         <div className="flex-1 relative overflow-hidden">
@@ -871,7 +1415,8 @@ export default function MaterialsTab({
           </ScrollArea>
           {/* ── action bar ──────────────────────────────────────── */}
           <SelectionBar
-            count={selection.size}
+            totalCount={activeSelectableItems.length}
+            selectedCount={activeSelectedCount}
             onDownload={downloadSelected}
             onSelectAll={selectAll}
             onClear={clearSelection}

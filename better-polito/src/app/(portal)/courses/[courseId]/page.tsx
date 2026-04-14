@@ -117,6 +117,12 @@ export default function CourseDetailPage() {
   const chatRef = usePanelRef();
   const chatOnResize = useSnapOnRelease(chatRef, CHAT_SNAPS);
 
+  useEffect(() => {
+    const onExternalToggle = () => setIsChatOpen((prev) => !prev);
+    window.addEventListener('course-ai-assistant-toggle', onExternalToggle);
+    return () => window.removeEventListener('course-ai-assistant-toggle', onExternalToggle);
+  }, []);
+
   const c = course as any;
 
   if (isLoading) {

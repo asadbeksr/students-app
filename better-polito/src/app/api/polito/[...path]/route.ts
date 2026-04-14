@@ -4,11 +4,16 @@ import { authOptions } from '@/lib/auth/auth';
 
 const POLITO_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? 'https://app.didattica.polito.it';
 
-async function handler(req: NextRequest, { params }: { params: { path: string[] } }) {
+type PolitoRouteContext = {
+  params: Promise<{ path: string[] }>;
+};
+
+async function handler(req: NextRequest, context: PolitoRouteContext) {
+  const { path } = await context.params;
   const session = await getServerSession(authOptions);
   const token = (session as any)?.accessToken;
 
-  const apiPath = params.path.join('/');
+  const apiPath = path.join('/');
   const search = req.nextUrl.search ?? '';
   const targetUrl = `${POLITO_BASE}/api/${apiPath}${search}`;
 
@@ -29,16 +34,16 @@ async function handler(req: NextRequest, { params }: { params: { path: string[] 
   const isBinary = !contentType.includes('application/json') && !contentType.includes('text/');
 
   // ── Dev logging ──────────────────────────────────────────────────────────
-  if (process.env.NODE_ENV !== 'production') {
-    const label = `[PoliTO API] ${req.method} /${apiPath}${search} → ${res.status} (${contentType})`;
-    if (isBinary) {
-      console.log(label, '[binary]');
-    } else {
-      const text = await res.clone().text();
-      try { console.log(label); console.dir(JSON.parse(text), { depth: null }); }
-      catch { console.log(label, text.slice(0, 500)); }
-    }
-  }
+  // if (process.env.NODE_ENV !== 'production') {
+  //   const label = `[PoliTO API] ${req.method} /${apiPath}${search} → ${res.status} (${contentType})`;
+  //   if (isBinary) {
+  //     console.log(label, '[binary]');
+  //   } else {
+  //     const text = await res.clone().text();
+  //     try { console.log(label); console.dir(JSON.parse(text), { depth: null }); }
+  //     catch { console.log(label, text.slice(0, 500)); }
+  //   }
+  // }
   // ─────────────────────────────────────────────────────────────────────────
 
   // Stream binary responses (PDFs, images, etc.) as raw bytes

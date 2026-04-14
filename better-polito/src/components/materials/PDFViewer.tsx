@@ -5,8 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 import type { Material } from '@/types';
 import {
   X,
-  Maximize2,
-  Minimize2,
   Download,
   FileText,
   Loader2,
@@ -30,7 +28,6 @@ export default function PDFViewer({
   url: propUrl,
   name: propName,
 }: PDFViewerProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
@@ -101,7 +98,7 @@ export default function PDFViewer({
   }
 
   return (
-    <div className={`h-full flex flex-col ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
+    <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
         <div className="flex-1 min-w-0">
@@ -117,9 +114,6 @@ export default function PDFViewer({
             <a href={blobUrl} target="_blank" rel="noreferrer">
               <ExternalLink className="h-4 w-4" />
             </a>
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} title="Fullscreen">
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
           {onClose && (
             <Button variant="ghost" size="icon" onClick={onClose}>

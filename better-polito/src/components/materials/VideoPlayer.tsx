@@ -20,6 +20,40 @@ function formatTime(secs: number): string {
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
+function getSafeCurrentTime(video: HTMLVideoElement): number {
+  const current = video.currentTime;
+  return Number.isFinite(current) && current >= 0 ? current : 0;
+}
+
+function getSeekRange(video: HTMLVideoElement): { min: number; max: number } | null {
+  const seekable = video.seekable;
+  if (seekable && seekable.length > 0) {
+    const min = seekable.start(0);
+    const max = seekable.end(seekable.length - 1);
+    if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+      return { min, max };
+    }
+  }
+
+  const duration = video.duration;
+  if (Number.isFinite(duration) && duration > 0) {
+    return { min: 0, max: duration };
+  }
+
+  return null;
+}
+
+function clampSeekTime(video: HTMLVideoElement, time: number): number {
+  const current = getSafeCurrentTime(video);
+  if (!Number.isFinite(time)) return current;
+
+  const range = getSeekRange(video);
+  // Avoid writing unstable currentTime values before metadata/seekable range exists.
+  if (!range) return current;
+
+  return Math.min(range.max, Math.max(range.min, time));
+}
+
 interface VideoPlayerProps {
   src: string;
   title: string;
@@ -79,13 +113,23 @@ export default function VideoPlayer({ src, title, onClose, externalUrl }: VideoP
           break;
         case 'ArrowRight':
           e.preventDefault();
-          v.currentTime = Math.min(v.duration, v.currentTime + (e.shiftKey ? 30 : 5));
-          showNudge(`+${e.shiftKey ? 30 : 5}s`);
+          {
+            const secs = e.shiftKey ? 30 : 5;
+            const nextTime = clampSeekTime(v, v.currentTime + secs);
+            v.currentTime = nextTime;
+            setCurrentTime(nextTime);
+            showNudge(`+${secs}s`);
+          }
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          v.currentTime = Math.max(0, v.currentTime - (e.shiftKey ? 30 : 5));
-          showNudge(`-${e.shiftKey ? 30 : 5}s`);
+          {
+            const secs = e.shiftKey ? 30 : 5;
+            const nextTime = clampSeekTime(v, v.currentTime - secs);
+            v.currentTime = nextTime;
+            setCurrentTime(nextTime);
+            showNudge(`-${secs}s`);
+          }
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -117,7 +161,14 @@ export default function VideoPlayer({ src, title, onClose, externalUrl }: VideoP
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
           e.preventDefault();
-          if (v.duration) v.currentTime = v.duration * (parseInt(e.key) / 10);
+          {
+            const range = getSeekRange(v);
+            if (range) {
+              const nextTime = clampSeekTime(v, range.max * (parseInt(e.key, 10) / 10));
+              v.currentTime = nextTime;
+              setCurrentTime(nextTime);
+            }
+          }
           break;
       }
     };
@@ -213,10 +264,15 @@ export default function VideoPlayer({ src, title, onClose, externalUrl }: VideoP
   /* ── seek bar interaction ───────────────────────────────────────── */
   const getSeekPositionFromEvent = (e: React.MouseEvent | MouseEvent): number => {
     const bar = seekBarRef.current;
-    if (!bar || !duration) return 0;
+    const video = videoRef.current;
+    if (!bar || !video) return 0;
+
+    const range = getSeekRange(video);
+    if (!range) return getSafeCurrentTime(video);
+
     const rect = bar.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    return pct * duration;
+    return range.min + pct * (range.max - range.min);
   };
 
   const onSeekMouseDown = (e: React.MouseEvent) => {
@@ -270,7 +326,9 @@ export default function VideoPlayer({ src, title, onClose, externalUrl }: VideoP
   const skip = (secs: number) => {
     const v = videoRef.current;
     if (!v) return;
-    v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + secs));
+    const nextTime = clampSeekTime(v, v.currentTime + secs);
+    v.currentTime = nextTime;
+    setCurrentTime(nextTime);
     showNudge(`${secs > 0 ? '+' : ''}${secs}s`);
   };
 
