@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Arc canvas — warm off-white */
+    --background: 40 20% 97%;
+    --foreground: 240 4% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 4% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 4% 11%;
+    /* Arc Blue as primary */
+    --primary: 237 96% 62%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 15% 94%;
+    --secondary-foreground: 240 4% 11%;
+    --muted: 40 15% 95%;
+    --muted-foreground: 240 3% 41%;
+    --accent: 40 15% 94%;
+    --accent-foreground: 240 4% 11%;
+    --destructive: 348 100% 71%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 91%;
+    --input: 0 0% 91%;
+    --ring: 237 96% 62%;
+    --radius: 1rem;
+
+    /* Arc accent palette */
+    --arc-pink: 348 100% 71%;
+    --arc-blue: 237 96% 62%;
+    --arc-purple: 258 100% 72%;
+    --arc-mint: 135 59% 49%;
+    --arc-orange: 28 100% 63%;
+
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(0, 0, 0, 0.05);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    --glass-blur: blur(20px);
+    --glass-inner: rgba(255, 255, 255, 0.58);
+    --glass-inner-hover: rgba(255, 255, 255, 0.88);
+    --glass-ctrl: rgba(255, 255, 255, 0.92);
+    --glass-ctrl-border: rgba(0, 0, 0, 0.10);
+
+    --sidebar-background: 40 20% 97%;
+    --sidebar-foreground: 240 4% 11%;
+    --sidebar-primary: 237 96% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 15% 94%;
+    --sidebar-accent-foreground: 240 4% 11%;
+    --sidebar-border: 0 0% 91%;
+    --sidebar-ring: 237 96% 62%;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 237 96% 68%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 348 80% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 237 96% 68%;
+
+    --arc-pink: 348 90% 65%;
+    --arc-blue: 237 96% 68%;
+    --arc-purple: 258 90% 68%;
+    --arc-mint: 135 55% 55%;
+    --arc-orange: 28 90% 60%;
+
+    --glass-bg: rgba(18, 18, 24, 0.82);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+    --glass-blur: blur(20px);
+    --glass-inner: rgba(255, 255, 255, 0.07);
+    --glass-inner-hover: rgba(255, 255, 255, 0.12);
+    --glass-ctrl: rgba(255, 255, 255, 0.10);
+    --glass-ctrl-border: rgba(255, 255, 255, 0.14);
+
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 237 96% 68%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 237 96% 68%;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0.16px;
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .shadow-el-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-el-warm {
+    box-shadow: var(--shadow-warm);
+  }
+
+  .shadow-el-inset {
+    box-shadow: var(--shadow-inset);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Arc glassmorphism utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-heavy {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.10);
+}
+
+.dark .glass-heavy {
+  background: rgba(22, 22, 30, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.60);
+}
+
+/* inner frosted surface used inside glass cards */
+.glass-inner {
+  background: var(--glass-inner);
+  transition: background 150ms ease;
+}
+.glass-inner:hover {
+  background: var(--glass-inner-hover);
+}
+
+/* small control buttons inside glass cards (edit mode) */
+.glass-ctrl {
+  background: var(--glass-ctrl);
+  border: 1px solid var(--glass-ctrl-border);
+}
+
+/* Smooth shimmer animation for streaming messages */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Blinking cursor animation for typing indicator */
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Top loading bar */
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
