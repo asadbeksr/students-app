@@ -15,7 +15,7 @@ import {
   Video, Presentation, Music, Download, Loader2,
   PanelLeftClose, PanelLeftOpen, ChevronRight, ChevronDown, ChevronLeft, Code,
   Package, Monitor, ExternalLink, X, CheckSquare2, Square,
-  LayoutGrid, List, ArrowUpDown,
+  LayoutGrid, List, ArrowUpDown, BookOpen, Copy, Check,
 } from 'lucide-react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
@@ -369,6 +369,202 @@ function RowCheckbox({ checked, indeterminate = false, anySelected, onClick }: {
   );
 }
 
+/* ─── NotebookLM export modal ─────────────────────────────────────── */
+function NotebookLMModal({
+  urls,
+  loading,
+  error,
+  isLocalhost,
+  onClose,
+}: {
+  urls: { name: string; url: string }[];
+  loading: boolean;
+  error?: string;
+  isLocalhost?: boolean;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  const allText = urls.map((u) => u.url).join('\n');
+
+  // Auto-copy all URLs to clipboard as soon as they are ready
+  useEffect(() => {
+    if (!loading && urls.length > 0 && !error) {
+      navigator.clipboard.writeText(allText).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      }).catch(() => {/* ignore clipboard permission errors */});
+    }
+  }, [loading, urls.length, error]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const copyAll = async () => {
+    await navigator.clipboard.writeText(allText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copySingle = async (url: string, index: number) => {
+    await navigator.clipboard.writeText(url);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      {/* backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      <div className="relative z-10 w-full max-w-lg rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
+        {/* header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-gradient-to-r from-blue-500/10 to-purple-500/10">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/20">
+            {loading
+              ? <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+              : <BookOpen className="h-4 w-4 text-blue-400" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">Export to NotebookLM</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {loading
+                ? 'Generating secure public links…'
+                : error
+                  ? 'Failed to generate links'
+                  : `${urls.length} PDF${urls.length !== 1 ? 's' : ''} ready — URLs copied to clipboard!`}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* loading state */}
+        {loading && (
+          <div className="px-5 py-10 flex flex-col items-center gap-3 text-center">
+            <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
+            <p className="text-sm text-muted-foreground">Creating temporary secure URLs…</p>
+            <p className="text-xs text-muted-foreground/60">This only takes a second</p>
+          </div>
+        )}
+
+        {/* error state */}
+        {!loading && error && (
+          <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm font-medium text-destructive">Could not generate links</p>
+            <p className="text-xs text-muted-foreground">{error}</p>
+          </div>
+        )}
+
+        {/* ready state */}
+        {!loading && !error && urls.length > 0 && (
+          <>
+            {/* localhost warning */}
+            {isLocalhost && (
+              <div className="mx-5 mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 space-y-2">
+                <p className="text-[12px] font-semibold text-amber-400">⚠ App is running on localhost</p>
+                <p className="text-[11px] text-amber-300/80">
+                  NotebookLM can't reach <code className="text-amber-300 bg-amber-500/20 rounded px-1">localhost</code> URLs from its servers.
+                  Expose your app publicly with one of these:
+                </p>
+                <div className="space-y-1.5">
+                  <div className="rounded-md bg-black/30 px-3 py-2">
+                    <p className="text-[10px] text-amber-400/70 mb-1 font-medium">Option A — Cloudflare Tunnel (free, no account)</p>
+                    <code className="text-[11px] text-amber-200 font-mono select-all">npx cloudflared tunnel --url http://localhost:3000</code>
+                  </div>
+                  <div className="rounded-md bg-black/30 px-3 py-2">
+                    <p className="text-[10px] text-amber-400/70 mb-1 font-medium">Option B — ngrok</p>
+                    <code className="text-[11px] text-amber-200 font-mono select-all">ngrok http 3000</code>
+                  </div>
+                </div>
+                <p className="text-[11px] text-amber-300/70">
+                  Then set <code className="text-amber-300 bg-amber-500/20 rounded px-1">NEXT_PUBLIC_APP_URL=https://your-tunnel-url.trycloudflare.com</code> in <code className="text-amber-300 bg-amber-500/20 rounded px-1">.env.local</code> and restart the server.
+                </p>
+              </div>
+            )}
+
+            {/* instructions */}
+            <div className="px-5 pt-4 pb-2">
+              <ol className="space-y-1.5 text-[12px] text-muted-foreground">
+                <li className="flex gap-2 items-start">
+                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-green-500/20 text-green-400 text-[10px] font-bold">✓</span>
+                  <span><strong className="text-foreground">URLs already copied!</strong> Open NotebookLM and create or open a notebook</span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">2</span>
+                  <span>Click <strong className="text-foreground">+ Add source</strong> → <strong className="text-foreground">Website</strong></span>
+                </li>
+                <li className="flex gap-2 items-start">
+                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">3</span>
+                  <span><strong className="text-foreground">Paste</strong> — NotebookLM accepts multiple URLs at once (one per line)</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* URL list */}
+            <div className="px-5 pb-3 space-y-1.5 max-h-52 overflow-y-auto">
+              {urls.map((item, i) => (
+                <div
+                  key={i}
+                  className="group flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-2 hover:bg-muted/50 transition-colors"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                  <span className="flex-1 min-w-0 text-[11px] text-foreground truncate" title={item.name}>{item.name}</span>
+                  <button
+                    onClick={() => copySingle(item.url, i)}
+                    className="shrink-0 h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                    title="Copy this URL"
+                  >
+                    {copiedIndex === i
+                      ? <Check className="h-3 w-3 text-green-400" />
+                      : <Copy className="h-3 w-3" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* footer actions */}
+            <div className="flex items-center gap-2 px-5 py-3 border-t border-border">
+              <Button
+                onClick={copyAll}
+                variant="outline"
+                size="sm"
+                className="flex-1 gap-2 text-[12px]"
+              >
+                {copied
+                  ? <><Check className="h-3.5 w-3.5 text-green-400" /> Copied!</>
+                  : <><Copy className="h-3.5 w-3.5" /> Copy all URLs</>}
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="flex-1 gap-2 text-[12px] bg-blue-600 hover:bg-blue-500 text-white"
+              >
+                <a href="https://notebooklm.google.com/" target="_blank" rel="noreferrer">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Open NotebookLM
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+              </Button>
+            </div>
+
+            {/* note */}
+            <p className="px-5 pb-3 text-[10px] text-muted-foreground/60">
+              🔒 Secure temporary links — valid for 1 hour. No login required for NotebookLM to fetch these PDFs.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 /* ─── selection action bar ────────────────────────────────────────── */
 function SelectionBar({
   totalCount,
@@ -376,14 +572,18 @@ function SelectionBar({
   onDownload,
   onSelectAll,
   onClear,
+  onExportNotebookLM,
   isDownloading,
+  selectedPdfCount,
 }: {
   totalCount: number;
   selectedCount: number;
   onDownload: () => void;
   onSelectAll: () => void;
   onClear: () => void;
+  onExportNotebookLM: () => void;
   isDownloading: boolean;
+  selectedPdfCount: number;
 }) {
   const allSelected = totalCount > 0 && selectedCount === totalCount;
   const indeterminate = selectedCount > 0 && selectedCount < totalCount;
@@ -415,6 +615,16 @@ function SelectionBar({
       >
         All
       </button>
+      {selectedPdfCount > 0 && (
+        <button
+          onClick={onExportNotebookLM}
+          title={`Export ${selectedPdfCount} PDF${selectedPdfCount !== 1 ? 's' : ''} to NotebookLM`}
+          className="flex items-center gap-1 text-[11px] font-medium bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 px-2 py-1 rounded transition-colors"
+        >
+          <BookOpen className="h-3 w-3" />
+          NLM{selectedPdfCount > 1 ? ` (${selectedPdfCount})` : ''}
+        </button>
+      )}
       <button
         onClick={onDownload}
         disabled={isDownloading}
@@ -746,14 +956,48 @@ export default function MaterialsTab({
   courseId,
   year,
   initialTab = 'teaching',
+  onTabChange,
+  initialViewMode = 'list',
+  onViewModeChange,
+  initialSidebarCollapsed = false,
+  onSidebarChange,
+  initialExpandedFolders = [],
+  onExpandedFoldersChange,
+  initialGridFolderStack = [],
+  onGridFolderStackChange,
+  initialPreviewId = null,
+  onPreviewIdChange,
 }: {
   courseId: string;
   year?: string;
   initialTab?: MaterialsActiveTab;
+  onTabChange?: (tab: string) => void;
+  initialViewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
+  initialSidebarCollapsed?: boolean;
+  onSidebarChange?: (collapsed: boolean) => void;
+  initialExpandedFolders?: string[];
+  onExpandedFoldersChange?: (folders: string[]) => void;
+  initialGridFolderStack?: string[];
+  onGridFolderStackChange?: (stack: string[]) => void;
+  initialPreviewId?: string | null;
+  onPreviewIdChange?: (previewId: string | null) => void;
 }) {
   const [activeTab, setActiveTab] = useState<MaterialsActiveTab>(initialTab);
+
+  const switchTab = useCallback((tab: MaterialsActiveTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  }, [onTabChange]);
   const [sortBy, setSortBy] = useState<SortBy>('name');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  
+  const [viewModeInternal, setViewModeInternal] = useState<ViewMode>(initialViewMode);
+  const viewMode = viewModeInternal;
+  const setViewMode = useCallback((mode: ViewMode) => {
+    setViewModeInternal(mode);
+    onViewModeChange?.(mode);
+  }, [onViewModeChange]);
+  
   const numericId = parseInt(courseId, 10);
 
   // Data for all tabs — let react-query cache them
@@ -763,18 +1007,56 @@ export default function MaterialsTab({
   const { data: videolectures = [], isLoading: vlLoading } = useGetCourseVideolectures(numericId);
 
   // Teaching material state
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
+  const [expandedFoldersInternal, setExpandedFoldersInternal] = useState<Set<string>>(new Set(initialExpandedFolders));
+  const expandedFolders = expandedFoldersInternal;
+  const expandedFoldersRef = useRef(expandedFoldersInternal);
+  expandedFoldersRef.current = expandedFoldersInternal;
+  const setExpandedFolders = useCallback((val: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    const next = typeof val === 'function' ? val(expandedFoldersRef.current) : val;
+    setExpandedFoldersInternal(next);
+    onExpandedFoldersChange?.(Array.from(next));
+  }, [onExpandedFoldersChange]);
+
+  const [selectedFileInternal, setSelectedFileInternal] = useState<SelectedFile | null>(null);
+  const selectedFile = selectedFileInternal;
+  const setSelectedFile = useCallback((file: SelectedFile | null) => {
+    setSelectedFileInternal(file);
+    onPreviewIdChange?.(file?.id ?? null);
+  }, [onPreviewIdChange]);
 
   // ── Batch selection ──────────────────────────────────────────────
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [isDownloading, setIsDownloading] = useState(false);
   const lastSelectedIdRef = useRef<string | null>(null);
-  const [gridFolderStack, setGridFolderStack] = useState<string[]>([]);
+  const [notebookLMState, setNotebookLMState] = useState<{
+    loading: boolean;
+    files: { name: string; url: string }[];
+    isLocalhost?: boolean;
+    error?: string;
+  } | null>(null);
+  
+  const [gridFolderStackInternal, setGridFolderStackInternal] = useState<string[]>(initialGridFolderStack);
+  const gridFolderStack = gridFolderStackInternal;
+  const gridFolderStackRef = useRef(gridFolderStackInternal);
+  gridFolderStackRef.current = gridFolderStackInternal;
+  const setGridFolderStack = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    const next = typeof val === 'function' ? val(gridFolderStackRef.current) : val;
+    setGridFolderStackInternal(next);
+    onGridFolderStackChange?.(next);
+  }, [onGridFolderStackChange]);
+  
   const breadcrumbScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Sidebar panel
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsedInternal, setIsSidebarCollapsedInternal] = useState(initialSidebarCollapsed);
+  const isSidebarCollapsed = isSidebarCollapsedInternal;
+  const isSidebarCollapsedRef = useRef(isSidebarCollapsedInternal);
+  isSidebarCollapsedRef.current = isSidebarCollapsedInternal;
+  const setIsSidebarCollapsed = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof val === 'function' ? val(isSidebarCollapsedRef.current) : val;
+    setIsSidebarCollapsedInternal(next);
+    if (isSidebarCollapsedRef.current !== next) onSidebarChange?.(next);
+  }, [onSidebarChange]);
   const sidebarRef = usePanelRef();
   const sidebarOnResize = useSnapOnRelease(sidebarRef, SIDEBAR_SNAPS, () => setIsSidebarCollapsed(true));
 
@@ -1050,6 +1332,25 @@ export default function MaterialsTab({
     return byId;
   }, [activeSelectableItems]);
 
+  const initialPreviewResolved = useRef(false);
+  useEffect(() => {
+    if (initialPreviewId && !initialPreviewResolved.current && activeSelectableById.has(initialPreviewId)) {
+      const item = activeSelectableById.get(initialPreviewId);
+      if (item && item.type === 'file' && item.url) {
+        setSelectedFileInternal({
+          id: item.id,
+          name: item.name,
+          mimeType: item.mimeType,
+          url: item.url,
+          externalUrl: activeTab === 'virtual' ? item.url : undefined,
+        });
+      }
+      initialPreviewResolved.current = true;
+    } else if (!initialPreviewId) {
+      initialPreviewResolved.current = true;
+    }
+  }, [initialPreviewId, activeSelectableById, activeTab]);
+
   const flatIds = useCallback(() => activeSelectableItems.map((item) => item.id), [activeSelectableItems]);
 
   const toggleSelect = useCallback((id: string) => {
@@ -1152,6 +1453,73 @@ export default function MaterialsTab({
     return () => document.removeEventListener('keydown', onKey);
   }, [clearSelection, selectAll]);
 
+  // ── export to NotebookLM ──────────────────────────────────────────
+  const exportToNotebookLM = useCallback(async () => {
+    const internalFiles: { internalUrl: string; name: string }[] = [];
+
+    if (activeTab === 'teaching') {
+      const uniqueFiles = new Map<string, SelectableItem>();
+      teachingSelectableAll.forEach((item) => {
+        if (item.type !== 'file' || !item.available || !item.url) return;
+        const selectedDirectly = selection.has(item.id);
+        const selectedByFolder = (item.ancestorFolderIds ?? []).some((folderId) => selection.has(folderId));
+        if (selectedDirectly || selectedByFolder) uniqueFiles.set(item.id, item);
+      });
+      uniqueFiles.forEach((item) => {
+        if (getFileKind(item.mimeType, item.name) === 'pdf' && item.url) {
+          internalFiles.push({ internalUrl: item.url, name: item.name });
+        }
+      });
+    } else {
+      activeSelectableItems.forEach((item) => {
+        if (item.type !== 'file' || !selection.has(item.id) || !item.available || !item.url) return;
+        if (getFileKind(item.mimeType, item.name) === 'pdf') {
+          internalFiles.push({ internalUrl: item.url, name: item.name });
+        }
+      });
+    }
+
+    if (!internalFiles.length) return;
+
+    // Show loading state immediately
+    setNotebookLMState({ loading: true, files: [] });
+
+    try {
+      const res = await fetch('/api/materials/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: internalFiles }),
+      });
+
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+
+      const data = await res.json() as { files: { name: string; publicUrl: string }[]; isLocalhost?: boolean };
+      const files = data.files.map((f) => ({ name: f.name, url: f.publicUrl }));
+      setNotebookLMState({ loading: false, files, isLocalhost: data.isLocalhost });
+    } catch (e) {
+      setNotebookLMState({ loading: false, files: [], error: (e as Error).message });
+    }
+  }, [activeSelectableItems, activeTab, selection, teachingSelectableAll]);
+
+  // ── selected PDF count (for NLM button badge) ──────────────────────
+  const selectedPdfCount = useMemo(() => {
+    if (activeTab === 'teaching') {
+      const uniqueFiles = new Set<string>();
+      teachingSelectableAll.forEach((item) => {
+        if (item.type !== 'file' || !item.available || !item.url) return;
+        const selectedDirectly = selection.has(item.id);
+        const selectedByFolder = (item.ancestorFolderIds ?? []).some((folderId) => selection.has(folderId));
+        if ((selectedDirectly || selectedByFolder) && getFileKind(item.mimeType, item.name) === 'pdf') {
+          uniqueFiles.add(item.id);
+        }
+      });
+      return uniqueFiles.size;
+    }
+    return activeSelectableItems.filter(
+      (item) => item.type === 'file' && selection.has(item.id) && getFileKind(item.mimeType, item.name) === 'pdf'
+    ).length;
+  }, [activeSelectableItems, activeTab, selection, teachingSelectableAll]);
+
   // ── download selected ─────────────────────────────────────────
   const downloadSelected = useCallback(async () => {
     const selectedFiles: SelectableItem[] = [];
@@ -1210,8 +1578,8 @@ export default function MaterialsTab({
   }, [activeSelectableItems, activeTab, courseId, selection, teachingSelectableAll]);
 
   // clear selection when changing tab
-  const onTabChange = (tab: MaterialsActiveTab) => {
-    setActiveTab(tab);
+  const handleTabChange = (tab: MaterialsActiveTab) => {
+    switchTab(tab);
     setSelectedFile(null);
     clearSelection();
     setGridFolderStack([]);
@@ -1540,7 +1908,7 @@ export default function MaterialsTab({
     return <MediaPreview file={selectedFile} courseId={courseId} onClose={() => setSelectedFile(null)} />;
   };
 
-  return (
+  return (<>
     <ResizablePanelGroup orientation="horizontal" className="h-full overflow-hidden">
       {/* ── Sidebar ───────────────────────────────────────────────── */}
       <ResizablePanel
@@ -1558,7 +1926,7 @@ export default function MaterialsTab({
       >
         <SidebarHeader
           activeTab={activeTab}
-          onTabChange={onTabChange}
+          onTabChange={switchTab}
           onCollapse={() => sidebarRef.current?.collapse()}
           sortBy={sortBy}
           onSortChange={setSortBy}
@@ -1577,7 +1945,9 @@ export default function MaterialsTab({
             onDownload={downloadSelected}
             onSelectAll={selectAll}
             onClear={clearSelection}
+            onExportNotebookLM={exportToNotebookLM}
             isDownloading={isDownloading}
+            selectedPdfCount={selectedPdfCount}
           />
         </div>
       </ResizablePanel>
@@ -1600,7 +1970,7 @@ export default function MaterialsTab({
             {(['teaching', 'dropbox', 'virtual'] as MaterialsActiveTab[]).map((tab) => (
               <button
                 key={tab}
-                onClick={() => { onTabChange(tab); sidebarRef.current?.expand(); setIsSidebarCollapsed(false); }}
+                onClick={() => { handleTabChange(tab); sidebarRef.current?.expand(); setIsSidebarCollapsed(false); }}
                 title={TAB_LABELS[tab]}
                 className={`flex-1 flex items-center justify-center px-1.5 py-3 text-[10px] font-medium transition-colors border-b border-border last:border-b-0 ${activeTab === tab
                   ? 'bg-primary/10 text-primary'
@@ -1616,5 +1986,15 @@ export default function MaterialsTab({
         <div className={`flex-1 min-w-0 overflow-hidden h-full ${isSidebarCollapsed ? 'pl-9' : ''}`}>{renderPreview()}</div>
       </ResizablePanel>
     </ResizablePanelGroup>
-  );
+    {/* ── NotebookLM export modal ───────────────────────────────── */}
+    {notebookLMState && (
+      <NotebookLMModal
+        loading={notebookLMState.loading}
+        urls={notebookLMState.files}
+        error={notebookLMState.error}
+        isLocalhost={notebookLMState.isLocalhost}
+        onClose={() => setNotebookLMState(null)}
+      />
+    )}
+  </>);
 }

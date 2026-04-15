@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 // ─── types ────────────────────────────────────────────────────────────────────
 
 export type TimerMode = 'idle' | 'work' | 'break' | 'paused';
+export type DockCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
 interface PomodoroState {
   mode: TimerMode;
@@ -27,10 +28,21 @@ interface FocusModeState {
   blockNav: boolean;
 }
 
+interface SidebarState {
+  isCollapsed: boolean;
+  openGroups: Record<string, boolean>;
+}
+
+interface DockState {
+  corner: DockCorner;
+}
+
 interface ToolkitStore {
   pomodoro: PomodoroState;
   scratchpad: ScratchpadState;
   focusMode: FocusModeState;
+  sidebar: SidebarState;
+  dock: DockState;
 
   startTimer: () => void;
   pauseTimer: () => void;
@@ -51,6 +63,12 @@ interface ToolkitStore {
 
   toggleFocusMode: () => void;
   setBlockNav: (v: boolean) => void;
+
+  toggleSidebar: () => void;
+  setSidebarCollapsed: (c: boolean) => void;
+  toggleSidebarGroup: (id: string) => void;
+
+  setDockCorner: (c: DockCorner) => void;
 }
 
 // ─── store ────────────────────────────────────────────────────────────────────
@@ -76,6 +94,13 @@ export const useToolkitStore = create<ToolkitStore>()(
       focusMode: {
         isActive: false,
         blockNav: false,
+      },
+      sidebar: {
+        isCollapsed: false,
+        openGroups: { academics: true },
+      },
+      dock: {
+        corner: 'bottom-right',
       },
 
       // ── Pomodoro ──────────────────────────────────────────────────────────
@@ -177,6 +202,25 @@ export const useToolkitStore = create<ToolkitStore>()(
 
       setBlockNav: (v) =>
         set(s => ({ focusMode: { ...s.focusMode, blockNav: v } })),
+
+      // ── Sidebar ────────────────────────────────────────────────────────
+      toggleSidebar: () =>
+        set(s => ({ sidebar: { ...s.sidebar, isCollapsed: !s.sidebar.isCollapsed } })),
+
+      setSidebarCollapsed: (c) =>
+        set(s => ({ sidebar: { ...s.sidebar, isCollapsed: c } })),
+
+      toggleSidebarGroup: (id) =>
+        set(s => ({
+          sidebar: {
+            ...s.sidebar,
+            openGroups: { ...s.sidebar.openGroups, [id]: !s.sidebar.openGroups[id] }
+          }
+        })),
+
+      // ── Dock ──────────────────────────────────────────────────────────────
+      setDockCorner: (c) =>
+        set(s => ({ dock: { ...s.dock, corner: c } })),
     }),
     {
       name: 'better-polito:toolkit',
@@ -189,6 +233,8 @@ export const useToolkitStore = create<ToolkitStore>()(
         },
         scratchpad: { notes: s.scratchpad.notes },
         focusMode: { blockNav: s.focusMode.blockNav },
+        sidebar: { isCollapsed: s.sidebar.isCollapsed, openGroups: s.sidebar.openGroups },
+        dock: { corner: s.dock.corner },
       }),
       // deep-merge so persisted partial objects don't wipe runtime fields (secondsLeft, mode, etc.)
       merge: (persisted, current) => {
@@ -198,6 +244,8 @@ export const useToolkitStore = create<ToolkitStore>()(
           pomodoro:  { ...current.pomodoro,  ...p.pomodoro },
           scratchpad: { ...current.scratchpad, ...p.scratchpad },
           focusMode: { ...current.focusMode,  ...p.focusMode },
+          sidebar: { ...current.sidebar, ...p.sidebar },
+          dock: { ...current.dock, ...p.dock },
         };
       },
     },

@@ -15,6 +15,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import ChatWindow from '@/components/chat/ChatWindow';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
+import { useCoursePortalStore } from '@/lib/stores/coursePortalStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -1076,16 +1077,59 @@ export default function CourseDetailPage() {
   const { focusMode } = useToolkitStore();
   const markNotificationAsRead = useMarkNotificationAsRead();
 
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [selectedAcademicValue, setSelectedAcademicValue] = useState<string>('');
-  const chatRef = usePanelRef();
-  const chatOnResize = useSnapOnRelease(chatRef, CHAT_SNAPS);
+  // ── Persistent state via local store ─────────────────────────────
+  const courseState = useCoursePortalStore((s) => s.states[courseId]) || useCoursePortalStore.getState().getCourseState(courseId);
+  const updateCourseState = useCoursePortalStore((s) => s.updateCourseState);
+
+  const isChatOpen = courseState.chat;
+  const initialMaterialsTab = courseState.tab;
+  const initialViewMode = courseState.view;
+  const initialSidebarCollapsed = courseState.sidebar;
+  const initialExpandedFolders = courseState.folders;
+  const initialGridFolderStack = courseState.grid;
+  const initialPreviewId = courseState.preview;
+  const selectedAcademicValue = courseState.year;
+
+  const setSelectedAcademicValue = useCallback((val: string) => {
+    updateCourseState(courseId, { year: val });
+  }, [courseId, updateCourseState]);
+
+  const toggleChat = useCallback((next: boolean) => {
+    updateCourseState(courseId, { chat: next });
+  }, [courseId, updateCourseState]);
 
   useEffect(() => {
-    const onExternalToggle = () => setIsChatOpen((prev) => !prev);
+    const onExternalToggle = () => toggleChat(!courseState.chat);
     window.addEventListener('course-ai-assistant-toggle', onExternalToggle);
     return () => window.removeEventListener('course-ai-assistant-toggle', onExternalToggle);
-  }, []);
+  }, [courseState.chat, toggleChat]);
+
+  const onTabChange = useCallback((tab: string) => {
+    updateCourseState(courseId, { tab: tab as any });
+  }, [courseId, updateCourseState]);
+
+  const onViewModeChange = useCallback((mode: string) => {
+    updateCourseState(courseId, { view: mode as any });
+  }, [courseId, updateCourseState]);
+
+  const onSidebarChange = useCallback((collapsed: boolean) => {
+    updateCourseState(courseId, { sidebar: collapsed });
+  }, [courseId, updateCourseState]);
+
+  const onExpandedFoldersChange = useCallback((folders: string[]) => {
+    updateCourseState(courseId, { folders });
+  }, [courseId, updateCourseState]);
+
+  const onGridFolderStackChange = useCallback((stack: string[]) => {
+    updateCourseState(courseId, { grid: stack });
+  }, [courseId, updateCourseState]);
+
+  const onPreviewIdChange = useCallback((previewId: string | null) => {
+    updateCourseState(courseId, { preview: previewId });
+  }, [courseId, updateCourseState]);
+
+  const chatRef = usePanelRef();
+  const chatOnResize = useSnapOnRelease(chatRef, CHAT_SNAPS);
 
   const markNotificationsAsRead = useCallback((notificationIds: number[]) => {
     const unique = Array.from(new Set(notificationIds.filter((idValue) => Number.isFinite(idValue) && idValue > 0)));
@@ -1164,9 +1208,10 @@ export default function CourseDetailPage() {
     const stillValid = yearOptions.some((opt) => opt.value === selectedAcademicValue);
     if (!stillValid) {
       const routeEdition = yearOptions.find((opt) => opt.courseId === id);
-      setSelectedAcademicValue((routeEdition ?? yearOptions[0]).value);
+      const next = (routeEdition ?? yearOptions[0]).value;
+      setSelectedAcademicValue(next);
     }
-  }, [id, selectedAcademicValue, yearOptions]);
+  }, [id, selectedAcademicValue, yearOptions, setSelectedAcademicValue]);
 
   const selectedYearOption = useMemo(() => {
     return yearOptions.find((opt) => opt.value === selectedAcademicValue) ?? yearOptions[0];
@@ -1343,7 +1388,7 @@ export default function CourseDetailPage() {
             <div className="flex items-center gap-2 shrink-0">
               <AcademicYearSelect
                 value={selectedYearOption?.value ?? ''}
-                onChange={setSelectedAcademicValue}
+                onChange={(v) => setSelectedAcademicValue(v)}
                 options={yearOptions}
               />
               <CourseInfoSheet
@@ -1373,6 +1418,18 @@ export default function CourseDetailPage() {
               key={`materials-${selectedEditionCourseId}-${selectedApiYear ?? 'na'}`}
               courseId={String(selectedEditionCourseId)}
               year={selectedApiYear}
+              initialTab={initialMaterialsTab}
+              onTabChange={onTabChange}
+              initialViewMode={initialViewMode}
+              onViewModeChange={onViewModeChange}
+              initialSidebarCollapsed={initialSidebarCollapsed}
+              onSidebarChange={onSidebarChange}
+              initialExpandedFolders={initialExpandedFolders}
+              onExpandedFoldersChange={onExpandedFoldersChange}
+              initialGridFolderStack={initialGridFolderStack}
+              onGridFolderStackChange={onGridFolderStackChange}
+              initialPreviewId={initialPreviewId}
+              onPreviewIdChange={onPreviewIdChange}
             />
           </ResizablePanel>
 
