@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Timer, PenLine, Focus, Zap, Bot } from 'lucide-react';
-import { useToolkitStore, formatTime } from '@/lib/stores/toolkitStore';
+import { useToolkitStore, formatTime, DockCorner } from '@/lib/stores/toolkitStore';
 import { cn } from '@/lib/utils/cn';
 
 // ─── tool definitions ─────────────────────────────────────────────────────────
@@ -63,14 +63,55 @@ export function ToolkitDock() {
   const isPaused = store.pomodoro.mode === 'paused';
   const timerAccent = store.pomodoro.mode === 'break' ? '#34C759' : '#FF6B8B';
 
+  const { corner } = store.dock;
+  const isTop = corner.startsWith('top');
+  const isLeft = corner.endsWith('left');
+
+  const layoutClasses = {
+    'top-left': 'top-6 left-6 flex-col-reverse items-start',
+    'top-right': 'top-6 right-6 flex-col-reverse items-end',
+    'bottom-left': 'bottom-6 left-6 flex-col items-start',
+    'bottom-right': 'bottom-6 right-6 flex-col items-end',
+  };
+
+  const handleDragEnd = (event: any, info: any) => {
+    const { x, y } = info.point;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    const top = y < h / 2;
+    const left = x < w / 2;
+
+    let newCorner: DockCorner = 'bottom-right';
+    if (top && left) newCorner = 'top-left';
+    else if (top && !left) newCorner = 'top-right';
+    else if (!top && left) newCorner = 'bottom-left';
+    
+    if (newCorner !== corner) {
+      setIsOpen(false);
+      useToolkitStore.getState().setDockCorner(newCorner);
+    }
+  };
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+    <AnimatePresence mode="wait">
+      <motion.div 
+        key={corner}
+        layoutId="toolkit-dock-container"
+        layout
+        drag
+        dragMomentum={false}
+        onDragEnd={handleDragEnd}
+        animate={{ x: 0, y: 0 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+        className={cn("fixed z-50 flex gap-2 cursor-grab active:cursor-grabbing", layoutClasses[corner])}
+      >
 
       {/* tool items — emerge from trigger (macOS downloads style) */}
       <AnimatePresence>
         {isOpen && TOOLS.map((tool, i) => {
           const active = tool.isActive(store);
-          const distanceToTrigger = (TOOLS.length - i) * ITEM_STRIDE;
+          const distanceToTrigger = (TOOLS.length - i) * ITEM_STRIDE * (isTop ? -1 : 1);
           const openDelay  = (TOOLS.length - 1 - i) * 0.055;
           const closeDelay = i * 0.04;
 
@@ -94,10 +135,10 @@ export function ToolkitDock() {
             >
               {/* label pill */}
               <motion.div
-                initial={{ opacity: 0, x: 6 }}
+                initial={{ opacity: 0, x: isLeft ? -6 : 6 }}
                 animate={{ opacity: 1, x: 0, transition: { delay: openDelay + 0.06, duration: 0.14 } }}
-                exit={{ opacity: 0, x: 6, transition: { duration: 0.1, delay: closeDelay } }}
-                className="glass-heavy rounded-2xl px-3 py-1.5 shadow-glass"
+                exit={{ opacity: 0, x: isLeft ? -6 : 6, transition: { duration: 0.1, delay: closeDelay } }}
+                className={cn("glass-heavy rounded-2xl px-3 py-1.5 shadow-glass", isLeft ? "order-last" : "order-first")}
               >
                 <span className="text-xs font-semibold text-foreground whitespace-nowrap">
                   {tool.label}
@@ -176,6 +217,7 @@ export function ToolkitDock() {
           </motion.div>
         )}
       </motion.button>
-    </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

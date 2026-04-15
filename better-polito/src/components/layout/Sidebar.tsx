@@ -92,12 +92,17 @@ function SidebarItemContent({ icon: Icon, label, isActive, isCollapsed }: { icon
 }
 
 export function Sidebar() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ academics: true });
   const pathname = usePathname();
   const { data: courses = [] } = useGetCourses();
   const { theme, setTheme } = useTheme();
-  const { focusMode } = useToolkitStore();
+  
+  const { 
+    focusMode, 
+    sidebar: { isCollapsed, openGroups }, 
+    toggleSidebar, 
+    toggleSidebarGroup 
+  } = useToolkitStore();
+
   const [logoGif, setLogoGif] = useState<string | null>(null);
 
   const courseSubItems = useMemo(() => {
@@ -117,7 +122,7 @@ export function Sidebar() {
 
   const toggleGroup = (id: string, e: React.MouseEvent) => {
     e.preventDefault();
-    setOpenGroups(prev => ({ ...prev, [id]: !prev[id] }));
+    toggleSidebarGroup(id);
   };
 
   const fetchLogoGif = async (category: string) => {
@@ -129,7 +134,6 @@ export function Sidebar() {
     fetchLogoGif('study');
   }, []);
 
-  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
   const isDark = theme === 'dark';
 
   return (

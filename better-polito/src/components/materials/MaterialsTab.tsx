@@ -956,14 +956,48 @@ export default function MaterialsTab({
   courseId,
   year,
   initialTab = 'teaching',
+  onTabChange,
+  initialViewMode = 'list',
+  onViewModeChange,
+  initialSidebarCollapsed = false,
+  onSidebarChange,
+  initialExpandedFolders = [],
+  onExpandedFoldersChange,
+  initialGridFolderStack = [],
+  onGridFolderStackChange,
+  initialPreviewId = null,
+  onPreviewIdChange,
 }: {
   courseId: string;
   year?: string;
   initialTab?: MaterialsActiveTab;
+  onTabChange?: (tab: string) => void;
+  initialViewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
+  initialSidebarCollapsed?: boolean;
+  onSidebarChange?: (collapsed: boolean) => void;
+  initialExpandedFolders?: string[];
+  onExpandedFoldersChange?: (folders: string[]) => void;
+  initialGridFolderStack?: string[];
+  onGridFolderStackChange?: (stack: string[]) => void;
+  initialPreviewId?: string | null;
+  onPreviewIdChange?: (previewId: string | null) => void;
 }) {
   const [activeTab, setActiveTab] = useState<MaterialsActiveTab>(initialTab);
+
+  const switchTab = useCallback((tab: MaterialsActiveTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  }, [onTabChange]);
   const [sortBy, setSortBy] = useState<SortBy>('name');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  
+  const [viewModeInternal, setViewModeInternal] = useState<ViewMode>(initialViewMode);
+  const viewMode = viewModeInternal;
+  const setViewMode = useCallback((mode: ViewMode) => {
+    setViewModeInternal(mode);
+    onViewModeChange?.(mode);
+  }, [onViewModeChange]);
+  
   const numericId = parseInt(courseId, 10);
 
   // Data for all tabs — let react-query cache them
@@ -973,8 +1007,22 @@ export default function MaterialsTab({
   const { data: videolectures = [], isLoading: vlLoading } = useGetCourseVideolectures(numericId);
 
   // Teaching material state
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
+  const [expandedFoldersInternal, setExpandedFoldersInternal] = useState<Set<string>>(new Set(initialExpandedFolders));
+  const expandedFolders = expandedFoldersInternal;
+  const expandedFoldersRef = useRef(expandedFoldersInternal);
+  expandedFoldersRef.current = expandedFoldersInternal;
+  const setExpandedFolders = useCallback((val: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    const next = typeof val === 'function' ? val(expandedFoldersRef.current) : val;
+    setExpandedFoldersInternal(next);
+    onExpandedFoldersChange?.(Array.from(next));
+  }, [onExpandedFoldersChange]);
+
+  const [selectedFileInternal, setSelectedFileInternal] = useState<SelectedFile | null>(null);
+  const selectedFile = selectedFileInternal;
+  const setSelectedFile = useCallback((file: SelectedFile | null) => {
+    setSelectedFileInternal(file);
+    onPreviewIdChange?.(file?.id ?? null);
+  }, [onPreviewIdChange]);
 
   // ── Batch selection ──────────────────────────────────────────────
   const [selection, setSelection] = useState<Set<string>>(new Set());
@@ -986,11 +1034,29 @@ export default function MaterialsTab({
     isLocalhost?: boolean;
     error?: string;
   } | null>(null);
-  const [gridFolderStack, setGridFolderStack] = useState<string[]>([]);
+  
+  const [gridFolderStackInternal, setGridFolderStackInternal] = useState<string[]>(initialGridFolderStack);
+  const gridFolderStack = gridFolderStackInternal;
+  const gridFolderStackRef = useRef(gridFolderStackInternal);
+  gridFolderStackRef.current = gridFolderStackInternal;
+  const setGridFolderStack = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    const next = typeof val === 'function' ? val(gridFolderStackRef.current) : val;
+    setGridFolderStackInternal(next);
+    onGridFolderStackChange?.(next);
+  }, [onGridFolderStackChange]);
+  
   const breadcrumbScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Sidebar panel
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsedInternal, setIsSidebarCollapsedInternal] = useState(initialSidebarCollapsed);
+  const isSidebarCollapsed = isSidebarCollapsedInternal;
+  const isSidebarCollapsedRef = useRef(isSidebarCollapsedInternal);
+  isSidebarCollapsedRef.current = isSidebarCollapsedInternal;
+  const setIsSidebarCollapsed = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof val === 'function' ? val(isSidebarCollapsedRef.current) : val;
+    setIsSidebarCollapsedInternal(next);
+    if (isSidebarCollapsedRef.current !== next) onSidebarChange?.(next);
+  }, [onSidebarChange]);
   const sidebarRef = usePanelRef();
   const sidebarOnResize = useSnapOnRelease(sidebarRef, SIDEBAR_SNAPS, () => setIsSidebarCollapsed(true));
 
@@ -1266,6 +1332,25 @@ export default function MaterialsTab({
     return byId;
   }, [activeSelectableItems]);
 
+  const initialPreviewResolved = useRef(false);
+  useEffect(() => {
+    if (initialPreviewId && !initialPreviewResolved.current && activeSelectableById.has(initialPreviewId)) {
+      const item = activeSelectableById.get(initialPreviewId);
+      if (item && item.type === 'file' && item.url) {
+        setSelectedFileInternal({
+          id: item.id,
+          name: item.name,
+          mimeType: item.mimeType,
+          url: item.url,
+          externalUrl: activeTab === 'virtual' ? item.url : undefined,
+        });
+      }
+      initialPreviewResolved.current = true;
+    } else if (!initialPreviewId) {
+      initialPreviewResolved.current = true;
+    }
+  }, [initialPreviewId, activeSelectableById, activeTab]);
+
   const flatIds = useCallback(() => activeSelectableItems.map((item) => item.id), [activeSelectableItems]);
 
   const toggleSelect = useCallback((id: string) => {
@@ -1493,8 +1578,8 @@ export default function MaterialsTab({
   }, [activeSelectableItems, activeTab, courseId, selection, teachingSelectableAll]);
 
   // clear selection when changing tab
-  const onTabChange = (tab: MaterialsActiveTab) => {
-    setActiveTab(tab);
+  const handleTabChange = (tab: MaterialsActiveTab) => {
+    switchTab(tab);
     setSelectedFile(null);
     clearSelection();
     setGridFolderStack([]);
@@ -1841,7 +1926,7 @@ export default function MaterialsTab({
       >
         <SidebarHeader
           activeTab={activeTab}
-          onTabChange={onTabChange}
+          onTabChange={switchTab}
           onCollapse={() => sidebarRef.current?.collapse()}
           sortBy={sortBy}
           onSortChange={setSortBy}
@@ -1885,7 +1970,7 @@ export default function MaterialsTab({
             {(['teaching', 'dropbox', 'virtual'] as MaterialsActiveTab[]).map((tab) => (
               <button
                 key={tab}
-                onClick={() => { onTabChange(tab); sidebarRef.current?.expand(); setIsSidebarCollapsed(false); }}
+                onClick={() => { handleTabChange(tab); sidebarRef.current?.expand(); setIsSidebarCollapsed(false); }}
                 title={TAB_LABELS[tab]}
                 className={`flex-1 flex items-center justify-center px-1.5 py-3 text-[10px] font-medium transition-colors border-b border-border last:border-b-0 ${activeTab === tab
                   ? 'bg-primary/10 text-primary'

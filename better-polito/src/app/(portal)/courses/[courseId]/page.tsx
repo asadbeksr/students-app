@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import MaterialsTab from '@/components/materials/MaterialsTab';
 import { useGetCourse, useGetCourseGuide, useGetCourseNotices, useGetCourses } from '@/lib/queries/courseHooks';
 import { useGetNotifications, useMarkNotificationAsRead } from '@/lib/queries/studentHooks';
@@ -1076,16 +1076,68 @@ export default function CourseDetailPage() {
   const { focusMode } = useToolkitStore();
   const markNotificationAsRead = useMarkNotificationAsRead();
 
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [selectedAcademicValue, setSelectedAcademicValue] = useState<string>('');
+  const searchParams = useSearchParams();
+
+  // ── Persistent state via URL search params ─────────────────────────────
+  const [isChatOpen, setIsChatOpen] = useState(() => searchParams.get('chat') === '1');
+  const [selectedAcademicValue, setSelectedAcademicValue] = useState<string>(() => searchParams.get('year') ?? '');
+  const initialMaterialsTab = (searchParams.get('tab') ?? 'teaching') as 'teaching' | 'dropbox' | 'virtual';
+  const initialViewMode = (searchParams.get('view') ?? 'list') as 'list' | 'grid';
+  const initialSidebarCollapsed = searchParams.get('sidebar') === '1';
+  
+  const initialExpandedFolders = useMemo(() => searchParams.get('folders')?.split(',').filter(Boolean) ?? [], [searchParams]);
+  const initialGridFolderStack = useMemo(() => searchParams.get('grid')?.split(',').filter(Boolean) ?? [], [searchParams]);
+  const initialPreviewId = searchParams.get('preview') ?? null;
   const chatRef = usePanelRef();
   const chatOnResize = useSnapOnRelease(chatRef, CHAT_SNAPS);
 
+
+
+  // ── Sync state back to URL (silent replace, no history entry) ──────
+  const syncUrl = useCallback((overrides: Record<string, string | null>) => {
+    const params = new URLSearchParams(window.location.search);
+    Object.entries(overrides).forEach(([key, value]) => {
+      if (value === null || value === '' || value === '0') params.delete(key);
+      else params.set(key, value);
+    });
+    const qs = params.toString();
+    router.replace(`${window.location.pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }, [router]);
+
+  const toggleChat = useCallback((next: boolean) => {
+    setIsChatOpen(next);
+    syncUrl({ chat: next ? '1' : null });
+  }, [syncUrl]);
+
   useEffect(() => {
-    const onExternalToggle = () => setIsChatOpen((prev) => !prev);
+    const onExternalToggle = () => toggleChat(!isChatOpen);
     window.addEventListener('course-ai-assistant-toggle', onExternalToggle);
     return () => window.removeEventListener('course-ai-assistant-toggle', onExternalToggle);
-  }, []);
+  }, [isChatOpen, toggleChat]);
+
+  const onTabChange = useCallback((tab: string) => {
+    syncUrl({ tab: tab === 'teaching' ? null : tab });
+  }, [syncUrl]);
+
+  const onViewModeChange = useCallback((mode: string) => {
+    syncUrl({ view: mode === 'list' ? null : mode });
+  }, [syncUrl]);
+
+  const onSidebarChange = useCallback((collapsed: boolean) => {
+    syncUrl({ sidebar: collapsed ? '1' : null });
+  }, [syncUrl]);
+
+  const onExpandedFoldersChange = useCallback((folders: string[]) => {
+    syncUrl({ folders: folders.length > 0 ? folders.join(',') : null });
+  }, [syncUrl]);
+
+  const onGridFolderStackChange = useCallback((stack: string[]) => {
+    syncUrl({ grid: stack.length > 0 ? stack.join(',') : null });
+  }, [syncUrl]);
+
+  const onPreviewIdChange = useCallback((previewId: string | null) => {
+    syncUrl({ preview: previewId });
+  }, [syncUrl]);
 
   const markNotificationsAsRead = useCallback((notificationIds: number[]) => {
     const unique = Array.from(new Set(notificationIds.filter((idValue) => Number.isFinite(idValue) && idValue > 0)));
@@ -1164,9 +1216,11 @@ export default function CourseDetailPage() {
     const stillValid = yearOptions.some((opt) => opt.value === selectedAcademicValue);
     if (!stillValid) {
       const routeEdition = yearOptions.find((opt) => opt.courseId === id);
-      setSelectedAcademicValue((routeEdition ?? yearOptions[0]).value);
+      const next = (routeEdition ?? yearOptions[0]).value;
+      setSelectedAcademicValue(next);
+      syncUrl({ year: next });
     }
-  }, [id, selectedAcademicValue, yearOptions]);
+  }, [id, selectedAcademicValue, yearOptions, syncUrl]);
 
   const selectedYearOption = useMemo(() => {
     return yearOptions.find((opt) => opt.value === selectedAcademicValue) ?? yearOptions[0];
@@ -1343,7 +1397,7 @@ export default function CourseDetailPage() {
             <div className="flex items-center gap-2 shrink-0">
               <AcademicYearSelect
                 value={selectedYearOption?.value ?? ''}
-                onChange={setSelectedAcademicValue}
+                onChange={(v) => { setSelectedAcademicValue(v); syncUrl({ year: v }); }}
                 options={yearOptions}
               />
               <CourseInfoSheet
@@ -1373,6 +1427,18 @@ export default function CourseDetailPage() {
               key={`materials-${selectedEditionCourseId}-${selectedApiYear ?? 'na'}`}
               courseId={String(selectedEditionCourseId)}
               year={selectedApiYear}
+              initialTab={initialMaterialsTab}
+              onTabChange={onTabChange}
+              initialViewMode={initialViewMode}
+              onViewModeChange={onViewModeChange}
+              initialSidebarCollapsed={initialSidebarCollapsed}
+              onSidebarChange={onSidebarChange}
+              initialExpandedFolders={initialExpandedFolders}
+              onExpandedFoldersChange={onExpandedFoldersChange}
+              initialGridFolderStack={initialGridFolderStack}
+              onGridFolderStackChange={onGridFolderStackChange}
+              initialPreviewId={initialPreviewId}
+              onPreviewIdChange={onPreviewIdChange}
             />
           </ResizablePanel>
 
