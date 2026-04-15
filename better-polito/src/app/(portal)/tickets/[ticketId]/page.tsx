@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useGetTicket, useReplyToTicket } from '@/lib/queries/ticketHooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +11,9 @@ import { ArrowLeft, Send, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-interface Props { params: { ticketId: string } }
-
-export default function TicketDetailPage({ params }: Props) {
-  const { ticketId } = params;
+export default function TicketDetailPage() {
+  const params = useParams<{ ticketId: string }>();
+  const ticketId = params?.ticketId;
   const id = parseInt(ticketId);
   const { data: ticket, isLoading } = useGetTicket(id);
   const reply = useReplyToTicket(id);

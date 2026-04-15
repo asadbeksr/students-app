@@ -258,7 +258,8 @@ function MathText({ children, isStreaming = false, messageId, usedLatexTracker }
                 fetch('http://127.0.0.1:7242/ingest/bd0d9cda-d397-4b39-86b6-08c2ed085f99',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ExplanationTabs.tsx:217',message:'DIV HANDLER: Extracted LaTeX already in tracker',data:{latex,trackerContents:Array.from(tracker)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
                 // #endregion
                 // Try to find matching block
-                const block = latexBlocks.find(b => b.latex === latex || b.latex.replace(/\s+/g, '').trim() === latex.replace(/\s+/g, '').trim());
+                const normalizedLatex = latex.replace(/\s+/g, '').trim();
+                const block = latexBlocks.find(b => b.latex === latex || b.latex.replace(/\s+/g, '').trim() === normalizedLatex);
                 if (block && !tracker.has(block.latex)) {
                   latexToUse = block.latex;
                   // #region agent log

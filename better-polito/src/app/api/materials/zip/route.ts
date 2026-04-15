@@ -44,14 +44,20 @@ export async function POST(req: Request) {
     files?: ZipRequestFile[];
   } | null;
 
-  const requestedFiles: ZipRequestFile[] = Array.isArray(payload?.files) ? payload.files : [];
+  const normalizedPayload: {
+    archiveName?: string;
+    files?: ZipRequestFile[];
+  } = payload ?? {};
+
+  const requestedFiles: ZipRequestFile[] = Array.isArray(normalizedPayload.files) ? normalizedPayload.files : [];
   if (!requestedFiles.length) {
     return NextResponse.json({ error: 'No files selected' }, { status: 400 });
   }
 
-  const archiveName = (payload?.archiveName ?? 'materials.zip').endsWith('.zip')
-    ? (payload?.archiveName ?? 'materials.zip')
-    : `${payload?.archiveName ?? 'materials'}.zip`;
+  const archiveNameRaw = normalizedPayload.archiveName ?? 'materials.zip';
+  const archiveName = archiveNameRaw.endsWith('.zip')
+    ? archiveNameRaw
+    : `${archiveNameRaw}.zip`;
 
   const zip = new JSZip();
 

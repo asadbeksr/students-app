@@ -335,9 +335,9 @@ export function CommandPalette() {
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {'shortcut' in item && item.shortcut && (
+                        {typeof (item as { shortcut?: unknown }).shortcut === 'string' && (
                           <kbd className="text-[11px] text-muted-foreground border border-border rounded-lg px-1.5 py-0.5 font-mono bg-muted/60">
-                            {item.shortcut}
+                            {(item as { shortcut?: string }).shortcut}
                           </kbd>
                         )}
                         <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 opacity-0 group-data-[selected=true]:opacity-100" />
