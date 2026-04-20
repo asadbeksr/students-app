@@ -24,8 +24,8 @@ export function PomodoroPanel() {
   useEffect(() => {
     if (pomodoro.mode === 'work' || pomodoro.mode === 'break') {
       const emoji = pomodoro.mode === 'work' ? '🍅' : '☕';
-      document.title = `${emoji} ${formatTime(pomodoro.secondsLeft)} — Better Polito`;
-      return () => { document.title = 'Better Polito'; };
+      document.title = `${emoji} ${formatTime(pomodoro.secondsLeft)} — Polito Community`;
+      return () => { document.title = 'Polito Community'; };
     }
   }, [pomodoro.mode, pomodoro.secondsLeft]);
 
@@ -43,10 +43,10 @@ export function PomodoroPanel() {
   const accentColor = isBreak ? '#34C759' : '#FF6B8B';
   const circumference = 2 * Math.PI * 40;
 
-  const dotsFilled = pomodoro.sessionsCompleted === 0 
-    ? 0 
-    : pomodoro.sessionsCompleted % 4 === 0 
-      ? 4 
+  const dotsFilled = pomodoro.sessionsCompleted === 0
+    ? 0
+    : pomodoro.sessionsCompleted % 4 === 0
+      ? 4
       : pomodoro.sessionsCompleted % 4;
 
   return (

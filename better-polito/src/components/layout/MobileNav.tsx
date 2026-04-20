@@ -35,7 +35,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
 
   useEffect(() => {
     if (open) onClose();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   if (!open) return null;
@@ -54,7 +54,7 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
             <div className="w-6 h-6 rounded-md bg-foreground flex items-center justify-center">
               <span className="text-surface text-[10px] font-bold">BP</span>
             </div>
-            <span className="text-sm font-semibold">Better Polito</span>
+            <span className="text-sm font-semibold">Polito Community</span>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="w-4 h-4" />

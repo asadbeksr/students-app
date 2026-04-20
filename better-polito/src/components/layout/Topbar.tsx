@@ -146,7 +146,7 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
               </p> */}
             </>
           ) : (
-            <h1 className="text-lg md:text-xl font-semibold text-foreground truncate hidden lg:block">Better Polito</h1>
+            <h1 className="text-lg md:text-xl font-semibold text-foreground truncate hidden lg:block">Polito Community</h1>
           )}
         </div>
 

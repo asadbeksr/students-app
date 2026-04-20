@@ -95,12 +95,12 @@ export function Sidebar() {
   const pathname = usePathname();
   const { data: courses = [] } = useGetCourses();
   const { theme, setTheme } = useTheme();
-  
-  const { 
-    focusMode, 
-    sidebar: { isCollapsed, openGroups }, 
-    toggleSidebar, 
-    toggleSidebarGroup 
+
+  const {
+    focusMode,
+    sidebar: { isCollapsed, openGroups },
+    toggleSidebar,
+    toggleSidebarGroup
   } = useToolkitStore();
 
   const [logoGif, setLogoGif] = useState<string | null>(null);
@@ -165,7 +165,7 @@ export function Sidebar() {
                     )}
                   </div> */}
                   <div className="flex flex-col truncate">
-                    <h1 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">Better Polito</h1>
+                    <h1 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">Polito Community</h1>
                   </div>
                 </div>
               </DropdownMenuTrigger>

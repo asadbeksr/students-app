@@ -161,7 +161,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       await get().fetchMessages(courseId);
       
       // Get course and materials for context
-      // In Better Polito, courses come from the PoliTO API (not local DB),
+      // In Polito Community, courses come from the PoliTO API (not local DB),
       // so we create a minimal stub if the course isn't stored locally.
       let course = await db.courses.get(courseId);
       if (!course) {

@@ -12,6 +12,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
         ssoUid: { label: 'SSO UID', type: 'text' },
         ssoKey: { label: 'SSO Key', type: 'text' },
+        rememberMe: { label: 'Remember Me', type: 'text' },
       },
       async authorize(credentials) {
         const client = getApiClient();
@@ -46,6 +47,7 @@ export const authOptions: NextAuthOptions = {
             email: `${data.username}@studenti.polito.it`,
             token: data.token,
             clientId: data.clientId,
+            rememberMe: credentials?.rememberMe === 'true',
           };
         } catch (e) {
           console.error('Login failed:', e);
@@ -59,6 +61,13 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.accessToken = (user as any).token;
         token.clientId = (user as any).clientId;
+        token.rememberMe = (user as any).rememberMe;
+        // Set token expiry based on rememberMe preference
+        if ((user as any).rememberMe) {
+          token.exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
+        } else {
+          token.exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours
+        }
       }
       return token;
     },
@@ -74,6 +83,6 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 };

@@ -166,7 +166,16 @@ function SortableWidget({ id, span, isEditing, onSpanChange, onHide, children }:
 
 function ClassesContent({ isEditing }: { isEditing?: boolean }) {
   const { data: lectures = [], isLoading } = useGetLectures({ fromDate: todayISO(), toDate: todayISO() });
-  const items = (lectures as any[]).slice(0, 4);
+  
+  const todayStr = todayISO();
+  const items = (lectures as any[])
+    .filter(l => {
+      const d = l.startsAt ?? l.startTime ?? l.date ?? '';
+      return d.split('T')[0] === todayStr;
+    })
+    .sort((a, b) => new Date(a.startsAt ?? a.startTime ?? 0).getTime() - new Date(b.startsAt ?? b.startTime ?? 0).getTime())
+    .slice(0, 4);
+
   return (
     <Widget id="classes" label="Today's Classes" href="/agenda" isEditing={isEditing}>
       {isLoading ? (
@@ -178,27 +187,51 @@ function ClassesContent({ isEditing }: { isEditing?: boolean }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((l: any, i: number) => (
-            <div key={i} className="glass-inner flex items-start gap-3 p-3 rounded-2xl cursor-default">
-              <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: `hsl(${(i * 60 + 237) % 360},75%,62%)` }} />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground truncate">{l.courseName ?? l.title ?? l.subject}</p>
-                <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                  {(l.startTime ?? l.startsAt) && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />{l.startTime ?? l.startsAt}{(l.endTime ?? l.endsAt) ? `–${l.endTime ?? l.endsAt}` : ''}
-                    </span>
-                  )}
-                  {(l.room ?? l.classRoom ?? l.location) && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="w-3 h-3" />{l.room ?? l.classRoom ?? l.location}
-                    </span>
-                  )}
+          {items.map((l: any, i: number) => {
+            const courseId = l.courseId ?? l.courseCode ?? l.code ?? l.id;
+            const courseLink = courseId ? `/courses/${courseId}` : null;
+            const sharedClassName = cn(
+              "glass-inner flex items-start gap-3 p-3 rounded-2xl",
+              courseLink ? "cursor-pointer hover:opacity-90 transition-opacity block" : "cursor-default"
+            );
+            const content = (
+              <div className="flex w-full items-start gap-3">
+                <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: `hsl(${(i * 60 + 237) % 360},75%,62%)` }} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground truncate">{l.courseName ?? l.title ?? l.subject}</p>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    {(l.startTime ?? l.startsAt) && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        {(l.startTime ?? l.startsAt).includes('T')
+                          ? new Date(l.startTime ?? l.startsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                          : (l.startTime ?? l.startsAt)}
+                        {(l.endTime ?? l.endsAt)
+                          ? `–${(l.endTime ?? l.endsAt).includes('T')
+                            ? new Date(l.endTime ?? l.endsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                            : (l.endTime ?? l.endsAt)}`
+                          : ''}
+                      </span>
+                    )}
+                    {(l.room ?? l.classRoom ?? l.location) && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3" />{l.room ?? l.classRoom ?? l.location}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            );
+            return courseLink ? (
+              <Link key={i} href={courseLink} className={sharedClassName}>
+                {content}
+              </Link>
+            ) : (
+              <div key={i} className={sharedClassName}>
+                {content}
+              </div>
+            );
+          })}        </div>
       )}
     </Widget>
   );

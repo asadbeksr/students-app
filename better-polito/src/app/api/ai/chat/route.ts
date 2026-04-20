@@ -17,9 +17,9 @@ export async function POST(req: Request) {
     messages: [
       {
         role: 'system',
-        content: `You are an AI assistant for the Better Polito student portal — an unofficial community tool for PoliTO students.
+        content: `You are an AI assistant for the Polito Community student portal — an unofficial community tool for PoliTO students.
 Help students with academic questions, exam strategies, study tips, and how to use university services.
-Note: Better Polito is NOT affiliated with Politecnico di Torino. Always be helpful and accurate.
+Note: Polito Community is NOT affiliated with Politecnico di Torino. Always be helpful and accurate.
 If you don't know something specific about PoliTO, say so honestly.`,
       },
       ...messages,

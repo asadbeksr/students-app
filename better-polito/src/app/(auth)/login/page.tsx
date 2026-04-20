@@ -15,6 +15,7 @@ function LoginContent() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -45,6 +46,7 @@ function LoginContent() {
       const result = await signIn('credentials', {
         username,
         password,
+        rememberMe: rememberMe ? 'true' : 'false',
         redirect: false,
       });
       if (result?.error) {
@@ -82,7 +84,7 @@ function LoginContent() {
               <span className="text-surface text-sm font-bold">BP</span>
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-foreground leading-none">Better Polito</h1>
+              <h1 className="text-lg font-semibold text-foreground leading-none">Polito Community</h1>
               <p className="text-xs text-muted-foreground mt-0.5">Community portal</p>
             </div>
           </div>
@@ -158,6 +160,19 @@ function LoginContent() {
                 />
               </div>
 
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                />
+                <Label htmlFor="rememberMe" className="text-sm font-normal cursor-pointer select-none">
+                  Remember login
+                </Label>
+              </div>
+
               <Button
                 type="submit"
                 variant="outline"
@@ -168,14 +183,14 @@ function LoginContent() {
               </Button>
 
               <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                Your credentials are sent directly to the official PoliTO API and are never stored by Better Polito.
+                Your credentials are sent directly to the official PoliTO API and are never stored by Polito Community.
               </p>
             </form>
           )}
         </div>
 
         <p className="mt-4 text-xs text-muted-foreground text-center">
-          Better Polito is based on{' '}
+          Polito Community is based on{' '}
           <a href="https://github.com/polito/students-app" target="_blank" rel="noopener noreferrer" className="underline">
             polito/students-app
           </a>{' '}
