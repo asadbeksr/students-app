@@ -3,34 +3,8 @@ export const runtime = 'nodejs';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { NextResponse } from 'next/server';
-
-// Polyfill DOMMatrix for Node.js environment if it's missing (required by pdfjs-dist)
-if (typeof global !== 'undefined' && typeof (global as any).DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class DOMMatrix {
-    a=1; b=0; c=0; d=1; e=0; f=0;
-    m11=1; m12=0; m13=0; m14=0;
-    m21=0; m22=1; m23=0; m24=0;
-    m31=0; m32=0; m33=1; m34=0;
-    m41=0; m42=0; m43=0; m44=1;
-    constructor(init?: string | number[]) {
-      if (Array.isArray(init)) {
-        if (init.length === 6) {
-          [this.a, this.b, this.c, this.d, this.e, this.f] = init;
-          this.m11=this.a; this.m12=this.b; this.m21=this.c; this.m22=this.d; this.m41=this.e; this.m42=this.f;
-        } else if (init.length === 16) {
-          [this.m11,this.m12,this.m13,this.m14,this.m21,this.m22,this.m23,this.m24,
-           this.m31,this.m32,this.m33,this.m34,this.m41,this.m42,this.m43,this.m44] = init;
-          this.a=this.m11; this.b=this.m12; this.c=this.m21; this.d=this.m22; this.e=this.m41; this.f=this.m42;
-        }
-      }
-    }
-    transformPoint(p: any) { return { x: p.x ?? 0, y: p.y ?? 0, z: p.z ?? 0, w: p.w ?? 1 }; }
-    multiply(_other: any) { return new (global as any).DOMMatrix(); }
-    inverse() { return new (global as any).DOMMatrix(); }
-    translate(_tx=0, _ty=0, _tz=0) { return new (global as any).DOMMatrix(); }
-    scale(_s=1) { return new (global as any).DOMMatrix(); }
-  };
-}
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse: (buffer: Buffer, options?: { max?: number }) => Promise<{ text: string; numpages: number }> = require('pdf-parse');
 
 const POLITO_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? 'https://app.didattica.polito.it';
 
@@ -49,72 +23,19 @@ function toTargetUrl(rawUrl: string): string | null {
 }
 
 async function extractTextFromPdf(buffer: ArrayBuffer): Promise<{ text: string; pageCount: number; isLikelyScanned: boolean }> {
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const data = await pdfParse(Buffer.from(buffer), { max: 50 });
 
-  // Disable the worker — node_modules is not available at runtime on serverless platforms (e.g. Vercel).
-  // Running in the main thread is fine for a server-side API route.
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  const pageCount = data.numpages;
+  let text = data.text;
 
-  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer), disableWorker: true } as any).promise;
-  const pageCount = doc.numPages;
-  const maxPages = Math.min(pageCount, 50);
-  let fullText = '';
-  let totalChars = 0;
-
-  for (let i = 1; i <= maxPages; i++) {
-    try {
-      const page = await doc.getPage(i);
-      const content = await page.getTextContent();
-
-      if (!content?.items?.length) continue;
-
-      const items = content.items
-        .filter((item: any) => 'str' in item && item.str.trim() !== '')
-        .map((item: any) => ({
-          str: item.str,
-          x: Array.isArray(item.transform) ? (item.transform[4] ?? 0) : 0,
-          y: Array.isArray(item.transform) ? (item.transform[5] ?? 0) : 0,
-          height: item.height || (Array.isArray(item.transform) ? Math.abs(item.transform[3]) : 0) || 10,
-          hasEOL: item.hasEOL || false,
-        }));
-
-      items.sort((a: any, b: any) => {
-        const yDiff = b.y - a.y;
-        if (Math.abs(yDiff) > a.height * 0.5) return yDiff;
-        return a.x - b.x;
-      });
-
-      let pageText = '';
-      let lastY: number | null = null;
-      for (const item of items as any[]) {
-        if (lastY !== null && Math.abs(lastY - item.y) > item.height * 0.8) {
-          pageText += '\n';
-        } else if (pageText.length > 0 && !pageText.endsWith(' ') && !pageText.endsWith('\n')) {
-          pageText += ' ';
-        }
-        pageText += item.str;
-        if (item.hasEOL) pageText += '\n';
-        lastY = item.y;
-      }
-
-      if (pageText.trim()) {
-        totalChars += pageText.length;
-        fullText += `\n\n--- Page ${i} ---\n${pageText.trim()}`;
-      }
-    } catch {
-      // skip corrupted page
-    }
-
-    if (totalChars > 100000) {
-      fullText += '\n\n[... Extraction stopped at 100k characters to preserve memory ...]';
-      break;
-    }
+  if (text.length > 100000) {
+    text = text.slice(0, 100000) + '\n\n[... Extraction stopped at 100k characters to preserve memory ...]';
   }
 
-  const averageCharsPerPage = maxPages > 0 ? totalChars / maxPages : 0;
+  const averageCharsPerPage = pageCount > 0 ? text.length / pageCount : 0;
   const isLikelyScanned = averageCharsPerPage < 100;
 
-  return { text: fullText.trim(), pageCount, isLikelyScanned };
+  return { text: text.trim(), pageCount, isLikelyScanned };
 }
 
 export async function POST(req: Request) {
