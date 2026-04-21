@@ -77,7 +77,8 @@ export function getSystemPrompt(
   visualModeEnabled: boolean = false,
   customSystemPrompt: string | null = null,
   openDocumentName: string | null = null,
-  studentContext: string | null = null
+  studentContext: string | null = null,
+  openDocumentPage: number | null = null
 ): string {
   const materialsSummary = materials
     .map(m => `- ${m.name} (${m.type === 'pdf' ? 'PDF' : 'Note'})`)
@@ -101,7 +102,7 @@ export function getSystemPrompt(
     : '';
 
   const openDocContext = openDocumentName
-    ? `\n\nThe student currently has this document open in their preview: "${openDocumentName}". When relevant, reference this document in your answers. If they ask a question without specifying a topic, assume it may relate to this document.
+    ? `\n\nThe student currently has this document open in their preview: "${openDocumentName}".${openDocumentPage ? ` They are currently viewing **Page ${openDocumentPage}** of this document.` : ' The document text has been provided below — the student has NOT specified which page they are on.'} When relevant, reference this document in your answers. If they ask a question without specifying a topic, assume it may relate to this document.
 If—and ONLY if—you are absolutely certain about the exact page number of a specific concept, diagram, or formula the user is asking about, you can provide a magical PDF link to snap their viewer to that spot.
 Use this markdown format:
 - [Go to Page 12](#pdf-page=12)
@@ -109,7 +110,8 @@ Use this markdown format:
 
 CRITICAL RULES FOR PDF LINKS:
 - DO NOT overuse these links. Only provide them if the user asks "where is X?" or if pointing to a specific diagram is highly relevant.
-- NEVER guess or hallucinate a page number. If you aren't 100% sure it's on page 38, do not create a link for page 38.`
+- NEVER guess or hallucinate a page number. If you aren't 100% sure it's on page 38, do not create a link for page 38.
+- NEVER ask the student to tell you their page number. You either know it (shown above) or you don't — work with what's in the document text provided.`
     : '';
 
   const studentSection = studentContext
@@ -124,7 +126,7 @@ Available materials:
 ${materialsSummary || 'No materials yet'}${openDocContext}${attachmentContext}
 
 Teaching guidelines:
-- CRITICAL: Never guess, assume, or hallucinate the contents of a file. If you cannot read the document, explicitly say "I cannot read this document" instead of making educated guesses based on the file name.
+- CRITICAL: Never guess, assume, or halso lucinate the contents of a file. If you cannot read the document, explicitly say "I cannot read this document" instead of making educated guesses based on the file name.
 - CRITICAL: NEVER use greetings (like "Hey bro", "Hi", "Hello"). Start your response with the direct answer.
 - Adhere strictly to your assigned personality tone, but be as concise as possible.
 - Do NOT provide unsolicited summaries, advice, or follow-up questions.

@@ -42,10 +42,19 @@ export default function PDFViewer({
   useEffect(() => {
     const handlePdfNavigate = (e: CustomEvent<string>) => {
       setPdfHash('#' + e.detail);
+      // If the AI navigated to a specific page, sync previewPage so future AI context stays accurate
+      const pageMatch = e.detail.match(/^page=(\d+)$/);
+      if (pageMatch) {
+        const page = parseInt(pageMatch[1], 10);
+        if (Number.isFinite(page) && page > 0) {
+          updateCourseState(courseId, { previewPage: page });
+          setPageInput(String(page));
+        }
+      }
     };
     window.addEventListener('pdf-navigate', handlePdfNavigate as EventListener);
     return () => window.removeEventListener('pdf-navigate', handlePdfNavigate as EventListener);
-  }, []);
+  }, [courseId, updateCourseState]);
 
   // Sync pageInput with stored previewPage (e.g. on mount)
   useEffect(() => {

@@ -310,8 +310,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       let openDocumentUrl: string | null = null;
       let openDocumentText: string | null = null;
       let openDocumentFullText: string | null = null;
+      let openDocumentPage: number | null = null;
       try {
         const portalState = useCoursePortalStore.getState().getCourseState(courseId);
+        openDocumentPage = portalState.previewPage ?? null;
         if (portalState.preview) {
           openDocumentName = portalState.preview.name;
           openDocumentUrl = portalState.preview.url;
@@ -347,7 +349,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const systemPrompt = getSystemPrompt(
         course, materials, personality, intensity,
         hasAttachments, visualModeEnabled, customSystemPrompt,
-        openDocumentName, studentContext || null
+        openDocumentName, studentContext || null,
+        openDocumentPage
       );
 
       const assistantMessageId = uuidv4();

@@ -1,14 +1,35 @@
 export const runtime = 'nodejs';
 
-import path from 'path';
-import { pathToFileURL } from 'url';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { NextResponse } from 'next/server';
 
 // Polyfill DOMMatrix for Node.js environment if it's missing (required by pdfjs-dist)
-if (typeof global !== 'undefined' && typeof global.DOMMatrix === 'undefined') {
-  global.DOMMatrix = require('dommatrix');
+if (typeof global !== 'undefined' && typeof (global as any).DOMMatrix === 'undefined') {
+  (global as any).DOMMatrix = class DOMMatrix {
+    a=1; b=0; c=0; d=1; e=0; f=0;
+    m11=1; m12=0; m13=0; m14=0;
+    m21=0; m22=1; m23=0; m24=0;
+    m31=0; m32=0; m33=1; m34=0;
+    m41=0; m42=0; m43=0; m44=1;
+    constructor(init?: string | number[]) {
+      if (Array.isArray(init)) {
+        if (init.length === 6) {
+          [this.a, this.b, this.c, this.d, this.e, this.f] = init;
+          this.m11=this.a; this.m12=this.b; this.m21=this.c; this.m22=this.d; this.m41=this.e; this.m42=this.f;
+        } else if (init.length === 16) {
+          [this.m11,this.m12,this.m13,this.m14,this.m21,this.m22,this.m23,this.m24,
+           this.m31,this.m32,this.m33,this.m34,this.m41,this.m42,this.m43,this.m44] = init;
+          this.a=this.m11; this.b=this.m12; this.c=this.m21; this.d=this.m22; this.e=this.m41; this.f=this.m42;
+        }
+      }
+    }
+    transformPoint(p: any) { return { x: p.x ?? 0, y: p.y ?? 0, z: p.z ?? 0, w: p.w ?? 1 }; }
+    multiply(_other: any) { return new (global as any).DOMMatrix(); }
+    inverse() { return new (global as any).DOMMatrix(); }
+    translate(_tx=0, _ty=0, _tz=0) { return new (global as any).DOMMatrix(); }
+    scale(_s=1) { return new (global as any).DOMMatrix(); }
+  };
 }
 
 const POLITO_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? 'https://app.didattica.polito.it';
@@ -30,11 +51,11 @@ function toTargetUrl(rawUrl: string): string | null {
 async function extractTextFromPdf(buffer: ArrayBuffer): Promise<{ text: string; pageCount: number; isLikelyScanned: boolean }> {
   const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
-  pdfjsLib.GlobalWorkerOptions.workerSrc = pathToFileURL(
-    path.resolve(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs')
-  ).href;
+  // Disable the worker — node_modules is not available at runtime on serverless platforms (e.g. Vercel).
+  // Running in the main thread is fine for a server-side API route.
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
-  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer), disableWorker: true } as any).promise;
   const pageCount = doc.numPages;
   const maxPages = Math.min(pageCount, 50);
   let fullText = '';
