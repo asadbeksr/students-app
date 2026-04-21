@@ -3,6 +3,13 @@ import { db } from '@/lib/db';
 
 export type FolderTag = string;
 
+export type TagProgressSummary = {
+  totalTagged: number;
+  completedTagged: number;
+  totalPct: number;
+  perTag: { tagName: string; color: string; total: number; completed: number; pct: number }[];
+};
+
 export const TAG_PALETTE = [
   '#3b82f6', // blue
   '#f59e0b', // amber

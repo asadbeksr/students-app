@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MaterialsTab from '@/components/materials/MaterialsTab';
+import type { TagProgressSummary } from '@/lib/stores/progressStore';
 import { useGetCourse, useGetCourseGuide, useGetCourseNotices, useGetCourses } from '@/lib/queries/courseHooks';
 import { useGetNotifications, useMarkNotificationAsRead } from '@/lib/queries/studentHooks';
 import { getApiClient } from '@/lib/api/client';
@@ -1099,6 +1100,8 @@ export default function CourseDetailPage() {
     updateCourseState(courseId, { chat: next });
   }, [courseId, updateCourseState]);
 
+  const [tagProgress, setTagProgress] = useState<TagProgressSummary | null>(null);
+
   useEffect(() => {
     const onExternalToggle = () => toggleChat(!courseState.chat);
     window.addEventListener('course-ai-assistant-toggle', onExternalToggle);
@@ -1387,6 +1390,21 @@ export default function CourseDetailPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-2 shrink-0">
+              {/* ── tag progress ───────────────────────────────────── */}
+              {tagProgress && tagProgress.totalTagged > 0 && (
+                <div className="hidden sm:flex items-center gap-2 mr-1 shrink-0">
+                  {tagProgress.perTag.map(({ tagName, color, completed, total }) => (
+                    <div key={tagName} className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                      <span className="text-[10px] text-muted-foreground">{tagName}</span>
+                      <span className="text-[10px] font-semibold tabular-nums text-foreground">{completed}/{total}</span>
+                    </div>
+                  ))}
+                  <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-green-500 transition-all duration-300" style={{ width: `${tagProgress.totalPct}%` }} />
+                  </div>
+                </div>
+              )}
               <AcademicYearSelect
                 value={selectedYearOption?.value ?? ''}
                 onChange={(v) => setSelectedAcademicValue(v)}
@@ -1446,6 +1464,7 @@ export default function CourseDetailPage() {
               onGridFolderStackChange={onGridFolderStackChange}
               initialPreviewId={initialPreviewId}
               onPreviewIdChange={onPreviewIdChange}
+              onTagProgressChange={setTagProgress}
             />
           </ResizablePanel>
 

@@ -28,7 +28,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { useMaterialStore } from '@/stores/materialStore';
 import type { Material, Folder as FolderType } from '@/types';
-import { useProgressStore, TAG_PALETTE, BUILTIN_COLORS } from '@/lib/stores/progressStore';
+import { useProgressStore, TAG_PALETTE, BUILTIN_COLORS, type TagProgressSummary } from '@/lib/stores/progressStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1232,6 +1232,7 @@ export default function MaterialsTab({
   onGridFolderStackChange,
   initialPreviewId = null,
   onPreviewIdChange,
+  onTagProgressChange,
 }: {
   courseId: string;
   year?: string;
@@ -1247,6 +1248,7 @@ export default function MaterialsTab({
   onGridFolderStackChange?: (stack: string[]) => void;
   initialPreviewId?: string | null;
   onPreviewIdChange?: (preview: { id: string; name: string; url: string } | null) => void;
+  onTagProgressChange?: (progress: TagProgressSummary | null) => void;
 }) {
   const [activeTab, setActiveTab] = useState<MaterialsActiveTab>(initialTab);
 
@@ -2107,6 +2109,8 @@ export default function MaterialsTab({
     return { totalTagged, completedTagged, totalPct, perTag };
   }, [progressCacheForCourse, allTeachingNodes, descendantFileIdsByFolder]);
 
+  useEffect(() => { onTagProgressChange?.(tagProgress); }, [tagProgress, onTagProgressChange]);
+
   const renderSidebar = () => {
     if (sidebarLoading) {
       return (
@@ -2455,50 +2459,6 @@ export default function MaterialsTab({
           onViewModeChange={setViewMode}
           onUpload={() => uploadInputRef.current?.click()}
         />
-        {/* ── progress strip (teaching tab only) ─────────────────── */}
-        {activeTab === 'teaching' && allTeachingNodes.some(n => n.type === 'file') && (
-          <div className="px-3 py-2 border-b border-border shrink-0">
-            {tagProgress && tagProgress.totalTagged > 0 ? (
-              <>
-                {/* per-tag chips row */}
-                <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap mb-1.5">
-                  {tagProgress.perTag.map(({ tagName, color, completed, total }) => (
-                    <div key={tagName} className="flex items-center gap-1 min-w-0">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{tagName}</span>
-                      <span className="text-[10px] font-semibold tabular-nums text-foreground">{completed}/{total}</span>
-                    </div>
-                  ))}
-                  <span className="ml-auto text-[10px] tabular-nums text-muted-foreground shrink-0">
-                    {tagProgress.completedTagged}/{tagProgress.totalTagged}
-                    <span className="text-muted-foreground/60"> ({tagProgress.totalPct}%)</span>
-                  </span>
-                </div>
-                {/* segmented total bar */}
-                <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-muted gap-px">
-                  {tagProgress.perTag.map(({ tagName, color, pct, total }) => (
-                    <div
-                      key={tagName}
-                      className="relative overflow-hidden rounded-full"
-                      style={{ flex: total }}
-                    >
-                      <div className="absolute inset-0 rounded-full bg-muted" />
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                        style={{ width: `${pct}%`, backgroundColor: color }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 italic">
-                <Tag className="h-3 w-3 shrink-0" />
-                Tag folders to track progress
-              </div>
-            )}
-          </div>
-        )}
         {/* scroll area with pb for action bar */}
         <div className="flex-1 relative overflow-hidden">
           <ScrollArea className="h-full">
