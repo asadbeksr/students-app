@@ -14,7 +14,7 @@ export const TAG_PALETTE = [
   '#ec4899', // pink
 ];
 
-const BUILTIN_COLORS: Record<string, string> = {
+export const BUILTIN_COLORS: Record<string, string> = {
   lecture: '#3b82f6',
   practice: '#f59e0b',
 };

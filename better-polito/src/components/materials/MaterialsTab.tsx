@@ -28,7 +28,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { useMaterialStore } from '@/stores/materialStore';
 import type { Material, Folder as FolderType } from '@/types';
-import { useProgressStore, TAG_PALETTE } from '@/lib/stores/progressStore';
+import { useProgressStore, TAG_PALETTE, BUILTIN_COLORS } from '@/lib/stores/progressStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1330,6 +1330,8 @@ export default function MaterialsTab({
 
   // Load progress from IndexedDB for this course
   const { loadCourse, isFileComplete: isFileCompleteInStore, getFolderTag, getTagDefs, getTagColor } = useProgressStore();
+  // Subscribe to cache slice so progress re-renders when completion toggles
+  const progressCacheForCourse = useProgressStore(s => s._cache[courseId]);
   useEffect(() => { loadCourse(courseId); }, [courseId, loadCourse]);
 
   const [selectedLocalMaterial, setSelectedLocalMaterial] = useState<Material | null>(null);
@@ -2075,6 +2077,36 @@ export default function MaterialsTab({
     );
   };
 
+  const tagProgress = useMemo(() => {
+    if (!progressCacheForCourse) return null;
+    const { folderTags, completedFileIds, tagDefs: rawTagDefs } = progressCacheForCourse;
+    const tagDefs: Record<string, string> = { ...rawTagDefs };
+    for (const tag of Object.values(folderTags)) {
+      if (!tagDefs[tag]) tagDefs[tag] = BUILTIN_COLORS[tag] ?? '#6b7280';
+    }
+    const perTagFiles: Record<string, Set<string>> = {};
+    for (const node of allTeachingNodes) {
+      if (node.type !== 'directory') continue;
+      const tag = folderTags[node.id];
+      if (!tag) continue;
+      const fileIds = descendantFileIdsByFolder.get(node.id) ?? [];
+      if (!perTagFiles[tag]) perTagFiles[tag] = new Set();
+      fileIds.forEach(id => perTagFiles[tag].add(id));
+    }
+    const allTaggedIds = new Set([...Object.values(perTagFiles)].flatMap(s => [...s]));
+    const totalTagged = allTaggedIds.size;
+    const completedTagged = [...allTaggedIds].filter(id => completedFileIds.includes(id)).length;
+    const totalPct = totalTagged > 0 ? Math.round((completedTagged / totalTagged) * 100) : 0;
+    const perTag = Object.entries(perTagFiles).map(([tagName, fileIds]) => {
+      const color = tagDefs[tagName] ?? '#6b7280';
+      const total = fileIds.size;
+      const completed = [...fileIds].filter(id => completedFileIds.includes(id)).length;
+      const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+      return { tagName, color, total, completed, pct };
+    });
+    return { totalTagged, completedTagged, totalPct, perTag };
+  }, [progressCacheForCourse, allTeachingNodes, descendantFileIdsByFolder]);
+
   const renderSidebar = () => {
     if (sidebarLoading) {
       return (
@@ -2087,65 +2119,7 @@ export default function MaterialsTab({
     }
 
     if (activeTab === 'teaching') {
-      // Build per-tag progress (only tagged folders count)
-      const tagDefs = getTagDefs(courseId);
-      const perTagFiles: Record<string, Set<string>> = {};
-      for (const node of allTeachingNodes) {
-        if (node.type !== 'directory') continue;
-        const tag = getFolderTag(courseId, node.id);
-        if (!tag) continue;
-        const fileIds = descendantFileIdsByFolder.get(node.id) ?? [];
-        if (!perTagFiles[tag]) perTagFiles[tag] = new Set();
-        fileIds.forEach(id => perTagFiles[tag].add(id));
-      }
-      const allTaggedIds = new Set([...Object.values(perTagFiles)].flatMap(s => [...s]));
-      const totalTagged = allTaggedIds.size;
-      const completedTagged = [...allTaggedIds].filter(id => isFileCompleteInStore(courseId, id)).length;
-      const totalPct = totalTagged > 0 ? Math.round((completedTagged / totalTagged) * 100) : 0;
-
-      const hasAnyFiles = allTeachingNodes.some(n => n.type === 'file');
-      const progressBar = hasAnyFiles ? (
-        <div className="px-3 py-2 border-b border-border bg-card/80 shrink-0">
-          {totalTagged > 0 ? (
-            <>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-muted-foreground font-medium">Progress</span>
-                <span className="text-[10px] font-semibold tabular-nums text-foreground">
-                  {completedTagged}/{totalTagged} <span className="text-muted-foreground font-normal">({totalPct}%)</span>
-                </span>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-2.5">
-                <div className="h-full rounded-full transition-all duration-300 bg-green-500" style={{ width: `${totalPct}%` }} />
-              </div>
-              {Object.entries(perTagFiles).map(([tagName, fileIds]) => {
-                const color = getTagColor(courseId, tagName) ?? tagDefs[tagName] ?? '#6b7280';
-                const total = fileIds.size;
-                const completed = [...fileIds].filter(id => isFileCompleteInStore(courseId, id)).length;
-                const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-                return (
-                  <div key={tagName} className="mb-1.5 last:mb-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <div className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-[10px] text-muted-foreground">{tagName}</span>
-                      </div>
-                      <span className="text-[10px] tabular-nums text-muted-foreground">{completed}/{total}</span>
-                    </div>
-                    <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: color }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          ) : (
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 italic py-0.5">
-              <Tag className="h-3 w-3 shrink-0" />
-              Tag folders to track progress
-            </div>
-          )}
-        </div>
-      ) : null;
+      const progressBar = null; // rendered above scroll area now
 
       return filesFetching && !filesLoading ? (
         <div className="p-2 space-y-1">
@@ -2481,6 +2455,50 @@ export default function MaterialsTab({
           onViewModeChange={setViewMode}
           onUpload={() => uploadInputRef.current?.click()}
         />
+        {/* ── progress strip (teaching tab only) ─────────────────── */}
+        {activeTab === 'teaching' && allTeachingNodes.some(n => n.type === 'file') && (
+          <div className="px-3 py-2 border-b border-border shrink-0">
+            {tagProgress && tagProgress.totalTagged > 0 ? (
+              <>
+                {/* per-tag chips row */}
+                <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap mb-1.5">
+                  {tagProgress.perTag.map(({ tagName, color, completed, total }) => (
+                    <div key={tagName} className="flex items-center gap-1 min-w-0">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                      <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{tagName}</span>
+                      <span className="text-[10px] font-semibold tabular-nums text-foreground">{completed}/{total}</span>
+                    </div>
+                  ))}
+                  <span className="ml-auto text-[10px] tabular-nums text-muted-foreground shrink-0">
+                    {tagProgress.completedTagged}/{tagProgress.totalTagged}
+                    <span className="text-muted-foreground/60"> ({tagProgress.totalPct}%)</span>
+                  </span>
+                </div>
+                {/* segmented total bar */}
+                <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-muted gap-px">
+                  {tagProgress.perTag.map(({ tagName, color, pct, total }) => (
+                    <div
+                      key={tagName}
+                      className="relative overflow-hidden rounded-full"
+                      style={{ flex: total }}
+                    >
+                      <div className="absolute inset-0 rounded-full bg-muted" />
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                        style={{ width: `${pct}%`, backgroundColor: color }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 italic">
+                <Tag className="h-3 w-3 shrink-0" />
+                Tag folders to track progress
+              </div>
+            )}
+          </div>
+        )}
         {/* scroll area with pb for action bar */}
         <div className="flex-1 relative overflow-hidden">
           <ScrollArea className="h-full">
