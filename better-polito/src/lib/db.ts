@@ -13,6 +13,12 @@ import type {
   GifCacheEntry,
 } from '@/types';
 
+export interface CourseProgress {
+  courseId: string;
+  completedFileIds: string[];
+  folderTags: Record<string, 'lecture' | 'practice'>;
+}
+
 class StudyBuddyDB extends Dexie {
   courses!: Table<Course>;
   folders!: Table<Folder>;
@@ -25,6 +31,7 @@ class StudyBuddyDB extends Dexie {
   settings!: Table<AppSettings>;
   pageCache!: Table<PageCache>;
   gifCache!: Table<GifCacheEntry>;
+  courseProgress!: Table<CourseProgress>;
 
   constructor() {
     super('StudyBuddyDB');
@@ -200,6 +207,42 @@ class StudyBuddyDB extends Dexie {
           await tx.table('chatMessages').update(msg.id, { conversationId: convId });
         }
       }
+    });
+
+    // Version 9: Add courseProgress table for per-file completion and folder tags
+    this.version(9).stores({
+      courses: 'id, subject, examDate',
+      folders: 'id, courseId, parentId',
+      materials: 'id, courseId, folderId, type',
+      chatMessages: 'id, courseId, conversationId, timestamp',
+      chatAttachments: 'id, messageId, materialId',
+      conversations: 'id, courseId, updatedAt',
+      mockExams: 'id, courseId',
+      examAttempts: 'id, examId, courseId',
+      settings: 'id',
+      pageCache: 'id, materialId, pageNumber',
+      gifCache: 'id, giphyId, mood, personality, cachedAt',
+      courseProgress: 'courseId',
+    }).upgrade(async tx => {
+      // Migrate existing localStorage progress data if present
+      try {
+        const raw = localStorage.getItem('better-polito:progress');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const state = parsed?.state ?? parsed;
+          const completedFiles: Record<string, string[]> = state?.completedFiles ?? {};
+          const folderTags: Record<string, Record<string, 'lecture' | 'practice'>> = state?.folderTags ?? {};
+          const courseIds = new Set([...Object.keys(completedFiles), ...Object.keys(folderTags)]);
+          for (const courseId of courseIds) {
+            await tx.table('courseProgress').put({
+              courseId,
+              completedFileIds: completedFiles[courseId] ?? [],
+              folderTags: folderTags[courseId] ?? {},
+            });
+          }
+          localStorage.removeItem('better-polito:progress');
+        }
+      } catch { /* ignore migration errors */ }
     });
   }
 

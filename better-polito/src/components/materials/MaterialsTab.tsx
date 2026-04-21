@@ -17,6 +17,7 @@ import {
   Package, Monitor, ExternalLink, X, CheckSquare2, Square,
   LayoutGrid, List, ArrowUpDown, BookOpen, Copy, Check,
   HardDrive, Upload, Trash2, MoreVertical,
+  CheckCircle2, Circle, BookMarked, Dumbbell, Tag,
 } from 'lucide-react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
@@ -27,6 +28,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { useMaterialStore } from '@/stores/materialStore';
 import type { Material, Folder as FolderType } from '@/types';
+import { useProgressStore, type FolderTag } from '@/lib/stores/progressStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -799,13 +801,21 @@ function MediaPreview({ file, onClose }: { file: SelectedFile; courseId: string;
   );
 }
 
+/* ─── folder tag badge ────────────────────────────────────────────── */
+const TAG_CONFIG: Record<FolderTag, { label: string; className: string }> = {
+  lecture:  { label: 'Lecture',  className: 'bg-blue-500/15 text-blue-400' },
+  practice: { label: 'Practice', className: 'bg-amber-500/15 text-amber-400' },
+};
+
 /* ─── tree node (teaching material) ──────────────────────────────── */
 function TreeNode({
+  courseId,
   item, depth, expandedFolders, onToggleFolder, selectedFileId, onSelectFile,
   selection, anySelected, onToggleSelect,
   folderSelectionState,
   folderFileCounts,
 }: {
+  courseId: string;
   item: ApiItem; depth: number; expandedFolders: Set<string>;
   onToggleFolder: (id: string) => void; selectedFileId: string | null;
   onSelectFile: (item: ApiItem, e: React.MouseEvent) => void;
@@ -815,34 +825,68 @@ function TreeNode({
   folderFileCounts: Map<string, number>;
 }) {
   const indent = depth * 12;
+  const { toggleFileComplete, isFileComplete, getFolderTag, setFolderTag } = useProgressStore();
 
   if (item.type === 'directory') {
     const isExpanded = expandedFolders.has(item.id);
     const folderState = folderSelectionState.get(item.id) ?? { checked: false, indeterminate: false };
     const children = item.files ?? [];
+    const tag = getFolderTag(courseId, item.id);
+    const tagCfg = tag ? TAG_CONFIG[tag] : null;
     return (
       <div>
-        <button onClick={() => onToggleFolder(item.id)} style={{ paddingLeft: `${8 + indent}px` }}
-          className="w-full flex items-center gap-1.5 pr-2.5 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left group">
+        <div style={{ paddingLeft: `${8 + indent}px` }} className="group flex items-center gap-1.5 pr-1 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors">
           <RowCheckbox
             checked={folderState.checked}
             indeterminate={folderState.indeterminate}
             anySelected={anySelected}
             onClick={(e) => { e.stopPropagation(); onToggleSelect(item.id, e.shiftKey); }}
           />
-          <span className="shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
-            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </span>
-          {isExpanded ? <FolderOpen className="h-4 w-4 shrink-0 text-primary" /> : <Folder className="h-4 w-4 shrink-0 text-primary fill-primary/20" />}
-          <span className="truncate flex-1 font-medium">{item.name}</span>
-          {children.length > 0 && <span className="text-[10px] text-muted-foreground/40 shrink-0">{children.length} Items</span>}
-        </button>
+          <button onClick={() => onToggleFolder(item.id)} className="flex-1 flex items-center gap-1.5 text-left min-w-0">
+            <span className="shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">
+              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </span>
+            {isExpanded ? <FolderOpen className="h-4 w-4 shrink-0 text-primary" /> : <Folder className="h-4 w-4 shrink-0 text-primary fill-primary/20" />}
+            <span className="truncate flex-1 font-medium min-w-0">{item.name}</span>
+            {tagCfg && (
+              <span className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${tagCfg.className}`}>{tagCfg.label}</span>
+            )}
+            {!tagCfg && children.length > 0 && <span className="text-[10px] text-muted-foreground/40 shrink-0">{children.length}</span>}
+          </button>
+          {/* folder tag menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={e => e.stopPropagation()}
+                className="h-5 w-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                <Tag className="h-3 w-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => setFolderTag(courseId, item.id, 'lecture')} className={tag === 'lecture' ? 'text-blue-400' : ''}>
+                <BookMarked className="h-4 w-4 mr-2 text-blue-400" /> Tag as Lecture
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFolderTag(courseId, item.id, 'practice')} className={tag === 'practice' ? 'text-amber-400' : ''}>
+                <Dumbbell className="h-4 w-4 mr-2 text-amber-400" /> Tag as Practice
+              </DropdownMenuItem>
+              {tag && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setFolderTag(courseId, item.id, null)} className="text-muted-foreground">
+                    <X className="h-4 w-4 mr-2" /> Remove tag
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         {isExpanded && (
           <div>
             {children.length === 0
               ? <div style={{ paddingLeft: `${20 + indent}px` }} className="py-1.5 pr-2"><span className="text-xs text-muted-foreground/40 italic">Empty</span></div>
               : children.map(child => (
-                <TreeNode key={child.id} item={child} depth={depth + 1}
+                <TreeNode key={child.id} courseId={courseId} item={child} depth={depth + 1}
                   expandedFolders={expandedFolders} onToggleFolder={onToggleFolder}
                   selectedFileId={selectedFileId} onSelectFile={onSelectFile}
                   selection={selection} anySelected={anySelected} onToggleSelect={onToggleSelect}
@@ -858,22 +902,30 @@ function TreeNode({
 
   const isSelected = selectedFileId === item.id;
   const isChecked = selection.has(item.id);
+  const isDone = isFileComplete(courseId, item.id);
   return (
-    <button
-      onClick={(e) => onSelectFile(item, e)}
+    <div
       style={{ paddingLeft: `${8 + indent}px` }}
-      className={`group w-full flex items-center gap-2 pr-2.5 py-2 rounded-md text-sm transition-colors text-left ${isChecked ? 'bg-primary/10 text-foreground' : isSelected ? 'bg-muted/80 text-foreground' : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground'
-        }`}
+      className={`group flex items-center gap-2 pr-1.5 py-1.5 rounded-md text-sm transition-colors ${isChecked ? 'bg-primary/10 text-foreground' : isSelected ? 'bg-muted/80 text-foreground' : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground'}`}
     >
       <RowCheckbox
         checked={isChecked}
         anySelected={anySelected}
         onClick={(e) => { e.stopPropagation(); onToggleSelect(item.id, e.shiftKey); }}
       />
-      <FileIcon mimeType={item.mimeType} name={item.name} />
-      <span className="truncate flex-1 min-w-0">{item.name}</span>
-      {item.sizeInKiloBytes ? <span className="text-[10px] text-muted-foreground/40 tabular-nums shrink-0">{formatBytes(item.sizeInKiloBytes)}</span> : null}
-    </button>
+      <button onClick={(e) => onSelectFile(item, e)} className="flex-1 flex items-center gap-2 min-w-0 text-left">
+        <FileIcon mimeType={item.mimeType} name={item.name} />
+        <span className={`truncate flex-1 min-w-0 ${isDone ? 'line-through opacity-50' : ''}`}>{item.name}</span>
+        {item.sizeInKiloBytes ? <span className="text-[10px] text-muted-foreground/40 tabular-nums shrink-0">{formatBytes(item.sizeInKiloBytes)}</span> : null}
+      </button>
+      <button
+        onClick={e => { e.stopPropagation(); toggleFileComplete(courseId, item.id); }}
+        title={isDone ? 'Mark incomplete' : 'Mark complete'}
+        className={`shrink-0 transition-all ${isDone ? 'opacity-100 text-green-500' : 'opacity-0 group-hover:opacity-60 text-muted-foreground hover:!opacity-100 hover:text-green-500'}`}
+      >
+        {isDone ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
 const TAB_LABELS: Record<MaterialsActiveTab, string> = {
@@ -1095,6 +1147,11 @@ export default function MaterialsTab({
 
   // ── Uploads (My Files) tab ───────────────────────────────────────
   const { materials, folders: localFolders, fetchMaterials, fetchFolders, createMaterial, createFolder, deleteMaterial, deleteFolder } = useMaterialStore();
+
+  // Load progress from IndexedDB for this course
+  const { loadCourse, isFileComplete: isFileCompleteInStore } = useProgressStore();
+  useEffect(() => { loadCourse(courseId); }, [courseId, loadCourse]);
+
   const [selectedLocalMaterial, setSelectedLocalMaterial] = useState<Material | null>(null);
   const [localFolderId, setLocalFolderId] = useState<string | null>(null);
   const [localSelection, setLocalSelection] = useState<Set<string>>(new Set());
@@ -1850,6 +1907,23 @@ export default function MaterialsTab({
     }
 
     if (activeTab === 'teaching') {
+      // progress bar
+      const allFileIds = allTeachingNodes.filter(n => n.type === 'file').map(n => n.id);
+      const completedCount = allFileIds.filter(id => isFileCompleteInStore(courseId, id)).length;
+      const progressPct = allFileIds.length > 0 ? Math.round((completedCount / allFileIds.length) * 100) : 0;
+
+      const progressBar = allFileIds.length > 0 ? (
+        <div className="px-3 py-2 border-b border-border bg-card/80 shrink-0">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] text-muted-foreground font-medium">Progress</span>
+            <span className="text-[10px] font-semibold tabular-nums text-foreground">{completedCount}/{allFileIds.length} <span className="text-muted-foreground font-normal">({progressPct}%)</span></span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full bg-green-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+      ) : null;
+
       return filesFetching && !filesLoading ? (
         <div className="p-2 space-y-1">
           {Array.from({ length: 7 }).map((_, i) => (
@@ -1861,9 +1935,10 @@ export default function MaterialsTab({
           <FolderOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground/20" />
           <p className="text-xs text-muted-foreground">No files available</p>
         </div>
-      ) : viewMode === 'list' ? sortedRootItems.map((item) => (
+      ) : viewMode === 'list' ? <>{progressBar}{sortedRootItems.map((item) => (
         <TreeNode
           key={item.id}
+          courseId={courseId}
           item={item}
           depth={0}
           expandedFolders={expandedFolders}
@@ -1899,7 +1974,7 @@ export default function MaterialsTab({
           folderSelectionState={folderSelectionState}
           folderFileCounts={folderFileCounts}
         />
-      )) : (
+      ))}</> : (
         <div className="w-full min-w-0 overflow-x-hidden p-1.5 space-y-2">
           <div className="flex w-full min-w-0 items-center gap-1 rounded-md border border-border bg-muted/30 px-1 py-0.5">
             <button
