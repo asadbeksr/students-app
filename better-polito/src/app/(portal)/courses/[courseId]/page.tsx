@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MaterialsTab from '@/components/materials/MaterialsTab';
-import type { TagProgressSummary } from '@/lib/stores/progressStore';
+import { useProgressStore } from '@/lib/stores/progressStore';
 import { useGetCourse, useGetCourseGuide, useGetCourseNotices, useGetCourses } from '@/lib/queries/courseHooks';
 import { useGetNotifications, useMarkNotificationAsRead } from '@/lib/queries/studentHooks';
 import { getApiClient } from '@/lib/api/client';
@@ -1100,8 +1100,6 @@ export default function CourseDetailPage() {
     updateCourseState(courseId, { chat: next });
   }, [courseId, updateCourseState]);
 
-  const [tagProgress, setTagProgress] = useState<TagProgressSummary | null>(null);
-
   useEffect(() => {
     const onExternalToggle = () => toggleChat(!courseState.chat);
     window.addEventListener('course-ai-assistant-toggle', onExternalToggle);
@@ -1223,6 +1221,7 @@ export default function CourseDetailPage() {
 
   const selectedApiYear = selectedYearOption?.apiYear ?? toApiYear(selectedYearOption?.label ?? '');
   const selectedEditionCourseId = selectedYearOption?.courseId ?? id;
+  const tagProgress = useProgressStore(s => s._tagProgress[String(selectedEditionCourseId)] ?? null);
 
   const courseSwitchOptions = useMemo<CourseSwitchOption[]>(() => {
     const options = new Map<number, CourseSwitchOption>();
@@ -1464,7 +1463,6 @@ export default function CourseDetailPage() {
               onGridFolderStackChange={onGridFolderStackChange}
               initialPreviewId={initialPreviewId}
               onPreviewIdChange={onPreviewIdChange}
-              onTagProgressChange={setTagProgress}
             />
           </ResizablePanel>
 

@@ -1232,7 +1232,6 @@ export default function MaterialsTab({
   onGridFolderStackChange,
   initialPreviewId = null,
   onPreviewIdChange,
-  onTagProgressChange,
 }: {
   courseId: string;
   year?: string;
@@ -1248,7 +1247,6 @@ export default function MaterialsTab({
   onGridFolderStackChange?: (stack: string[]) => void;
   initialPreviewId?: string | null;
   onPreviewIdChange?: (preview: { id: string; name: string; url: string } | null) => void;
-  onTagProgressChange?: (progress: TagProgressSummary | null) => void;
 }) {
   const [activeTab, setActiveTab] = useState<MaterialsActiveTab>(initialTab);
 
@@ -1331,7 +1329,7 @@ export default function MaterialsTab({
   const { materials, folders: localFolders, fetchMaterials, fetchFolders, createMaterial, createFolder, deleteMaterial, deleteFolder } = useMaterialStore();
 
   // Load progress from IndexedDB for this course
-  const { loadCourse, isFileComplete: isFileCompleteInStore, getFolderTag, getTagDefs, getTagColor } = useProgressStore();
+  const { loadCourse, isFileComplete: isFileCompleteInStore, getFolderTag, getTagDefs, getTagColor, setTagProgressSummary } = useProgressStore();
   // Subscribe to cache slice so progress re-renders when completion toggles
   const progressCacheForCourse = useProgressStore(s => s._cache[courseId]);
   useEffect(() => { loadCourse(courseId); }, [courseId, loadCourse]);
@@ -2109,7 +2107,7 @@ export default function MaterialsTab({
     return { totalTagged, completedTagged, totalPct, perTag };
   }, [progressCacheForCourse, allTeachingNodes, descendantFileIdsByFolder]);
 
-  useEffect(() => { onTagProgressChange?.(tagProgress); }, [tagProgress, onTagProgressChange]);
+  useEffect(() => { setTagProgressSummary(courseId, tagProgress); }, [courseId, tagProgress, setTagProgressSummary]);
 
   const renderSidebar = () => {
     if (sidebarLoading) {

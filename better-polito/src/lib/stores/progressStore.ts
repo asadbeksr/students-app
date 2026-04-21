@@ -41,6 +41,7 @@ interface CacheEntry {
 
 interface ProgressState {
   _cache: Record<string, CacheEntry>;
+  _tagProgress: Record<string, TagProgressSummary | null>;
 
   loadCourse: (courseId: string) => Promise<void>;
   toggleFileComplete: (courseId: string, fileId: string) => Promise<void>;
@@ -55,6 +56,8 @@ interface ProgressState {
   upsertTagDef: (courseId: string, tagName: string, color: string) => Promise<void>;
   renameTag: (courseId: string, oldName: string, newName: string) => Promise<void>;
   deleteTag: (courseId: string, tagName: string) => Promise<void>;
+
+  setTagProgressSummary: (courseId: string, summary: TagProgressSummary | null) => void;
 }
 
 async function getOrCreate(courseId: string) {
@@ -69,6 +72,7 @@ async function getOrCreate(courseId: string) {
 
 export const useProgressStore = create<ProgressState>((set, get) => ({
   _cache: {},
+  _tagProgress: {},
 
   loadCourse: async (courseId) => {
     if (get()._cache[courseId]) return;
@@ -174,5 +178,21 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     }
     await db.courseProgress.put({ ...row, tagDefs, folderTags });
     set(s => ({ _cache: { ...s._cache, [courseId]: { ...s._cache[courseId], tagDefs, folderTags } } }));
+  },
+
+  setTagProgressSummary: (courseId, summary) => {
+    const prev = get()._tagProgress[courseId];
+    if (prev === summary) return;
+    if (prev && summary &&
+      prev.totalTagged === summary.totalTagged &&
+      prev.completedTagged === summary.completedTagged &&
+      prev.totalPct === summary.totalPct &&
+      prev.perTag.length === summary.perTag.length &&
+      prev.perTag.every((t, i) => {
+        const s = summary.perTag[i];
+        return t.tagName === s.tagName && t.color === s.color && t.total === s.total && t.completed === s.completed;
+      })
+    ) return;
+    set(s => ({ _tagProgress: { ...s._tagProgress, [courseId]: summary } }));
   },
 }));
