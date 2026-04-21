@@ -16,7 +16,8 @@ import type {
 export interface CourseProgress {
   courseId: string;
   completedFileIds: string[];
-  folderTags: Record<string, 'lecture' | 'practice'>;
+  folderTags: Record<string, string>; // folderId -> tag name
+  tagDefs?: Record<string, string>;   // tag name -> hex color
 }
 
 class StudyBuddyDB extends Dexie {

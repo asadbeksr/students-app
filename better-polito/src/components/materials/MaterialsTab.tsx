@@ -17,7 +17,7 @@ import {
   Package, Monitor, ExternalLink, X, CheckSquare2, Square,
   LayoutGrid, List, ArrowUpDown, BookOpen, Copy, Check,
   HardDrive, Upload, Trash2, MoreVertical,
-  CheckCircle2, Circle, BookMarked, Dumbbell, Tag,
+  CheckCircle2, Circle, Tag, Pencil, Plus,
 } from 'lucide-react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
@@ -28,7 +28,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { useMaterialStore } from '@/stores/materialStore';
 import type { Material, Folder as FolderType } from '@/types';
-import { useProgressStore, type FolderTag } from '@/lib/stores/progressStore';
+import { useProgressStore, TAG_PALETTE } from '@/lib/stores/progressStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -801,11 +801,211 @@ function MediaPreview({ file, onClose }: { file: SelectedFile; courseId: string;
   );
 }
 
-/* ─── folder tag badge ────────────────────────────────────────────── */
-const TAG_CONFIG: Record<FolderTag, { label: string; className: string }> = {
-  lecture:  { label: 'Lecture',  className: 'bg-blue-500/15 text-blue-400' },
-  practice: { label: 'Practice', className: 'bg-amber-500/15 text-amber-400' },
-};
+/* ─── tag menu (folder tag management) ───────────────────────────── */
+function TagMenu({ courseId, folderId }: { courseId: string; folderId: string }) {
+  const { getFolderTag, setFolderTag, getTagDefs, upsertTagDef, renameTag, deleteTag, createTag } = useProgressStore();
+  const appliedTag = getFolderTag(courseId, folderId);
+  const tagDefs = getTagDefs(courseId);
+
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState(TAG_PALETTE[0]);
+  const [editingTag, setEditingTag] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
+  const reset = () => { setCreating(false); setEditingTag(null); setNewName(''); };
+
+  const handleCreate = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    await createTag(courseId, name, newColor);
+    await setFolderTag(courseId, folderId, name);
+    reset();
+    setOpen(false);
+  };
+
+  const handleRename = async (oldTag: string) => {
+    const name = editingName.trim();
+    if (!name || name === oldTag) { setEditingTag(null); return; }
+    await renameTag(courseId, oldTag, name);
+    setEditingTag(null);
+  };
+
+  const tagEntries = Object.entries(tagDefs);
+
+  return (
+    <DropdownMenu open={open} onOpenChange={(o) => {
+      if (!o && (creating || editingTag)) return;
+      setOpen(o);
+      if (!o) reset();
+    }}>
+      <DropdownMenuTrigger asChild>
+        <button
+          onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+          className="h-5 w-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <Tag className="h-3 w-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-52 p-1"
+        onCloseAutoFocus={e => e.preventDefault()}
+        onClick={e => e.stopPropagation()}
+      >
+        {tagEntries.length > 0 && (
+          <>
+            {tagEntries.map(([name, color]) => (
+              <div key={name} className="group/tag flex items-center gap-1 px-2 py-1 rounded-md hover:bg-muted/60 cursor-pointer">
+                {editingTag === name ? (
+                  <div className="flex items-center gap-1 flex-1" onPointerDown={e => e.stopPropagation()}>
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                    <input
+                      value={editingName}
+                      onChange={e => setEditingName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { e.preventDefault(); handleRename(name); }
+                        if (e.key === 'Escape') setEditingTag(null);
+                        e.stopPropagation();
+                      }}
+                      onClick={e => e.stopPropagation()}
+                      className="flex-1 min-w-0 bg-transparent border-b border-primary text-xs outline-none"
+                      autoFocus
+                    />
+                    <button
+                      onClick={e => { e.stopPropagation(); handleRename(name); }}
+                      className="text-primary text-[10px] shrink-0"
+                    >
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      className="flex-1 flex items-center gap-1.5 text-xs text-left min-w-0"
+                      onClick={async () => {
+                        await setFolderTag(courseId, folderId, appliedTag === name ? null : name);
+                        setOpen(false);
+                      }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                      <span className="truncate flex-1">{name}</span>
+                      {appliedTag === name && <Check className="h-3 w-3 shrink-0 text-primary" />}
+                    </button>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover/tag:opacity-100">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setEditingTag(name);
+                          setEditingName(name);
+                        }}
+                        className="h-4 w-4 flex items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                        title="Rename"
+                      >
+                        <Pencil className="h-2.5 w-2.5" />
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          // update color via color picker inline
+                          const nextIdx = (TAG_PALETTE.indexOf(color) + 1) % TAG_PALETTE.length;
+                          upsertTagDef(courseId, name, TAG_PALETTE[nextIdx]);
+                        }}
+                        className="h-4 w-4 flex items-center justify-center rounded"
+                        title="Change color"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full border border-background/40" style={{ backgroundColor: color }} />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteTag(courseId, name); }}
+                        className="h-4 w-4 flex items-center justify-center rounded text-destructive/60 hover:text-destructive"
+                        title="Delete tag"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        {creating ? (
+          <div className="px-2 py-1.5 space-y-1.5" onPointerDown={e => e.stopPropagation()}>
+            <input
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); handleCreate(); }
+                if (e.key === 'Escape') { e.preventDefault(); reset(); }
+                e.stopPropagation();
+              }}
+              onClick={e => e.stopPropagation()}
+              placeholder="Tag name…"
+              className="w-full bg-muted/60 rounded px-2 py-1 text-xs outline-none border border-border focus:border-primary"
+              autoFocus
+            />
+            <div className="flex gap-1 flex-wrap">
+              {TAG_PALETTE.map(c => (
+                <button
+                  key={c}
+                  onClick={e => { e.stopPropagation(); setNewColor(c); }}
+                  className="w-4 h-4 rounded-full transition-all"
+                  style={{
+                    backgroundColor: c,
+                    outline: newColor === c ? `2px solid ${c}` : undefined,
+                    outlineOffset: newColor === c ? '2px' : undefined,
+                  }}
+                />
+              ))}
+            </div>
+            <div className="flex gap-1">
+              <button
+                onClick={e => { e.stopPropagation(); handleCreate(); }}
+                className="flex-1 text-[11px] bg-primary text-primary-foreground rounded px-2 py-0.5"
+              >
+                Create
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); reset(); }}
+                className="text-[11px] text-muted-foreground px-2 py-0.5 rounded hover:bg-muted/60"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted/60 cursor-pointer text-xs text-muted-foreground hover:text-foreground"
+            onClick={e => {
+              e.stopPropagation();
+              setNewColor(TAG_PALETTE[tagEntries.length % TAG_PALETTE.length]);
+              setCreating(true);
+            }}
+          >
+            <Plus className="h-3 w-3" />
+            New tag…
+          </div>
+        )}
+
+        {appliedTag && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => { setFolderTag(courseId, folderId, null); setOpen(false); }}
+              className="text-muted-foreground text-xs"
+            >
+              <X className="h-3.5 w-3.5 mr-2" /> Remove tag
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /* ─── tree node (teaching material) ──────────────────────────────── */
 function TreeNode({
@@ -825,14 +1025,14 @@ function TreeNode({
   folderFileCounts: Map<string, number>;
 }) {
   const indent = depth * 12;
-  const { toggleFileComplete, isFileComplete, getFolderTag, setFolderTag } = useProgressStore();
+  const { toggleFileComplete, isFileComplete, getFolderTag, getTagColor } = useProgressStore();
 
   if (item.type === 'directory') {
     const isExpanded = expandedFolders.has(item.id);
     const folderState = folderSelectionState.get(item.id) ?? { checked: false, indeterminate: false };
     const children = item.files ?? [];
     const tag = getFolderTag(courseId, item.id);
-    const tagCfg = tag ? TAG_CONFIG[tag] : null;
+    const tagColor = tag ? getTagColor(courseId, tag) : null;
     return (
       <div>
         <div style={{ paddingLeft: `${8 + indent}px` }} className="group flex items-center gap-1.5 pr-1 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors">
@@ -848,38 +1048,18 @@ function TreeNode({
             </span>
             {isExpanded ? <FolderOpen className="h-4 w-4 shrink-0 text-primary" /> : <Folder className="h-4 w-4 shrink-0 text-primary fill-primary/20" />}
             <span className="truncate flex-1 font-medium min-w-0">{item.name}</span>
-            {tagCfg && (
-              <span className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${tagCfg.className}`}>{tagCfg.label}</span>
-            )}
-            {!tagCfg && children.length > 0 && <span className="text-[10px] text-muted-foreground/40 shrink-0">{children.length}</span>}
-          </button>
-          {/* folder tag menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                onClick={e => e.stopPropagation()}
-                className="h-5 w-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            {tagColor && tag ? (
+              <span
+                className="shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{ backgroundColor: `${tagColor}26`, color: tagColor }}
               >
-                <Tag className="h-3 w-3" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={() => setFolderTag(courseId, item.id, 'lecture')} className={tag === 'lecture' ? 'text-blue-400' : ''}>
-                <BookMarked className="h-4 w-4 mr-2 text-blue-400" /> Tag as Lecture
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFolderTag(courseId, item.id, 'practice')} className={tag === 'practice' ? 'text-amber-400' : ''}>
-                <Dumbbell className="h-4 w-4 mr-2 text-amber-400" /> Tag as Practice
-              </DropdownMenuItem>
-              {tag && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setFolderTag(courseId, item.id, null)} className="text-muted-foreground">
-                    <X className="h-4 w-4 mr-2" /> Remove tag
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {tag}
+              </span>
+            ) : (
+              children.length > 0 && <span className="text-[10px] text-muted-foreground/40 shrink-0">{children.length}</span>
+            )}
+          </button>
+          <TagMenu courseId={courseId} folderId={item.id} />
         </div>
         {isExpanded && (
           <div>
@@ -1149,7 +1329,7 @@ export default function MaterialsTab({
   const { materials, folders: localFolders, fetchMaterials, fetchFolders, createMaterial, createFolder, deleteMaterial, deleteFolder } = useMaterialStore();
 
   // Load progress from IndexedDB for this course
-  const { loadCourse, isFileComplete: isFileCompleteInStore } = useProgressStore();
+  const { loadCourse, isFileComplete: isFileCompleteInStore, getFolderTag, getTagDefs, getTagColor } = useProgressStore();
   useEffect(() => { loadCourse(courseId); }, [courseId, loadCourse]);
 
   const [selectedLocalMaterial, setSelectedLocalMaterial] = useState<Material | null>(null);
@@ -1907,20 +2087,63 @@ export default function MaterialsTab({
     }
 
     if (activeTab === 'teaching') {
-      // progress bar
-      const allFileIds = allTeachingNodes.filter(n => n.type === 'file').map(n => n.id);
-      const completedCount = allFileIds.filter(id => isFileCompleteInStore(courseId, id)).length;
-      const progressPct = allFileIds.length > 0 ? Math.round((completedCount / allFileIds.length) * 100) : 0;
+      // Build per-tag progress (only tagged folders count)
+      const tagDefs = getTagDefs(courseId);
+      const perTagFiles: Record<string, Set<string>> = {};
+      for (const node of allTeachingNodes) {
+        if (node.type !== 'directory') continue;
+        const tag = getFolderTag(courseId, node.id);
+        if (!tag) continue;
+        const fileIds = descendantFileIdsByFolder.get(node.id) ?? [];
+        if (!perTagFiles[tag]) perTagFiles[tag] = new Set();
+        fileIds.forEach(id => perTagFiles[tag].add(id));
+      }
+      const allTaggedIds = new Set([...Object.values(perTagFiles)].flatMap(s => [...s]));
+      const totalTagged = allTaggedIds.size;
+      const completedTagged = [...allTaggedIds].filter(id => isFileCompleteInStore(courseId, id)).length;
+      const totalPct = totalTagged > 0 ? Math.round((completedTagged / totalTagged) * 100) : 0;
 
-      const progressBar = allFileIds.length > 0 ? (
+      const hasAnyFiles = allTeachingNodes.some(n => n.type === 'file');
+      const progressBar = hasAnyFiles ? (
         <div className="px-3 py-2 border-b border-border bg-card/80 shrink-0">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-muted-foreground font-medium">Progress</span>
-            <span className="text-[10px] font-semibold tabular-nums text-foreground">{completedCount}/{allFileIds.length} <span className="text-muted-foreground font-normal">({progressPct}%)</span></span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-green-500 transition-all duration-300" style={{ width: `${progressPct}%` }} />
-          </div>
+          {totalTagged > 0 ? (
+            <>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-muted-foreground font-medium">Progress</span>
+                <span className="text-[10px] font-semibold tabular-nums text-foreground">
+                  {completedTagged}/{totalTagged} <span className="text-muted-foreground font-normal">({totalPct}%)</span>
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-2.5">
+                <div className="h-full rounded-full transition-all duration-300 bg-green-500" style={{ width: `${totalPct}%` }} />
+              </div>
+              {Object.entries(perTagFiles).map(([tagName, fileIds]) => {
+                const color = getTagColor(courseId, tagName) ?? tagDefs[tagName] ?? '#6b7280';
+                const total = fileIds.size;
+                const completed = [...fileIds].filter(id => isFileCompleteInStore(courseId, id)).length;
+                const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                return (
+                  <div key={tagName} className="mb-1.5 last:mb-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-[10px] text-muted-foreground">{tagName}</span>
+                      </div>
+                      <span className="text-[10px] tabular-nums text-muted-foreground">{completed}/{total}</span>
+                    </div>
+                    <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: color }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50 italic py-0.5">
+              <Tag className="h-3 w-3 shrink-0" />
+              Tag folders to track progress
+            </div>
+          )}
         </div>
       ) : null;
 
