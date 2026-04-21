@@ -1,0 +1,192 @@
+
+<style>
+.paper { background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); padding: 28px 32px; font-family: var(--font-sans); }
+.prob { font-size: 18px; font-weight: 500; color: var(--color-text-primary); padding-bottom: 16px; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 22px; }
+.sec { font-size: 11px; font-weight: 500; letter-spacing: 0.07em; color: var(--color-text-tertiary); margin: 22px 0 10px; }
+.row { display: flex; align-items: baseline; padding: 6px 0; gap: 0; }
+.n { font-size: 11px; color: var(--color-text-tertiary); width: 26px; flex-shrink: 0; }
+.m { font-size: 16px; color: var(--color-text-primary); flex: 1; line-height: 1.6; }
+.c { font-size: 12px; color: var(--color-text-secondary); font-style: italic; margin-left: 12px; flex-shrink: 0; max-width: 220px; }
+.dash { border: none; border-top: 0.5px dashed var(--color-border-tertiary); margin: 14px 0; }
+.hl-warn { background: var(--color-background-warning); border-radius: 6px; padding: 7px 10px; margin: 4px 0; }
+.hl-warn .m { color: var(--color-text-warning); font-weight: 500; }
+.hl-warn .c { color: var(--color-text-warning); }
+.hl-info { background: var(--color-background-info); border-radius: 6px; padding: 7px 10px; margin: 4px 0; }
+.hl-info .m { color: var(--color-text-info); font-weight: 500; }
+.hl-info .c { color: var(--color-text-info); }
+.box-ans { border: 1.5px solid var(--color-border-secondary); border-radius: 10px; padding: 16px 20px; margin-top: 20px; display: flex; align-items: center; gap: 14px; }
+.brace { font-size: 42px; color: var(--color-text-primary); line-height: 1; }
+.bl { font-size: 17px; font-weight: 500; color: var(--color-text-primary); line-height: 1.9; }
+</style>
+
+<h2 class="sr-only">Complete step by step solution from zero to the final answer</h2>
+
+<div class="paper">
+
+  <div class="prob">Solve: &nbsp; log<sub>1/2</sub>(x²) &ge; x &minus; 1</div>
+
+  <!-- STEP 1 -->
+  <div class="sec">Step 1 — domain: when is the log defined?</div>
+
+  <div class="row">
+    <span class="n">1.</span>
+    <span class="m">log is only defined when its argument &gt; 0</span>
+  </div>
+  <div class="row">
+    <span class="n">2.</span>
+    <span class="m">the argument here is x²</span>
+  </div>
+  <div class="row">
+    <span class="n">3.</span>
+    <span class="m">so we need: &nbsp; x² &gt; 0</span>
+  </div>
+  <div class="row">
+    <span class="n">4.</span>
+    <span class="m">x² = 0 &nbsp; only when &nbsp; x = 0</span>
+    <span class="c">for any other x, x² is always positive</span>
+  </div>
+  <div class="row hl-warn">
+    <span class="n">5.</span>
+    <span class="m">domain condition: &nbsp; x &ne; 0</span>
+    <span class="c">this is line 2 of our final answer</span>
+  </div>
+
+  <div class="dash"></div>
+
+  <!-- STEP 2 -->
+  <div class="sec">Step 2 — remove the log using the definition</div>
+
+  <div class="row">
+    <span class="n">6.</span>
+    <span class="m">log<sub>b</sub>(A) &ge; C &nbsp; means &nbsp; A compared to b<sup>C</sup></span>
+    <span class="c">definition of logarithm</span>
+  </div>
+  <div class="row">
+    <span class="n">7.</span>
+    <span class="m">here: b = 1/2, &nbsp; A = x², &nbsp; C = x&minus;1</span>
+  </div>
+  <div class="row">
+    <span class="n">8.</span>
+    <span class="m">so we compare: &nbsp; x² &nbsp; [?] &nbsp; (1/2)<sup>x&minus;1</sup></span>
+    <span class="c">direction decided in next step</span>
+  </div>
+
+  <div class="dash"></div>
+
+  <!-- STEP 3 -->
+  <div class="sec">Step 3 — decide the direction: does ≥ stay or flip?</div>
+
+  <div class="row">
+    <span class="n">9.</span>
+    <span class="m">the base is 1/2</span>
+  </div>
+  <div class="row">
+    <span class="n">10.</span>
+    <span class="m">1/2 &lt; 1</span>
+    <span class="c">this is the key fact</span>
+  </div>
+  <div class="row">
+    <span class="n">11.</span>
+    <span class="m">when base &lt; 1, the function is decreasing</span>
+    <span class="c">bigger input → smaller output</span>
+  </div>
+  <div class="row">
+    <span class="n">12.</span>
+    <span class="m">a decreasing function reverses the inequality sign</span>
+  </div>
+  <div class="row hl-warn">
+    <span class="n">13.</span>
+    <span class="m">&ge; &nbsp; becomes &nbsp; &le;</span>
+    <span class="c">the sign flips — this is the critical step</span>
+  </div>
+
+  <div class="dash"></div>
+
+  <!-- STEP 4 -->
+  <div class="sec">Step 4 — write the inequality after removing the log</div>
+
+  <div class="row">
+    <span class="n">14.</span>
+    <span class="m">x² &le; (1/2)<sup>x&minus;1</sup></span>
+    <span class="c">flipped sign from step 13</span>
+  </div>
+
+  <div class="dash"></div>
+
+  <!-- STEP 5 -->
+  <div class="sec">Step 5 — simplify (1/2)<sup>x&minus;1</sup> into a power of 2</div>
+
+  <div class="row">
+    <span class="n">15.</span>
+    <span class="m">1/2 = 2<sup>&minus;1</sup></span>
+    <span class="c">basic fact: 1/2 is the same as 2 to the power −1</span>
+  </div>
+  <div class="row">
+    <span class="n">16.</span>
+    <span class="m">(1/2)<sup>x&minus;1</sup> = (2<sup>&minus;1</sup>)<sup>x&minus;1</sup></span>
+    <span class="c">substitute step 15 inside</span>
+  </div>
+  <div class="row">
+    <span class="n">17.</span>
+    <span class="m">= 2<sup>(&minus;1)&middot;(x&minus;1)</sup></span>
+    <span class="c">rule: (a<sup>m</sup>)<sup>n</sup> = a<sup>m&middot;n</sup></span>
+  </div>
+  <div class="row">
+    <span class="n">18.</span>
+    <span class="m">= 2<sup>&minus;(x&minus;1)</sup></span>
+    <span class="c">factor out the minus</span>
+  </div>
+  <div class="row">
+    <span class="n">19.</span>
+    <span class="m">= 2<sup>&minus;x+1</sup></span>
+    <span class="c">distribute: &minus;(x&minus;1) = &minus;x+1</span>
+  </div>
+  <div class="row hl-info">
+    <span class="n">20.</span>
+    <span class="m">= 2<sup>1&minus;x</sup></span>
+    <span class="c">just rewriting &minus;x+1 as 1&minus;x (same thing)</span>
+  </div>
+
+  <div class="dash"></div>
+
+  <!-- STEP 6 -->
+  <div class="sec">Step 6 — substitute back into the inequality</div>
+
+  <div class="row">
+    <span class="n">21.</span>
+    <span class="m">replace (1/2)<sup>x&minus;1</sup> with 2<sup>1&minus;x</sup></span>
+    <span class="c">from step 20</span>
+  </div>
+  <div class="row hl-info">
+    <span class="n">22.</span>
+    <span class="m">x² &le; 2<sup>1&minus;x</sup></span>
+    <span class="c">this is line 1 of our final answer</span>
+  </div>
+
+  <div class="dash"></div>
+
+  <!-- FINAL -->
+  <div class="sec">Final answer — combine both conditions</div>
+
+  <div class="row">
+    <span class="n">23.</span>
+    <span class="m">line 1 comes from step 22 (the inequality)</span>
+  </div>
+  <div class="row">
+    <span class="n">24.</span>
+    <span class="m">line 2 comes from step 5 (the domain)</span>
+  </div>
+  <div class="row">
+    <span class="n">25.</span>
+    <span class="m">both must hold at the same time</span>
+  </div>
+
+  <div class="box-ans">
+    <span class="brace">{</span>
+    <div>
+      <div class="bl">x² &le; 2<sup>1&minus;x</sup></div>
+      <div class="bl">x &ne; 0</div>
+    </div>
+  </div>
+
+</div>

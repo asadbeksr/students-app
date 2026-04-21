@@ -1,0 +1,164 @@
+
+<style>
+  .info-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:1rem; }
+  .info-card { background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 12px; }
+  .info-card .lbl { font-size:11px; color:var(--color-text-secondary); margin:0 0 2px; }
+  .info-card .val { font-size:16px; font-weight:500; color:var(--color-text-primary); margin:0; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--color-text-secondary); margin-top:10px; }
+  .legend span { display:flex; align-items:center; gap:5px; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .line-swatch { width:18px; height:3px; display:inline-block; border-radius:2px; flex-shrink:0; }
+</style>
+
+<h2 style="font-size:16px;font-weight:500;margin:0 0 1rem;color:var(--color-text-primary);">h(x) = 2 sin(πx − 3π) − 4 &nbsp;·&nbsp; full graph</h2>
+
+<div class="info-grid">
+  <div class="info-card"><p class="lbl">Amplitude</p><p class="val">2</p></div>
+  <div class="info-card"><p class="lbl">Period</p><p class="val">2</p></div>
+  <div class="info-card"><p class="lbl">Phase shift</p><p class="val">x = 3 →</p></div>
+  <div class="info-card"><p class="lbl">Midline</p><p class="val">y = −4</p></div>
+  <div class="info-card"><p class="lbl">Max</p><p class="val">y = −2</p></div>
+  <div class="info-card"><p class="lbl">Min</p><p class="val">y = −6</p></div>
+</div>
+
+<div style="position:relative;width:100%;height:400px;">
+  <canvas id="gc" role="img" aria-label="Full graph of h(x)=2sin(πx−3π)−4, a sine wave with midline y=-4, amplitude 2, period 2, shifted right to x=3">Full graph of h(x) = 2sin(πx − 3π) − 4</canvas>
+</div>
+
+<div class="legend">
+  <span><span class="line-swatch" style="background:#378ADD"></span>h(x)</span>
+  <span><span class="line-swatch" style="background:#D85A30;height:2px;border-top:2px dashed #D85A30;background:none"></span>midline y = −4</span>
+  <span><span class="dot" style="background:#1D9E75"></span>maximum (y = −2)</span>
+  <span><span class="dot" style="background:#D4537E"></span>minimum (y = −6)</span>
+  <span><span class="dot" style="background:#888780"></span>zero crossing</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const A = 2, B = Math.PI, C = 3 * Math.PI, D = -4;
+const period = 2;
+const phaseX = 3;
+
+const xMin = -3, xMax = 9;
+const steps = 800;
+const curveData = [];
+for (let i = 0; i <= steps; i++) {
+  const x = xMin + (xMax - xMin) * i / steps;
+  const y = A * Math.sin(B * x - C) + D;
+  curveData.push({ x: parseFloat(x.toFixed(4)), y: parseFloat(y.toFixed(4)) });
+}
+
+const midlineData = [{ x: xMin, y: D }, { x: xMax, y: D }];
+
+const maxPts = [], minPts = [], zeroPts = [];
+for (let k = -4; k <= 4; k++) {
+  const xZ = phaseX + k * period;
+  const xMax2 = phaseX + (k + 0.25) * period;
+  const xMin2 = phaseX + (k + 0.75) * period;
+  if (xZ >= xMin && xZ <= xMax) zeroPts.push({ x: parseFloat(xZ.toFixed(3)), y: D });
+  if (xMax2 >= xMin && xMax2 <= xMax) maxPts.push({ x: parseFloat(xMax2.toFixed(3)), y: D + Math.abs(A) });
+  if (xMin2 >= xMin && xMin2 <= xMax) minPts.push({ x: parseFloat(xMin2.toFixed(3)), y: D - Math.abs(A) });
+}
+
+new Chart(document.getElementById('gc'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      {
+        label: 'h(x)',
+        data: curveData,
+        borderColor: '#378ADD',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        tension: 0.4,
+        showLine: true,
+        fill: false
+      },
+      {
+        label: 'Midline',
+        data: midlineData,
+        borderColor: '#D85A30',
+        borderWidth: 1.5,
+        borderDash: [8, 5],
+        pointRadius: 0,
+        showLine: true,
+        fill: false
+      },
+      {
+        label: 'Max points',
+        data: maxPts,
+        backgroundColor: '#1D9E75',
+        borderColor: '#fff',
+        borderWidth: 1.5,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        showLine: false
+      },
+      {
+        label: 'Min points',
+        data: minPts,
+        backgroundColor: '#D4537E',
+        borderColor: '#fff',
+        borderWidth: 1.5,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        showLine: false
+      },
+      {
+        label: 'Zero crossings',
+        data: zeroPts,
+        backgroundColor: '#888780',
+        borderColor: '#fff',
+        borderWidth: 1.5,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        showLine: false
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 400 },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const ds = ctx.dataset.label;
+            return `${ds}: (${ctx.parsed.x.toFixed(2)}, ${ctx.parsed.y.toFixed(2)})`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        min: xMin,
+        max: xMax,
+        title: { display: true, text: 'x', color: '#888780', font: { size: 12 } },
+        grid: { color: 'rgba(128,128,128,0.12)' },
+        ticks: {
+          color: '#888780',
+          font: { size: 11 },
+          stepSize: 1,
+          autoSkip: false,
+          callback: v => Number.isInteger(v) ? v : ''
+        }
+      },
+      y: {
+        min: -8,
+        max: 2,
+        title: { display: true, text: 'h(x)', color: '#888780', font: { size: 12 } },
+        grid: { color: 'rgba(128,128,128,0.12)' },
+        ticks: {
+          color: '#888780',
+          font: { size: 11 },
+          stepSize: 1,
+          callback: v => Number.isInteger(v) ? v : ''
+        }
+      }
+    }
+  }
+});
+</script>

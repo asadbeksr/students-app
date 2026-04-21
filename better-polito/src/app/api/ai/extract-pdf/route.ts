@@ -6,6 +6,11 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth';
 import { NextResponse } from 'next/server';
 
+// Polyfill DOMMatrix for Node.js environment if it's missing (required by pdfjs-dist)
+if (typeof global !== 'undefined' && typeof global.DOMMatrix === 'undefined') {
+  global.DOMMatrix = require('dommatrix');
+}
+
 const POLITO_BASE = process.env.NEXT_PUBLIC_API_BASE_PATH ?? 'https://app.didattica.polito.it';
 
 function toTargetUrl(rawUrl: string): string | null {

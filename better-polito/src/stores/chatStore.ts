@@ -26,7 +26,7 @@ function extractPageWindow(fullText: string, centerPage: number, radius: number)
 }
 import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
-import { getSystemPrompt, type ExplanationModes } from '@/lib/prompts';
+import { getSystemPrompt } from '@/lib/prompts';
 import { generateImageThumbnail } from '@/lib/fileProcessing';
 import { arrayBufferToBase64 } from '@/lib/fileProcessing';
 import { useMaterialStore } from './materialStore';
@@ -309,6 +309,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       let openDocumentName: string | null = null;
       let openDocumentUrl: string | null = null;
       let openDocumentText: string | null = null;
+      let openDocumentFullText: string | null = null;
       try {
         const portalState = useCoursePortalStore.getState().getCourseState(courseId);
         if (portalState.preview) {
@@ -328,18 +329,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
           if (cachedDoc && cachedDoc.text) {
             const fullText = cachedDoc.text;
+            openDocumentFullText = fullText;
             const currentPage = portalState.previewPage;
 
             if (currentPage) {
-              // Extract a window of pages around the current page for focused context
               openDocumentText = extractPageWindow(fullText, currentPage, 2);
             } else {
-              openDocumentText = fullText;
-            }
-
-            // Cap at 12k chars
-            if (openDocumentText && openDocumentText.length > 12000) {
-              openDocumentText = openDocumentText.slice(0, 12000) + '\n\n[... document truncated for context ...]';
+              // Show first 12k chars in system prompt; AI can read more via tool
+              openDocumentText = fullText.length > 12000
+                ? fullText.slice(0, 12000) + '\n\n[... more pages available — use read_pdf_pages tool to read specific pages ...]'
+                : fullText;
             }
           }
         }
@@ -386,6 +385,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           attachments: serializedAttachments,
           openDocumentUrl,
           openDocumentText,
+          openDocumentFullText,
         }),
       });
 
@@ -414,29 +414,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         }));
       }
 
-      // Prepare default explanation modes layout with the response
-      const explanationModes: ExplanationModes = {
-        keyTakeaway: '',
-        intuitive: {
-          analogy: '',
-          visualDescription: '',
-          plainExplanation: fullResponseText,
-          scientificTerm: '',
-        },
-        structured: {
-          steps: [],
-          commonMistakes: [],
-          examRelevance: '',
-        },
-        formal: {
-          definition: '',
-          notation: '',
-          conditions: [],
-          relatedConcepts: [],
-        },
-        referencedMaterials: [],
-      };
-
       // Add assistant message
       const assistantMessage: ChatMessage = {
         id: assistantMessageId,
@@ -444,15 +421,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         conversationId,
         role: 'assistant',
         content: fullResponseText,
-        explanationModes: {
-          intuitive: JSON.stringify(explanationModes.intuitive),
-          structured: JSON.stringify(explanationModes.structured),
-          formal: JSON.stringify(explanationModes.formal),
-        },
-        referencedMaterials: explanationModes.referencedMaterials?.map(ref => ({
-          materialId: materials.find(m => m.name === ref.materialName)?.id || '',
-          materialName: ref.materialName,
-        })) || [],
         timestamp: new Date().toISOString(),
       };
 

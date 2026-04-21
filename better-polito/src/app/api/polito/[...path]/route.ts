@@ -17,10 +17,22 @@ async function handler(req: NextRequest, context: PolitoRouteContext) {
   const search = req.nextUrl.search ?? '';
   const targetUrl = `${POLITO_BASE}/api/${apiPath}${search}`;
 
+  if (!token) {
+    console.error(`[PoliTO API Proxy] Unauthorized: No token found for /${apiPath}`);
+    return NextResponse.json({ error: 'Unauthorized: No valid session token' }, { status: 401 });
+  }
+
   const headers: Record<string, string> = {
     'Accept-Language': req.headers.get('accept-language') ?? 'en',
+    'Authorization': `Bearer ${token}`
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  // Forward critical browser headers (avoids strict WAF blocks)
+  const ua = req.headers.get('user-agent');
+  if (ua) headers['User-Agent'] = ua;
+
+  const accept = req.headers.get('accept');
+  if (accept) headers['Accept'] = accept;
 
   // Forward Content-Type for non-GET requests
   const reqContentType = req.headers.get('content-type');

@@ -1,0 +1,179 @@
+
+<style>
+  .ctrl { display:flex; align-items:center; gap:10px; margin:6px 0; font-size:13px; color:var(--color-text-secondary); }
+  .ctrl label { min-width:80px; }
+  .ctrl span { min-width:36px; font-weight:500; font-size:13px; color:var(--color-text-primary); }
+  .param-row { display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; margin-bottom:1rem; }
+  h2 { font-size:16px; font-weight:500; margin:0 0 0.5rem; color:var(--color-text-primary); }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--color-text-secondary); margin-top:8px; }
+  .legend span { display:flex; align-items:center; gap:5px; }
+  .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+</style>
+
+<h2 style="sr-only">Interactive graph of h(x) = 2sin(πx − 3π) − 4</h2>
+<h2>h(x) = A · sin(Bx − C) + D</h2>
+
+<div class="param-row">
+  <div class="ctrl"><label>A (amplitude)</label><input type="range" min="-4" max="4" step="0.5" value="2" id="sA"><span id="oA">2</span></div>
+  <div class="ctrl"><label>B (frequency)</label><input type="range" min="0.5" max="4" step="0.5" value="3.14159" id="sB"><span id="oB">π</span></div>
+  <div class="ctrl"><label>C (phase ×π)</label><input type="range" min="0" max="6" step="0.5" value="3" id="sC"><span id="oC">3π</span></div>
+  <div class="ctrl"><label>D (vertical)</label><input type="range" min="-6" max="6" step="1" value="-4" id="sD"><span id="oD">-4</span></div>
+</div>
+
+<div style="position:relative; width:100%; height:320px;">
+  <canvas id="gc" role="img" aria-label="Graph of h(x) = 2sin(πx − 3π) − 4 showing a sine wave with midline at y=-4, amplitude 2, period 2"></canvas>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:#378ADD"></span>h(x) curve</span>
+  <span><span class="dot" style="background:#D85A30"></span>midline (y = D)</span>
+  <span><span class="dot" style="background:#1D9E75"></span>max point</span>
+  <span><span class="dot" style="background:#D4537E"></span>min point</span>
+  <span><span class="dot" style="background:#888780"></span>zero crossings</span>
+</div>
+
+<div id="info" style="margin-top:10px; font-size:13px; color:var(--color-text-secondary); display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const canvas = document.getElementById('gc');
+let chart;
+
+function getParams() {
+  const A = parseFloat(document.getElementById('sA').value);
+  const Braw = parseFloat(document.getElementById('sB').value);
+  const B = Braw; 
+  const Cpi = parseFloat(document.getElementById('sC').value);
+  const C = Cpi * Math.PI;
+  const D = parseFloat(document.getElementById('sD').value);
+  return { A, B, C, Cpi, D };
+}
+
+function buildData(A, B, C, D) {
+  const period = (2 * Math.PI) / B;
+  const phaseX = C / B;
+  const xs = [], ys = [];
+  const xstart = phaseX - period;
+  const xend = phaseX + 2.5 * period;
+  const steps = 300;
+  for (let i = 0; i <= steps; i++) {
+    const x = xstart + (xend - xstart) * i / steps;
+    xs.push(parseFloat(x.toFixed(3)));
+    ys.push(parseFloat((A * Math.sin(B * x - C) + D).toFixed(4)));
+  }
+  return { xs, ys, period, phaseX };
+}
+
+function keyPoints(A, B, C, D) {
+  const period = (2 * Math.PI) / B;
+  const phaseX = C / B;
+  const points = [];
+  for (let k = -1; k <= 3; k++) {
+    const xZero = phaseX + k * period;
+    const xMax = phaseX + (k + 0.25) * period;
+    const xMin = phaseX + (k + 0.75) * period;
+    points.push({ x: parseFloat(xZero.toFixed(3)), y: D, type:'zero' });
+    points.push({ x: parseFloat(xMax.toFixed(3)), y: parseFloat((D + Math.abs(A)).toFixed(2)), type:'max' });
+    points.push({ x: parseFloat(xMin.toFixed(3)), y: parseFloat((D - Math.abs(A)).toFixed(2)), type:'min' });
+  }
+  return points;
+}
+
+function draw() {
+  const { A, B, C, Cpi, D } = getParams();
+  document.getElementById('oA').textContent = A;
+  document.getElementById('oB').textContent = B.toFixed(2) === '3.14' ? 'π' : B.toFixed(2);
+  document.getElementById('oC').textContent = Cpi + 'π';
+  document.getElementById('oD').textContent = D;
+
+  const period = parseFloat(((2 * Math.PI) / B).toFixed(3));
+  const phaseX = parseFloat((C / B).toFixed(3));
+
+  document.getElementById('info').innerHTML = `
+    <div>Period = <b>${period}</b></div>
+    <div>Phase shift = <b>${phaseX}</b></div>
+    <div>Midline y = <b>${D}</b></div>
+    <div>Max y = <b>${(D + Math.abs(A)).toFixed(1)}</b></div>
+    <div>Min y = <b>${(D - Math.abs(A)).toFixed(1)}</b></div>
+    <div>Amplitude = <b>${Math.abs(A)}</b></div>
+  `;
+
+  const { xs, ys } = buildData(A, B, C, D);
+  const kp = keyPoints(A, B, C, D);
+
+  const midlineData = xs.map(x => ({ x, y: D }));
+  const maxPts = kp.filter(p => p.type === 'max').map(p => ({ x: p.x, y: p.y }));
+  const minPts = kp.filter(p => p.type === 'min').map(p => ({ x: p.x, y: p.y }));
+  const zeroPts = kp.filter(p => p.type === 'zero').map(p => ({ x: p.x, y: p.y }));
+
+  const datasets = [
+    {
+      label: 'h(x)',
+      data: xs.map((x,i) => ({ x, y: ys[i] })),
+      borderColor: '#378ADD', borderWidth: 2.5, pointRadius: 0, tension: 0.4, fill: false
+    },
+    {
+      label: 'Midline',
+      data: midlineData,
+      borderColor: '#D85A30', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, tension: 0, fill: false
+    },
+    {
+      label: 'Max',
+      data: maxPts,
+      borderColor: 'transparent', backgroundColor: '#1D9E75',
+      pointRadius: 6, pointHoverRadius: 8, showLine: false
+    },
+    {
+      label: 'Min',
+      data: minPts,
+      borderColor: 'transparent', backgroundColor: '#D4537E',
+      pointRadius: 6, pointHoverRadius: 8, showLine: false
+    },
+    {
+      label: 'Zeros',
+      data: zeroPts,
+      borderColor: 'transparent', backgroundColor: '#888780',
+      pointRadius: 5, pointHoverRadius: 7, showLine: false
+    }
+  ];
+
+  const yMin = D - Math.abs(A) - 1.5;
+  const yMax = D + Math.abs(A) + 1.5;
+
+  if (chart) {
+    chart.data.datasets = datasets;
+    chart.options.scales.y.min = yMin;
+    chart.options.scales.y.max = yMax;
+    chart.update();
+  } else {
+    chart = new Chart(canvas, {
+      type: 'scatter',
+      data: { datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 200 },
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: { label: ctx => `(${ctx.parsed.x.toFixed(2)}, ${ctx.parsed.y.toFixed(2)})` }
+        }},
+        scales: {
+          x: {
+            type: 'linear', min: phaseX - 1, max: phaseX + 3,
+            title: { display: true, text: 'x', color: '#888780' },
+            grid: { color: 'rgba(128,128,128,0.15)' },
+            ticks: { color: '#888780', font: { size: 11 } }
+          },
+          y: {
+            min: yMin, max: yMax,
+            title: { display: true, text: 'h(x)', color: '#888780' },
+            grid: { color: 'rgba(128,128,128,0.15)' },
+            ticks: { color: '#888780', font: { size: 11 } }
+          }
+        }
+      }
+    });
+  }
+}
+
+['sA','sB','sC','sD'].forEach(id => document.getElementById(id).addEventListener('input', draw));
+draw();
+</script>
