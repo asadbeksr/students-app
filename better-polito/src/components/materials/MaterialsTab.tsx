@@ -16,11 +16,26 @@ import {
   PanelLeftClose, PanelLeftOpen, ChevronRight, ChevronDown, ChevronLeft, Code,
   Package, Monitor, ExternalLink, X, CheckSquare2, Square,
   LayoutGrid, List, ArrowUpDown, BookOpen, Copy, Check,
+  HardDrive, Upload, Trash2, MoreVertical,
 } from 'lucide-react';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import { useMaterialStore } from '@/stores/materialStore';
+import type { Material, Folder as FolderType } from '@/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-export type MaterialsActiveTab = 'teaching' | 'dropbox' | 'virtual';
+export type MaterialsActiveTab = 'teaching' | 'dropbox' | 'virtual' | 'uploads';
 
 /* ─── snap helpers ────────────────────────────────────────────────── */
 const SIDEBAR_SNAPS = [0, 20, 25, 33, 50];
@@ -669,7 +684,7 @@ const VideoPlayer = dynamic(() => import('./VideoPlayer'), {
 });
 
 /* ─── media preview ───────────────────────────────────────────────── */
-function MediaPreview({ file, courseId, onClose }: { file: SelectedFile; courseId: string; onClose: () => void }) {
+function MediaPreview({ file, onClose }: { file: SelectedFile; courseId: string; onClose: () => void }) {
   const kind = getFileKind(file.mimeType, file.name);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [text, setText] = useState<string | null>(null);
@@ -865,6 +880,7 @@ const TAB_LABELS: Record<MaterialsActiveTab, string> = {
   teaching: 'Materials',
   dropbox: 'Dropbox',
   virtual: 'Recordings',
+  uploads: 'My Files',
 };
 
 function SidebarHeader({
@@ -875,6 +891,7 @@ function SidebarHeader({
   onSortChange,
   viewMode,
   onViewModeChange,
+  onUpload,
 }: {
   activeTab: MaterialsActiveTab;
   onTabChange: (tab: MaterialsActiveTab) => void;
@@ -883,12 +900,15 @@ function SidebarHeader({
   onSortChange: (sortBy: SortBy) => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
+  onUpload?: () => void;
 }) {
   const activeTabIcon = activeTab === 'teaching'
     ? <FolderOpen className="h-3.5 w-3.5 text-primary" />
     : activeTab === 'dropbox'
       ? <Package className="h-3.5 w-3.5 text-blue-500" />
-      : <Monitor className="h-3.5 w-3.5 text-blue-500" />;
+      : activeTab === 'uploads'
+        ? <HardDrive className="h-3.5 w-3.5 text-emerald-500" />
+        : <Monitor className="h-3.5 w-3.5 text-blue-500" />;
 
   return (
     <div className="border-b border-border shrink-0">
@@ -901,43 +921,56 @@ function SidebarHeader({
             className="h-full w-full min-w-0 border-0 bg-transparent px-0 text-[11px] font-medium text-foreground focus:ring-0"
             aria-label="Materials section"
           >
-            {(['teaching', 'dropbox', 'virtual'] as MaterialsActiveTab[]).map((tab) => (
+            {(['teaching', 'dropbox', 'virtual', 'uploads'] as MaterialsActiveTab[]).map((tab) => (
               <option key={tab} value={tab}>{TAB_LABELS[tab]}</option>
             ))}
           </select>
         </div>
 
-        <div className="flex min-w-[68px]  h-8 items-center rounded-md border border-border overflow-hidden">
+        {activeTab === 'uploads' ? (
           <button
-            onClick={() => onViewModeChange('list')}
-            className={`flex h-full w-8 items-center justify-center p-0 transition-colors ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
-            title="List view"
+            onClick={onUpload}
+            title="Upload files"
+            className="flex h-8 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shrink-0"
           >
-            <List className="w-3.5 h-3.5" />
+            <Upload className="h-3.5 w-3.5" />
+            Upload
           </button>
-          <button
-            onClick={() => onViewModeChange('grid')}
-            className={`flex h-full w-8 items-center justify-center p-0 transition-colors ${viewMode === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
-            title="Grid view"
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        ) : (
+          <>
+            <div className="flex min-w-[68px] h-8 items-center rounded-md border border-border overflow-hidden">
+              <button
+                onClick={() => onViewModeChange('list')}
+                className={`flex h-full w-8 items-center justify-center p-0 transition-colors ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+                title="List view"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onViewModeChange('grid')}
+                className={`flex h-full w-8 items-center justify-center p-0 transition-colors ${viewMode === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'}`}
+                title="Grid view"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-        <div className="flex h-8 min-w-[98px] items-center gap-1 rounded-md border border-border bg-background px-1.5">
-          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-          <select
-            id="materials-sort"
-            value={sortBy}
-            onChange={(e) => onSortChange(e.target.value as SortBy)}
-            className="h-full w-full min-w-0 border-0 bg-transparent px-0 text-[11px] text-foreground focus:ring-0"
-            aria-label="Sort materials"
-          >
-            <option value="name">Name</option>
-            <option value="size">Size</option>
-            <option value="date">Date</option>
-          </select>
-        </div>
+            <div className="flex h-8 min-w-[98px] items-center gap-1 rounded-md border border-border bg-background px-1.5">
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                id="materials-sort"
+                value={sortBy}
+                onChange={(e) => onSortChange(e.target.value as SortBy)}
+                className="h-full w-full min-w-0 border-0 bg-transparent px-0 text-[11px] text-foreground focus:ring-0"
+                aria-label="Sort materials"
+              >
+                <option value="name">Name</option>
+                <option value="size">Size</option>
+                <option value="date">Date</option>
+              </select>
+            </div>
+          </>
+        )}
 
         <button
           onClick={onCollapse}
@@ -1059,6 +1092,82 @@ export default function MaterialsTab({
   }, [onSidebarChange]);
   const sidebarRef = usePanelRef();
   const sidebarOnResize = useSnapOnRelease(sidebarRef, SIDEBAR_SNAPS, () => setIsSidebarCollapsed(true));
+
+  // ── Uploads (My Files) tab ───────────────────────────────────────
+  const { materials, folders: localFolders, fetchMaterials, fetchFolders, createMaterial, createFolder, deleteMaterial, deleteFolder } = useMaterialStore();
+  const [selectedLocalMaterial, setSelectedLocalMaterial] = useState<Material | null>(null);
+  const [localFolderId, setLocalFolderId] = useState<string | null>(null);
+  const [localSelection, setLocalSelection] = useState<Set<string>>(new Set());
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+
+  const downloadMaterial = (material: Material) => {
+    if (material.type === 'pdf' && material.fileData) {
+      const url = URL.createObjectURL(new Blob([material.fileData], { type: 'application/pdf' }));
+      const a = document.createElement('a'); a.href = url; a.download = material.fileName ?? material.name; a.click();
+      URL.revokeObjectURL(url);
+    } else if (material.type === 'note' && material.content !== undefined) {
+      const url = URL.createObjectURL(new Blob([material.content], { type: 'text/markdown' }));
+      const a = document.createElement('a'); a.href = url; a.download = material.name; a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const downloadLocalSelection = () => {
+    materials.filter(m => localSelection.has(m.id)).forEach(downloadMaterial);
+  };
+
+  const toggleLocalSelect = (id: string) => {
+    setLocalSelection(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  };
+
+  useEffect(() => {
+    if (activeTab === 'uploads') {
+      fetchMaterials(courseId);
+      fetchFolders(courseId);
+    }
+  }, [activeTab, courseId, fetchMaterials, fetchFolders]);
+
+  const handleUploadFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    // Find or create target folder
+    let folderId = localFolderId;
+    if (!folderId) {
+      let uploadsFolder = localFolders.find(f => f.courseId === courseId && f.name === 'Uploads' && f.parentId === null);
+      if (!uploadsFolder) {
+        uploadsFolder = await createFolder({ courseId, name: 'Uploads', parentId: null });
+      }
+      folderId = uploadsFolder.id;
+      setLocalFolderId(folderId);
+    }
+    for (const file of Array.from(files)) {
+      const arrayBuffer = await file.arrayBuffer();
+      const isNote = file.name.endsWith('.md') || file.name.endsWith('.txt');
+      if (isNote) {
+        const text = new TextDecoder().decode(arrayBuffer);
+        await createMaterial({ courseId, folderId, type: 'note', name: file.name, content: text, fileSize: file.size });
+      } else {
+        await createMaterial({ courseId, folderId, type: 'pdf', name: file.name, fileName: file.name, fileData: arrayBuffer, fileSize: file.size });
+      }
+    }
+    await fetchMaterials(courseId);
+    await fetchFolders(courseId);
+  };
+
+  const localCurrentFolders = localFolders.filter(f => f.courseId === courseId && f.parentId === localFolderId);
+  const localCurrentMaterials = materials.filter(m => m.courseId === courseId && m.folderId === localFolderId);
+
+  const getLocalFolderPath = (folderId: string | null): FolderType[] => {
+    if (!folderId) return [];
+    const path: FolderType[] = [];
+    let current = localFolders.find(f => f.id === folderId);
+    while (current) {
+      path.unshift(current);
+      current = current.parentId ? localFolders.find(f => f.id === current!.parentId) : undefined;
+    }
+    return path;
+  };
+
+  const localFolderPath = getLocalFolderPath(localFolderId);
 
   const toggleFolder = (id: string) => {
     setExpandedFolders(prev => {
@@ -1601,7 +1710,8 @@ export default function MaterialsTab({
   const sidebarLoading =
     (activeTab === 'teaching' && filesLoading) ||
     (activeTab === 'dropbox' && assignLoading && filesLoading) ||
-    (activeTab === 'virtual' && (vcLoading || vlLoading));
+    (activeTab === 'virtual' && (vcLoading || vlLoading)) ||
+    (activeTab === 'uploads' && false);
 
   const activeSelectedCount = useMemo(
     () => activeSelectableItems.filter((item) => selection.has(item.id)).length,
@@ -1862,21 +1972,160 @@ export default function MaterialsTab({
         : <div className="grid grid-cols-2 gap-2 p-1.5">{recordingEntries.map((item) => renderGridCard(item))}</div>;
     }
 
+    if (activeTab === 'uploads') {
+      const isEmpty = localCurrentFolders.length === 0 && localCurrentMaterials.length === 0;
+      return (
+        <div className="flex flex-col h-full">
+          {/* breadcrumb */}
+          {localFolderPath.length > 0 && (
+            <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border text-xs overflow-x-auto shrink-0">
+              <button onClick={() => setLocalFolderId(null)} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">Root</button>
+              {localFolderPath.map(f => (
+                <span key={f.id} className="flex items-center gap-1 shrink-0">
+                  <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
+                  <button onClick={() => setLocalFolderId(f.id)} className="text-muted-foreground hover:text-foreground transition-colors">{f.name}</button>
+                </span>
+              ))}
+            </div>
+          )}
+          {isEmpty ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <HardDrive className="h-10 w-10 text-muted-foreground/20" />
+              <p className="font-medium text-foreground">No files yet</p>
+              <p className="text-xs text-muted-foreground">Upload PDFs, markdown notes, or save converted documents here</p>
+              <button
+                onClick={() => uploadInputRef.current?.click()}
+                className="mt-1 flex items-center gap-2 rounded-md border border-dashed border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+              >
+                <Upload className="h-4 w-4" /> Upload files
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 relative overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto pb-10">
+              <div className="p-1.5 space-y-0.5">
+                {localCurrentFolders.map(folder => {
+                  const count = materials.filter(m => m.folderId === folder.id).length;
+                  return (
+                    <div key={folder.id} className="group flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-muted/60 transition-colors">
+                      <span className="w-4 shrink-0" />
+                      <button className="flex-1 flex items-center gap-2 min-w-0 text-left" onClick={() => setLocalFolderId(folder.id)}>
+                        <Folder className="h-4 w-4 shrink-0 text-amber-500" />
+                        <span className="text-sm font-medium truncate">{folder.name}</span>
+                        {count > 0 && <span className="text-[10px] text-muted-foreground/50 ml-auto">{count}</span>}
+                      </button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-colors">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this folder and all its contents?')) deleteFolder(folder.id); }}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  );
+                })}
+                {localCurrentMaterials.map(material => {
+                  const isPreview = selectedLocalMaterial?.id === material.id;
+                  const isChecked = localSelection.has(material.id);
+                  const anyChecked = localSelection.size > 0;
+                  return (
+                    <div key={material.id}
+                      className={`group flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${isChecked ? 'bg-primary/10 text-foreground' : isPreview ? 'bg-muted/80 text-foreground' : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground'}`}
+                      onClick={() => { setSelectedLocalMaterial(material); setSelectedFile(null); }}
+                    >
+                      <span
+                        onClick={e => { e.stopPropagation(); toggleLocalSelect(material.id); }}
+                        className={`shrink-0 w-4 h-4 flex items-center justify-center rounded cursor-pointer transition-all ${anyChecked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} ${isChecked ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground'}`}
+                      >
+                        {isChecked ? <CheckSquare2 className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                      </span>
+                      <div className="flex-1 flex items-center gap-2 min-w-0">
+                        {material.type === 'pdf'
+                          ? <FileText className="h-4 w-4 shrink-0 text-red-500" />
+                          : <FileText className="h-4 w-4 shrink-0 text-blue-500" />}
+                        <span className="text-sm truncate">{material.name}</span>
+                        {material.fileSize && <span className="text-[10px] text-muted-foreground/40 ml-auto shrink-0">{formatBytes(material.fileSize / 1024)}</span>}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-6 w-6 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-colors" onClick={e => e.stopPropagation()}>
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={e => { e.stopPropagation(); downloadMaterial(material); }}>
+                            <Download className="h-4 w-4 mr-2" /> Download
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive" onClick={e => { e.stopPropagation(); deleteMaterial(material.id); if (selectedLocalMaterial?.id === material.id) setSelectedLocalMaterial(null); }}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* selection bar */}
+            <div className={`absolute bottom-0 inset-x-0 z-20 border-t border-border bg-card/95 backdrop-blur-sm px-2 py-1.5 flex items-center gap-1 transition-all duration-200 ${localSelection.size > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'}`}>
+              <span className="text-xs font-semibold text-foreground flex-1 pl-1">{localSelection.size} selected</span>
+              <button onClick={downloadLocalSelection} className="flex items-center gap-1 text-[11px] font-medium bg-primary/10 hover:bg-primary/20 text-primary px-2 py-1 rounded transition-colors">
+                <Download className="h-3 w-3" /> Download
+              </button>
+              <button onClick={() => setLocalSelection(new Set())} className="text-[11px] text-muted-foreground hover:text-foreground px-1.5 py-1 rounded hover:bg-muted/60 transition-colors">Clear</button>
+            </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return null;
   };
 
   // ── preview content ──────────────────────────────────────────────
   const renderPreview = () => {
+    if (activeTab === 'uploads' && selectedLocalMaterial) {
+      if (selectedLocalMaterial.type === 'pdf' && selectedLocalMaterial.fileData) {
+        return <PDFViewer material={selectedLocalMaterial} courseId={courseId} onClose={() => setSelectedLocalMaterial(null)} />;
+      }
+      if (selectedLocalMaterial.type === 'note' && selectedLocalMaterial.content !== undefined) {
+        return (
+          <div className="h-full flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
+              <h2 className="text-sm font-semibold truncate flex-1 min-w-0">{selectedLocalMaterial.name}</h2>
+              <button onClick={() => setSelectedLocalMaterial(null)} className="ml-4 text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeRaw, rehypeKatex]}>
+                {(selectedLocalMaterial.content ?? '').replace(/\bstroke="black"\b/g, 'stroke="currentColor"').replace(/\bfill="black"\b/g, 'fill="currentColor"')}
+              </ReactMarkdown>
+            </div>
+          </div>
+        );
+      }
+    }
+
     if (!selectedFile) {
       const icons: Record<MaterialsActiveTab, JSX.Element> = {
         teaching: <FileText className="h-12 w-12 text-muted-foreground/20" />,
         dropbox: <Package className="h-12 w-12 text-muted-foreground/20" />,
         virtual: <Monitor className="h-12 w-12 text-muted-foreground/20" />,
+        uploads: <HardDrive className="h-12 w-12 text-muted-foreground/20" />,
       };
       const hints: Record<MaterialsActiveTab, string> = {
         teaching: 'Expand a folder and click any file',
         dropbox: 'Dropbox is shown only when API returns Dropbox-specific files',
         virtual: 'Choose a recording from the list to play it',
+        uploads: 'Select a file from My Files to preview it',
       };
       return (
         <div className="h-full flex flex-col items-center justify-center text-center gap-3 p-8">
@@ -1932,6 +2181,7 @@ export default function MaterialsTab({
           onSortChange={setSortBy}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          onUpload={() => uploadInputRef.current?.click()}
         />
         {/* scroll area with pb for action bar */}
         <div className="flex-1 relative overflow-hidden">
@@ -1967,7 +2217,7 @@ export default function MaterialsTab({
               <PanelLeftOpen className="h-3.5 w-3.5" />
             </button>
             {/* vertical tab pills */}
-            {(['teaching', 'dropbox', 'virtual'] as MaterialsActiveTab[]).map((tab) => (
+            {(['teaching', 'dropbox', 'virtual', 'uploads'] as MaterialsActiveTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => { handleTabChange(tab); sidebarRef.current?.expand(); setIsSidebarCollapsed(false); }}
@@ -1996,5 +2246,14 @@ export default function MaterialsTab({
         onClose={() => setNotebookLMState(null)}
       />
     )}
+    {/* hidden file input for My Files uploads */}
+    <input
+      ref={uploadInputRef}
+      type="file"
+      multiple
+      accept=".pdf,.md,.txt"
+      className="hidden"
+      onChange={e => { handleUploadFiles(e.target.files); e.target.value = ''; }}
+    />
   </>);
 }

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useCoursePortalStore } from '@/lib/stores/coursePortalStore';
+import { useMaterialStore } from '@/stores/materialStore';
 import type { Material } from '@/types';
 import {
   X,
@@ -11,7 +12,15 @@ import {
   Loader2,
   ExternalLink,
   FileDown,
+  Save,
+  ChevronDown,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface PDFViewerProps {
   material?: Material;
@@ -96,63 +105,93 @@ export default function PDFViewer({
     };
   }, [propUrl, material]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const { createMaterial, createFolder, folders, fetchFolders, fetchMaterials } = useMaterialStore();
+
+  const runConvert = async (): Promise<string> => {
+    const res = await fetch(blobUrl!);
+    const buffer = await res.arrayBuffer();
+
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize)
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    const pdfBase64 = btoa(binary);
+
+    const convertRes = await fetch('/api/ai/convert-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pdfBase64 }),
+    });
+    if (!convertRes.ok) {
+      const err = await convertRes.json().catch(() => ({ error: `HTTP ${convertRes.status}` }));
+      throw new Error(err.error || `HTTP ${convertRes.status}`);
+    }
+
+    let markdown = await convertRes.text();
+
+    const pagePlaceholders = [...markdown.matchAll(/\[FIGURE_PAGE:(\d+)\]/g)];
+    if (pagePlaceholders.length > 0) {
+      const uniquePages = [...new Set(pagePlaceholders.map(m => parseInt(m[1], 10)))];
+      const pageImages = new Map<number, string>();
+      const pdfjs = await import('pdfjs-dist');
+      pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+      for (const pageNum of uniquePages) {
+        if (pageNum < 1 || pageNum > pdf.numPages) continue;
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d')!, canvas, viewport }).promise;
+        pageImages.set(pageNum, canvas.toDataURL('image/png').split(',')[1]);
+      }
+      markdown = markdown.replace(/\[FIGURE_PAGE:(\d+)\]/g, (_, n) => {
+        const img = pageImages.get(parseInt(n, 10));
+        return img ? `![Figure on page ${n}](data:image/png;base64,${img})` : `[Figure on page ${n}]`;
+      });
+    }
+
+    return markdown;
+  };
+
   const handleConvert = async () => {
     if (!blobUrl || converting) return;
     setConverting(true);
     try {
-      const res = await fetch(blobUrl);
-      const buffer = await res.arrayBuffer();
+      const markdown = await runConvert();
+      const mdName = `${displayName.replace(/\.pdf$/i, '')}.md`;
 
-      // Encode as base64 for Gemini
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < bytes.length; i += chunkSize)
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-      const pdfBase64 = btoa(binary);
-
-      const convertRes = await fetch('/api/ai/convert-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64 }),
+      // Save to My Files (Uploads folder in IndexedDB)
+      await fetchFolders(courseId);
+      let uploadsFolder = folders.find(f => f.courseId === courseId && f.name === 'Uploads' && f.parentId === null);
+      if (!uploadsFolder) {
+        uploadsFolder = await createFolder({ courseId, name: 'Uploads', parentId: null });
+      }
+      await createMaterial({
+        courseId,
+        folderId: uploadsFolder.id,
+        type: 'note',
+        name: mdName,
+        content: markdown,
+        fileSize: new TextEncoder().encode(markdown).length,
       });
+      await fetchMaterials(courseId);
 
-      if (!convertRes.ok) {
-        const err = await convertRes.json().catch(() => ({ error: `HTTP ${convertRes.status}` }));
-        throw new Error(err.error || `HTTP ${convertRes.status}`);
-      }
+      toast({ title: 'Saved to My Files', description: mdName });
+    } catch (err) {
+      toast({ title: 'Conversion failed', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setConverting(false);
+    }
+  };
 
-      let markdown = await convertRes.text();
-
-      // Replace [FIGURE_PAGE:N] placeholders with rendered page screenshots
-      const pagePlaceholders = [...markdown.matchAll(/\[FIGURE_PAGE:(\d+)\]/g)];
-      if (pagePlaceholders.length > 0) {
-        const uniquePages = [...new Set(pagePlaceholders.map(m => parseInt(m[1], 10)))];
-        const pageImages = new Map<number, string>();
-
-        const pdfjs = await import('pdfjs-dist');
-        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-        const pdf = await pdfjs.getDocument({ data: buffer }).promise;
-
-        for (const pageNum of uniquePages) {
-          if (pageNum < 1 || pageNum > pdf.numPages) continue;
-          const page = await pdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          await page.render({ canvasContext: canvas.getContext('2d')!, canvas, viewport }).promise;
-          pageImages.set(pageNum, canvas.toDataURL('image/png').split(',')[1]);
-        }
-
-        markdown = markdown.replace(/\[FIGURE_PAGE:(\d+)\]/g, (_, n) => {
-          const img = pageImages.get(parseInt(n, 10));
-          return img
-            ? `![Figure on page ${n}](data:image/png;base64,${img})`
-            : `[Figure on page ${n}]`;
-        });
-      }
-
+  const handleConvertDownload = async () => {
+    if (!blobUrl || converting) return;
+    setConverting(true);
+    try {
+      const markdown = await runConvert();
       const mdBlob = new Blob([markdown], { type: 'text/markdown' });
       const mdUrl = URL.createObjectURL(mdBlob);
       const a = document.createElement('a');
@@ -161,11 +200,7 @@ export default function PDFViewer({
       a.click();
       URL.revokeObjectURL(mdUrl);
     } catch (err) {
-      toast({
-        title: 'Conversion failed',
-        description: (err as Error).message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Conversion failed', description: (err as Error).message, variant: 'destructive' });
     } finally {
       setConverting(false);
     }
@@ -203,21 +238,32 @@ export default function PDFViewer({
           <h2 className="text-base font-semibold text-foreground truncate">{displayName}</h2>
         </div>
         <div className="flex items-center gap-2 mx-3 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleConvert}
-            disabled={converting}
-            title="Convert handwriting/PDF to readable Markdown"
-            className="h-7 text-xs gap-1.5"
-          >
-            {converting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <FileDown className="h-3.5 w-3.5" />
-            )}
-            {converting ? 'Converting…' : 'Convert to readable'}
-          </Button>
+          <div className="flex items-center rounded-md border border-border overflow-hidden h-7">
+            <button
+              onClick={handleConvert}
+              disabled={converting}
+              title="Convert to Markdown and save to My Files"
+              className="flex items-center gap-1.5 px-2.5 text-xs font-medium text-foreground hover:bg-muted/60 disabled:opacity-50 transition-colors h-full"
+            >
+              {converting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {converting ? 'Converting…' : 'Convert to readable'}
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button disabled={converting} className="flex items-center justify-center w-6 border-l border-border text-muted-foreground hover:bg-muted/60 disabled:opacity-50 transition-colors h-full">
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleConvert} disabled={converting}>
+                  <Save className="h-4 w-4 mr-2" /> Save to My Files
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleConvertDownload} disabled={converting}>
+                  <FileDown className="h-4 w-4 mr-2" /> Download .md
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" title="Download PDF" asChild>

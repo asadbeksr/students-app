@@ -16,7 +16,7 @@ RULES:
   - Display/block equations: $$expression$$
 - For tables: use Markdown table format
 - For diagrams and figures:
-  - If it is a SIMPLE mathematical graph or geometric diagram (coordinate axes with curves/lines, geometric shapes, basic function plots): reproduce it accurately as a compact inline SVG. Place the SVG directly in the Markdown, e.g. <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150">...</svg>
+  - If it is a SIMPLE mathematical graph or geometric diagram (coordinate axes with curves/lines, geometric shapes, basic function plots): reproduce it accurately as a compact inline SVG. Use stroke="currentColor" and fill="currentColor" (never "black") so it renders correctly in both light and dark mode. Place the SVG directly in the Markdown, e.g. <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150">...</svg>
   - If it is a complex figure, photograph, dense diagram, or anything you cannot accurately reproduce as SVG: output exactly [FIGURE_PAGE:N] where N is the 1-based page number containing the figure — nothing else on that line
 - Separate pages with a horizontal rule: ---
 - Output ONLY the Markdown content — no preamble, no commentary`;

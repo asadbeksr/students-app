@@ -35,8 +35,21 @@ export default function AskAIButton({ onAskAI }: AskAIButtonProps) {
       return;
     }
 
-    const text = selection.toString().trim();
-    if (text.length < 3) return; // Too short to be useful
+    const raw = selection.toString().trim();
+    if (raw.length < 3) return; // Too short to be useful
+
+    // KaTeX renders each math symbol into its own span, so getSelection().toString()
+    // yields one character per line for every math expression, plus a duplicate
+    // full-text line from the katex-mathml hidden node. Clean this up by:
+    // 1. Removing lines that are 1–3 chars (individual KaTeX symbol spans)
+    // 2. Collapsing excessive blank lines
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const cleaned = lines
+      .filter(l => l.length > 3)
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    const text = cleaned || raw.replace(/\s+/g, ' ').trim();
 
     // Don't show for text selected inside the chat input
     const anchorNode = selection.anchorNode;
