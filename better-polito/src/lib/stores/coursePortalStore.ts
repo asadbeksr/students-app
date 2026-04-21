@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export interface PreviewFile {
+  id: string;
+  name: string;
+  url: string;
+}
+
 export interface CoursePortalState {
   chat: boolean;
   year: string;
@@ -9,7 +15,7 @@ export interface CoursePortalState {
   sidebar: boolean;
   folders: string[];
   grid: string[];
-  preview: string | null;
+  preview: PreviewFile | null;
 }
 
 const defaultState: CoursePortalState = {
@@ -22,6 +28,32 @@ const defaultState: CoursePortalState = {
   grid: [],
   preview: null,
 };
+
+// Separate non-persisted store for document content cache
+interface DocumentContentCache {
+  // fileId -> { text, extracting }
+  cache: Record<string, { text: string; extracting: boolean }>;
+  setExtracting: (fileId: string) => void;
+  setContent: (fileId: string, text: string) => void;
+  getContent: (fileId: string) => { text: string; extracting: boolean } | null;
+}
+
+export const useDocumentContentStore = create<DocumentContentCache>((set, get) => ({
+  cache: {},
+  setExtracting: (fileId) => {
+    set(state => ({
+      cache: { ...state.cache, [fileId]: { text: '', extracting: true } },
+    }));
+  },
+  setContent: (fileId, text) => {
+    set(state => ({
+      cache: { ...state.cache, [fileId]: { text, extracting: false } },
+    }));
+  },
+  getContent: (fileId) => {
+    return get().cache[fileId] || null;
+  },
+}));
 
 interface CoursePortalStore {
   states: Record<string, CoursePortalState>;
@@ -39,12 +71,11 @@ export const useCoursePortalStore = create<CoursePortalStore>()(
       updateCourseState: (courseId, updates) => {
         set((state) => {
           const currentState = state.states[courseId] || defaultState;
-          
-          // Optimization to prevent needless state churn if nothing actually changes
+
           const hasChanges = Object.entries(updates).some(
             ([key, value]) => currentState[key as keyof CoursePortalState] !== value
           );
-          
+
           if (!hasChanges) return state;
 
           return {
@@ -61,6 +92,19 @@ export const useCoursePortalStore = create<CoursePortalStore>()(
     }),
     {
       name: 'better-polito:course-portal',
+      version: 2,
+      migrate: (state: any) => {
+        // Clear persisted previews that are missing the url field
+        if (state?.states) {
+          for (const courseId of Object.keys(state.states)) {
+            const preview = state.states[courseId]?.preview;
+            if (preview && !preview.url) {
+              state.states[courseId].preview = null;
+            }
+          }
+        }
+        return state;
+      },
     }
   )
 );

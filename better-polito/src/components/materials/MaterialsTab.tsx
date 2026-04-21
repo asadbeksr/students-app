@@ -981,7 +981,7 @@ export default function MaterialsTab({
   initialGridFolderStack?: string[];
   onGridFolderStackChange?: (stack: string[]) => void;
   initialPreviewId?: string | null;
-  onPreviewIdChange?: (previewId: string | null) => void;
+  onPreviewIdChange?: (preview: { id: string; name: string; url: string } | null) => void;
 }) {
   const [activeTab, setActiveTab] = useState<MaterialsActiveTab>(initialTab);
 
@@ -1021,7 +1021,7 @@ export default function MaterialsTab({
   const selectedFile = selectedFileInternal;
   const setSelectedFile = useCallback((file: SelectedFile | null) => {
     setSelectedFileInternal(file);
-    onPreviewIdChange?.(file?.id ?? null);
+    onPreviewIdChange?.(file ? { id: file.id, name: file.name, url: file.url } : null);
   }, [onPreviewIdChange]);
 
   // ── Batch selection ──────────────────────────────────────────────

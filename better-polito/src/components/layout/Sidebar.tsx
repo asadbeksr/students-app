@@ -56,15 +56,15 @@ const navGroups: { id: string; title?: string; items: { href: string; label: str
   //     { href: '/surveys', label: 'Surveys', icon: ClipboardCheck },
   //   ],
   // },
-  // {
-  //   id: 'ai',
-  //   title: 'AI Features',
-  //   items: [
-  //     { href: '/ai/chatbot', label: 'AI Assistant', icon: Bot },
-  //     { href: '/ai/study-planner', label: 'Study Planner', icon: Brain },
-  //     { href: '/ai/analytics', label: 'Analytics', icon: BarChart3 },
-  //   ],
-  // }
+  {
+    id: 'ai',
+    title: 'AI Features',
+    items: [
+      { href: '/ai/chatbot', label: 'AI Assistant', icon: Bot },
+      { href: '/ai/study-planner', label: 'Study Planner', icon: Brain },
+      { href: '/ai/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  }
 ];
 
 function SidebarItemContent({ icon: Icon, label, isActive, isCollapsed }: { icon: React.ElementType, label: string, isActive?: boolean, isCollapsed?: boolean }) {

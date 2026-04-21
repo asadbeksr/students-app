@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Microscope, Plus, LineChart } from 'lucide-react';
+import { Send, Paperclip, Microscope, Plus, LineChart, Zap, Brain } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -35,9 +35,10 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { settings, setExplanationMode, updateSettings } = useSettingsStore();
-  const explanationMode = settings?.explanationMode || 'deep';
+  const { settings, setAiModel, updateSettings } = useSettingsStore();
+
   const visualModeEnabled = settings?.visualMode?.enabled ?? true;
+  const aiModel = settings?.aiModel || 'gemini-flash-latest';
 
   const toggleVisualMode = async () => {
     if (!settings) return;
@@ -63,8 +64,10 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+      // Force height to 0 first to correctly measure the raw text scrollHeight without inheriting previous height
+      textareaRef.current.style.height = '0px';
+      const newHeight = Math.max(Math.min(textareaRef.current.scrollHeight, 200), 24);
+      textareaRef.current.style.height = `${newHeight}px`;
     }
   }, [value]);
 
@@ -227,11 +230,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                 <DropdownMenuTrigger asChild>
                   <div className={`
                     relative flex items-center justify-center rounded-lg transition-all duration-300
-                    ${explanationMode === 'deep' && visualModeEnabled
-                      ? 'p-[2px] bg-gradient-to-br from-blue-500 to-green-500'
-                      : explanationMode === 'deep'
-                        ? 'p-[2px] bg-blue-500'
-                        : visualModeEnabled
+                    ${visualModeEnabled
                           ? 'p-[2px] bg-green-500'
                           : 'p-0'
                     }
@@ -241,13 +240,14 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                       size="sm"
                       className={`
                         h-8 w-8 md:h-9 md:w-9 p-0 rounded-[6px] transition-colors
-                        ${(explanationMode === 'deep' || visualModeEnabled)
+                        ${visualModeEnabled
                           ? 'bg-card hover:bg-muted text-foreground'
                           : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
                         }
                       `}
                     >
-                      <Plus className={`h-5 w-5 ${explanationMode === 'deep' || visualModeEnabled ? 'text-foreground' : ''}`} />
+                      <Plus className={`h-5 w-5 ${visualModeEnabled ? 'text-foreground' : ''}`} />
+
                       <span className="sr-only">Open menu</span>
                     </Button>
                   </div>
@@ -264,21 +264,6 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
 
                   <DropdownMenuSeparator className="my-1" />
 
-                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
-                    Modes
-                  </DropdownMenuLabel>
-
-                  <DropdownMenuCheckboxItem
-                    checked={explanationMode === 'deep'}
-                    onCheckedChange={(checked) => setExplanationMode(checked ? 'deep' : 'quick')}
-                    className="cursor-pointer text-sm font-normal py-2"
-                  >
-                    <span className="flex items-center">
-                      <Microscope className={`mr-3 h-4 w-4 ${explanationMode === 'deep' ? 'text-blue-500' : 'text-muted-foreground'}`} />
-                      <span>Deep Explanations</span>
-                    </span>
-                  </DropdownMenuCheckboxItem>
-
                   <DropdownMenuCheckboxItem
                     checked={visualModeEnabled}
                     onCheckedChange={toggleVisualMode}
@@ -290,7 +275,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                     </span>
                   </DropdownMenuCheckboxItem>
 
-                  <DropdownMenuCheckboxItem
+                  {/* <DropdownMenuCheckboxItem
                     checked={settings?.gifsEnabled ?? true}
                     onCheckedChange={(checked) => updateSettings({ gifsEnabled: checked })}
                     className="cursor-pointer text-sm font-normal py-2"
@@ -304,6 +289,34 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                         />
                       </div>
                       <span>Enable GIFs</span>
+                    </span>
+                  </DropdownMenuCheckboxItem> */}
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
+                    Model
+                  </DropdownMenuLabel>
+
+                  <DropdownMenuCheckboxItem
+                    checked={aiModel === 'gemini-flash-latest'}
+                    onCheckedChange={() => setAiModel('gemini-flash-latest')}
+                    className="cursor-pointer text-sm font-normal py-2"
+                  >
+                    <span className="flex items-center">
+                      <Zap className={`mr-3 h-4 w-4 ${aiModel === 'gemini-flash-latest' ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+                      <span>Flash <span className="text-muted-foreground text-xs">(Fast)</span></span>
+                    </span>
+                  </DropdownMenuCheckboxItem>
+
+                  <DropdownMenuCheckboxItem
+                    checked={aiModel === 'gemini-pro-latest'}
+                    onCheckedChange={() => setAiModel('gemini-pro-latest')}
+                    className="cursor-pointer text-sm font-normal py-2"
+                  >
+                    <span className="flex items-center">
+                      <Brain className={`mr-3 h-4 w-4 ${aiModel === 'gemini-pro-latest' ? 'text-purple-500' : 'text-muted-foreground'}`} />
+                      <span>Pro <span className="text-muted-foreground text-xs">(Smart)</span></span>
                     </span>
                   </DropdownMenuCheckboxItem>
                 </DropdownMenuContent>

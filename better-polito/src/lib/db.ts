@@ -5,6 +5,7 @@ import type {
   Material,
   ChatMessage,
   ChatAttachment,
+  Conversation,
   MockExam,
   ExamAttempt,
   AppSettings,
@@ -18,6 +19,7 @@ class StudyBuddyDB extends Dexie {
   materials!: Table<Material>;
   chatMessages!: Table<ChatMessage>;
   chatAttachments!: Table<ChatAttachment>;
+  conversations!: Table<Conversation>;
   mockExams!: Table<MockExam>;
   examAttempts!: Table<ExamAttempt>;
   settings!: Table<AppSettings>;
@@ -130,6 +132,75 @@ class StudyBuddyDB extends Dexie {
         });
       }
     });
+
+    // Version 7: Migrate to Gemini — remove claudeApiKey, add aiModel + customSystemPrompt
+    this.version(7).stores({
+      courses: 'id, subject, examDate',
+      folders: 'id, courseId, parentId',
+      materials: 'id, courseId, folderId, type',
+      chatMessages: 'id, courseId, timestamp',
+      chatAttachments: 'id, messageId, materialId',
+      mockExams: 'id, courseId',
+      examAttempts: 'id, examId, courseId',
+      settings: 'id',
+      pageCache: 'id, materialId, pageNumber',
+      gifCache: 'id, giphyId, mood, personality, cachedAt',
+    }).upgrade(async tx => {
+      const settings = await tx.table('settings').get('settings');
+      if (settings) {
+        const update: any = {
+          aiModel: 'gemini-flash-latest',
+          customSystemPrompt: null,
+        };
+        // Remove old Claude key
+        if ('claudeApiKey' in settings) {
+          delete (settings as any).claudeApiKey;
+          update.claudeApiKey = undefined;
+        }
+        await tx.table('settings').update('settings', update);
+      }
+    });
+
+    // Version 8: Add conversations table, add conversationId to chatMessages
+    this.version(8).stores({
+      courses: 'id, subject, examDate',
+      folders: 'id, courseId, parentId',
+      materials: 'id, courseId, folderId, type',
+      chatMessages: 'id, courseId, conversationId, timestamp',
+      chatAttachments: 'id, messageId, materialId',
+      conversations: 'id, courseId, updatedAt',
+      mockExams: 'id, courseId',
+      examAttempts: 'id, examId, courseId',
+      settings: 'id',
+      pageCache: 'id, materialId, pageNumber',
+      gifCache: 'id, giphyId, mood, personality, cachedAt',
+    }).upgrade(async tx => {
+      // Migrate existing messages: create a default conversation per course
+      // and assign all existing messages to it
+      const messages = await tx.table('chatMessages').toArray();
+      const courseIds = [...new Set(messages.map((m: any) => m.courseId))];
+
+      for (const cid of courseIds) {
+        const convId = `legacy-${cid}`;
+        const courseMessages = messages.filter((m: any) => m.courseId === cid);
+        const firstMsg = courseMessages[0];
+        const lastMsg = courseMessages[courseMessages.length - 1];
+
+        // Create a conversation for this course's existing messages
+        await tx.table('conversations').add({
+          id: convId,
+          courseId: cid,
+          title: 'Previous Chat',
+          createdAt: firstMsg?.timestamp || new Date().toISOString(),
+          updatedAt: lastMsg?.timestamp || new Date().toISOString(),
+        });
+
+        // Update all messages with the conversationId
+        for (const msg of courseMessages) {
+          await tx.table('chatMessages').update(msg.id, { conversationId: convId });
+        }
+      }
+    });
   }
 
   async initializeSettings() {
@@ -137,10 +208,10 @@ class StudyBuddyDB extends Dexie {
     if (!existing) {
       await this.settings.add({
         id: 'settings',
-        claudeApiKey: null,
+        aiModel: 'gemini-flash-latest',
+        customSystemPrompt: null,
         language: 'en',
         lastBackupAt: null,
-        explanationMode: 'deep',
         aiPersonality: 'broski',
         personalityIntensity: 'c',
         theme: 'light',

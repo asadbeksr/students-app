@@ -9,10 +9,11 @@ import { useToolkitStore } from '@/lib/stores/toolkitStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useQueries } from '@tanstack/react-query';
-import { Bell, X, ChevronDown, BookOpen, Clock3, ArrowUpDown, ExternalLink, Building2, Mail, Phone } from 'lucide-react';
+import { Bell, X, ChevronDown, BookOpen, Clock3, ArrowUpDown, ExternalLink, Building2, Mail, Phone, Bot } from 'lucide-react';
 import Link from 'next/link';
 import * as Dialog from '@radix-ui/react-dialog';
 import ChatWindow from '@/components/chat/ChatWindow';
+import AskAIButton from '@/components/chat/AskAIButton';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
 import { useCoursePortalStore } from '@/lib/stores/coursePortalStore';
@@ -1087,7 +1088,7 @@ export default function CourseDetailPage() {
   const initialSidebarCollapsed = courseState.sidebar;
   const initialExpandedFolders = courseState.folders;
   const initialGridFolderStack = courseState.grid;
-  const initialPreviewId = courseState.preview;
+  const initialPreviewId = courseState.preview?.id ?? null;
   const selectedAcademicValue = courseState.year;
 
   const setSelectedAcademicValue = useCallback((val: string) => {
@@ -1124,8 +1125,8 @@ export default function CourseDetailPage() {
     updateCourseState(courseId, { grid: stack });
   }, [courseId, updateCourseState]);
 
-  const onPreviewIdChange = useCallback((previewId: string | null) => {
-    updateCourseState(courseId, { preview: previewId });
+  const onPreviewIdChange = useCallback((preview: { id: string; name: string; url: string } | null) => {
+    updateCourseState(courseId, { preview });
   }, [courseId, updateCourseState]);
 
   const chatRef = usePanelRef();
@@ -1405,6 +1406,21 @@ export default function CourseDetailPage() {
                 notifications={notifications as any[]}
                 onMarkNotificationsAsRead={markNotificationsAsRead}
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => toggleChat(!isChatOpen)}
+                className={`rounded-full gap-1.5 border-border/40 shadow-sm ${
+                  isChatOpen
+                    ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'
+                    : 'hover:bg-muted/50 text-muted-foreground'
+                }`}
+              >
+                <Bot className="w-4 h-4" />
+                <span className="font-medium hidden sm:inline-block">
+                  {isChatOpen ? 'Close AI' : 'AI Tutor'}
+                </span>
+              </Button>
             </div>
           </div>
         </div>
@@ -1449,6 +1465,16 @@ export default function CourseDetailPage() {
           )}
         </ResizablePanelGroup>
       </div>
+
+      {/* Floating Ask AI button for text selection */}
+      <AskAIButton
+        onAskAI={(text) => {
+          // Open chat if not already open
+          if (!isChatOpen) toggleChat(true);
+          // Dispatch a custom event that ChatWindow listens to
+          window.dispatchEvent(new CustomEvent('ask-ai-quote', { detail: { text } }));
+        }}
+      />
     </div>
   );
 }

@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unable to build zip archive' }, { status: 500 });
   }
 
-  return new NextResponse(zippedContent, {
+  return new NextResponse(Buffer.from(zippedContent), {
     status: 200,
     headers: {
       'Content-Type': 'application/zip',

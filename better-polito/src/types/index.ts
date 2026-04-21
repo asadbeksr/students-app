@@ -65,9 +65,18 @@ export interface ChatAttachment {
   createdAt: string;
 }
 
+export interface Conversation {
+  id: string;
+  courseId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ChatMessage {
   id: string;
   courseId: string;
+  conversationId: string;
   role: 'user' | 'assistant';
   content: string;
   attachments?: ChatAttachment[];
@@ -164,10 +173,10 @@ export interface StudyPlan {
 
 export interface AppSettings {
   id: 'settings';
-  claudeApiKey: string | null;
+  aiModel: 'gemini-pro-latest' | 'gemini-flash-latest';
+  customSystemPrompt: string | null;
   language: 'en' | 'it';
   lastBackupAt: string | null;
-  explanationMode: 'quick' | 'deep';
   aiPersonality: 'broski' | 'bestie' | 'professor';
   personalityIntensity: 'a' | 'b' | 'c';
   theme: 'light' | 'dark';

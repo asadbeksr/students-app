@@ -30,11 +30,21 @@ export default function PDFViewer({
 }: PDFViewerProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [pdfHash, setPdfHash] = useState<string>('');
 
   const displayName = propName ?? material?.name ?? 'Document';
   const { toast } = useToast();
 
   useEffect(() => {
+    const handlePdfNavigate = (e: CustomEvent<string>) => {
+      setPdfHash('#' + e.detail);
+    };
+    window.addEventListener('pdf-navigate', handlePdfNavigate as EventListener);
+    return () => window.removeEventListener('pdf-navigate', handlePdfNavigate as EventListener);
+  }, []);
+
+  useEffect(() => {
+    setPdfHash(''); // Reset hash when new document loads
     if (!propUrl) {
       const pdfData = material?.fileData || (material as any)?.content;
       if (pdfData instanceof ArrayBuffer) {
@@ -123,12 +133,12 @@ export default function PDFViewer({
         </div>
       </div>
 
-      {/* PDF embed */}
-      <div className="flex-1 overflow-hidden">
-        <embed
-          src={blobUrl}
-          type="application/pdf"
+      <div className="flex-1 overflow-hidden bg-black/5">
+        <iframe
+          key={`${blobUrl}${pdfHash}`}
+          src={`${blobUrl}${pdfHash}`}
           className="w-full h-full border-0"
+          title={displayName}
         />
       </div>
     </div>

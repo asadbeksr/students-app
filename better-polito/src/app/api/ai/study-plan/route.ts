@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
+import { getGeminiClient } from '@/lib/gemini';
 
 export async function POST(req: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: 'OpenAI API key not configured.' }, { status: 503 });
-  }
+  try {
+    const ai = getGeminiClient();
+    const { exams, grades } = await req.json();
 
-  const { exams, courses, grades } = await req.json();
-
-  const OpenAI = (await import('openai')).default;
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  const prompt = `You are a study planner AI. Given this student's data, create a 4-week study plan.
+    const prompt = `You are a study planner AI. Given this student's data, create a 4-week study plan.
 
 Exams: ${JSON.stringify((exams ?? []).slice(0, 5))}
 Grades (recent): ${JSON.stringify((grades ?? []).slice(0, 5))}
@@ -29,12 +25,27 @@ Return valid JSON in this exact structure:
   "summary": "A short personalized recommendation paragraph."
 }`;
 
-  const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    response_format: { type: 'json_object' },
-  });
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 2048,
+      },
+    });
 
-  const content = response.choices[0].message.content ?? '{}';
-  return NextResponse.json(JSON.parse(content));
+    const content = response.text ?? '{}';
+    return NextResponse.json(JSON.parse(content));
+  } catch (error) {
+    const message = (error as Error).message || 'Unknown error';
+
+    if (message.includes('GEMINI_API_KEY')) {
+      return NextResponse.json({ error: 'Gemini API key not configured.' }, { status: 503 });
+    }
+
+    return NextResponse.json(
+      { error: `AI request failed: ${message}` },
+      { status: 500 }
+    );
+  }
 }

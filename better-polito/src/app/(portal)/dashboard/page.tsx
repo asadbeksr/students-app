@@ -65,7 +65,11 @@ function getGreeting() {
 }
 
 function todayISO() {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function daysUntil(d: string) {
@@ -175,6 +179,8 @@ function ClassesContent({ isEditing }: { isEditing?: boolean }) {
     })
     .sort((a, b) => new Date(a.startsAt ?? a.startTime ?? 0).getTime() - new Date(b.startsAt ?? b.startTime ?? 0).getTime())
     .slice(0, 4);
+
+  console.log("Filtered Today Items:", items);
 
   return (
     <Widget id="classes" label="Today's Classes" href="/agenda" isEditing={isEditing}>
