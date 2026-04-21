@@ -10,6 +10,7 @@ import {
   FileText,
   Loader2,
   ExternalLink,
+  FileDown,
 } from 'lucide-react';
 
 interface PDFViewerProps {
@@ -32,9 +33,8 @@ export default function PDFViewer({
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [pdfHash, setPdfHash] = useState<string>('');
-  const [pageInput, setPageInput] = useState('');
+  const [converting, setConverting] = useState(false);
   const updateCourseState = useCoursePortalStore(s => s.updateCourseState);
-  const previewPage = useCoursePortalStore(s => s.getCourseState(courseId).previewPage);
 
   const displayName = propName ?? material?.name ?? 'Document';
   const { toast } = useToast();
@@ -48,7 +48,6 @@ export default function PDFViewer({
         const page = parseInt(pageMatch[1], 10);
         if (Number.isFinite(page) && page > 0) {
           updateCourseState(courseId, { previewPage: page });
-          setPageInput(String(page));
         }
       }
     };
@@ -56,14 +55,8 @@ export default function PDFViewer({
     return () => window.removeEventListener('pdf-navigate', handlePdfNavigate as EventListener);
   }, [courseId, updateCourseState]);
 
-  // Sync pageInput with stored previewPage (e.g. on mount)
-  useEffect(() => {
-    setPageInput(previewPage ? String(previewPage) : '');
-  }, [previewPage]);
-
   useEffect(() => {
     setPdfHash(''); // Reset hash when new document loads
-    setPageInput('');
     updateCourseState(courseId, { previewPage: null });
     if (!propUrl) {
       const pdfData = material?.fileData || (material as any)?.content;
@@ -103,6 +96,81 @@ export default function PDFViewer({
     };
   }, [propUrl, material]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleConvert = async () => {
+    if (!blobUrl || converting) return;
+    setConverting(true);
+    try {
+      const res = await fetch(blobUrl);
+      const buffer = await res.arrayBuffer();
+
+      // Encode as base64 for Gemini
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize)
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      const pdfBase64 = btoa(binary);
+
+      const convertRes = await fetch('/api/ai/convert-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64 }),
+      });
+
+      if (!convertRes.ok) {
+        const err = await convertRes.json().catch(() => ({ error: `HTTP ${convertRes.status}` }));
+        throw new Error(err.error || `HTTP ${convertRes.status}`);
+      }
+
+      let markdown = await convertRes.text();
+
+      // Replace [FIGURE_PAGE:N] placeholders with rendered page screenshots
+      const pagePlaceholders = [...markdown.matchAll(/\[FIGURE_PAGE:(\d+)\]/g)];
+      if (pagePlaceholders.length > 0) {
+        const uniquePages = [...new Set(pagePlaceholders.map(m => parseInt(m[1], 10)))];
+        const pageImages = new Map<number, string>();
+
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+
+        for (const pageNum of uniquePages) {
+          if (pageNum < 1 || pageNum > pdf.numPages) continue;
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.5 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: canvas.getContext('2d')!, canvas, viewport }).promise;
+          pageImages.set(pageNum, canvas.toDataURL('image/png').split(',')[1]);
+        }
+
+        markdown = markdown.replace(/\[FIGURE_PAGE:(\d+)\]/g, (_, n) => {
+          const img = pageImages.get(parseInt(n, 10));
+          return img
+            ? `![Figure on page ${n}](data:image/png;base64,${img})`
+            : `[Figure on page ${n}]`;
+        });
+      }
+
+      const mdBlob = new Blob([markdown], { type: 'text/markdown' });
+      const mdUrl = URL.createObjectURL(mdBlob);
+      const a = document.createElement('a');
+      a.href = mdUrl;
+      a.download = `${displayName.replace(/\.pdf$/i, '')}.md`;
+      a.click();
+      URL.revokeObjectURL(mdUrl);
+    } catch (err) {
+      toast({
+        title: 'Conversion failed',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setConverting(false);
+    }
+  };
+
   if (isFetching) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -135,23 +203,21 @@ export default function PDFViewer({
           <h2 className="text-base font-semibold text-foreground truncate">{displayName}</h2>
         </div>
         <div className="flex items-center gap-2 mx-3 shrink-0">
-          <span className="text-xs text-muted-foreground whitespace-nowrap">AI page:</span>
-          <input
-            type="number"
-            min={1}
-            placeholder="–"
-            value={pageInput}
-            onChange={e => setPageInput(e.target.value)}
-            onBlur={() => {
-              const n = parseInt(pageInput, 10);
-              updateCourseState(courseId, { previewPage: Number.isFinite(n) && n > 0 ? n : null });
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-            }}
-            className="w-14 h-7 text-xs text-center rounded border border-border bg-background px-1 focus:outline-none focus:ring-1 focus:ring-primary"
-            title="Tell the AI which page you're reading"
-          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleConvert}
+            disabled={converting}
+            title="Convert handwriting/PDF to readable Markdown"
+            className="h-7 text-xs gap-1.5"
+          >
+            {converting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileDown className="h-3.5 w-3.5" />
+            )}
+            {converting ? 'Converting…' : 'Convert to readable'}
+          </Button>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" title="Download PDF" asChild>

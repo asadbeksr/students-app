@@ -41,7 +41,7 @@ function SSOCallbackContent() {
   return (
     <div className="w-full max-w-sm bg-surface rounded-3xl p-8 shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(0,0,0,0.04)_0px_8px_24px] text-center">
       <div className="w-10 h-10 rounded-xl bg-foreground flex items-center justify-center mx-auto mb-6">
-        <span className="text-surface text-sm font-bold">BP</span>
+        <span className="text-surface text-sm font-bold">PCP</span>
       </div>
 
       {status === 'loading' ? (

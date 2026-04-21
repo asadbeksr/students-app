@@ -46,6 +46,10 @@ class ApiClient {
     const res = await fetch(`${getBaseUrl()}${path}`, { ...options, headers });
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: res.statusText }));
+      // Notify the app that the PoliTO token has expired so it can sign the user out
+      if (res.status === 401 && !isServer) {
+        window.dispatchEvent(new CustomEvent('polito-auth-expired'));
+      }
       throw new ApiResponseError(res.status, error);
     }
     return res.json();

@@ -131,7 +131,7 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
           </Button>
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-              <span className="text-primary text-[11px] font-bold">BP</span>
+              <span className="text-primary text-[11px] font-bold">PCP</span>
             </div>
           </Link>
         </div>
@@ -146,7 +146,7 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
               </p> */}
             </>
           ) : (
-            <h1 className="text-lg md:text-xl font-semibold text-foreground truncate hidden lg:block">Polito Community</h1>
+            <h1 className="text-lg md:text-xl font-semibold text-foreground truncate hidden lg:block">Polito Community Portal</h1>
           )}
         </div>
 

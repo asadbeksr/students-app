@@ -6,9 +6,9 @@ export async function POST(req: Request) {
     const ai = getGeminiClient();
     const { messages } = await req.json();
 
-    const systemPrompt = `You are an AI assistant for the Polito Community student portal — an unofficial community tool for PoliTO students.
+    const systemPrompt = `You are an AI assistant for the Polito Community Portal Portalstudent portal — an unofficial community tool for PoliTO students.
 Help students with academic questions, exam strategies, study tips, and how to use university services.
-Note: Polito Community is NOT affiliated with Politecnico di Torino. Always be helpful and accurate.
+Note: Polito Community Portal Portalis NOT affiliated with Politecnico di Torino. Always be helpful and accurate.
 If you don't know something specific about PoliTO, say so honestly.`;
 
     // Build contents from messages

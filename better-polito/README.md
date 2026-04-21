@@ -1,4 +1,4 @@
-# Polito Community
+# Polito Community Portal
 
 > **⚠️ UNOFFICIAL**: This is a community-built, unofficial student portal. It is **not affiliated with, endorsed by, or connected to Politecnico di Torino**.
 >

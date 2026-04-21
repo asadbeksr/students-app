@@ -52,9 +52,9 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
         <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md bg-foreground flex items-center justify-center">
-              <span className="text-surface text-[10px] font-bold">BP</span>
+              <span className="text-surface text-[10px] font-bold">PCP</span>
             </div>
-            <span className="text-sm font-semibold">Polito Community</span>
+            <span className="text-sm font-semibold">Polito Community Portal</span>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="w-4 h-4" />

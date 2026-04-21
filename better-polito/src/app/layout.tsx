@@ -1,4 +1,4 @@
-// Polito Community — Unofficial community portal
+// Polito Community Portal Portal— Unofficial community portal
 // Based on polito/students-app (EUPL v1.2)
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
@@ -18,7 +18,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Polito Community — Unofficial Student Portal',
+  title: 'Polito Community Portal Portal— Unofficial Student Portal',
   description:
     'An unofficial, community-built student portal for PoliTO. Not affiliated with Politecnico di Torino.',
   robots: { index: false, follow: false },
@@ -28,7 +28,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    /* Polito Community is NOT affiliated with Politecnico di Torino */
+    /* Polito Community Portal Portalis NOT affiliated with Politecnico di Torino */
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>

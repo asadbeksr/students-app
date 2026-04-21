@@ -24,8 +24,8 @@ export function PomodoroPanel() {
   useEffect(() => {
     if (pomodoro.mode === 'work' || pomodoro.mode === 'break') {
       const emoji = pomodoro.mode === 'work' ? '🍅' : '☕';
-      document.title = `${emoji} ${formatTime(pomodoro.secondsLeft)} — Polito Community`;
-      return () => { document.title = 'Polito Community'; };
+      document.title = `${emoji} ${formatTime(pomodoro.secondsLeft)} — Polito Community Portal`;
+      return () => { document.title = 'Polito Community Portal'; };
     }
   }, [pomodoro.mode, pomodoro.secondsLeft]);
 

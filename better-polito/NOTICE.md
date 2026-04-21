@@ -1,6 +1,6 @@
 # NOTICE
 
-Polito Community is a community-built, unofficial derivative work.
+Polito Community Portal Portalis a community-built, unofficial derivative work.
 
 ## Attribution
 
@@ -11,7 +11,7 @@ This software is based on the PoliTO Students App:
 
 ## Disclaimer
 
-Polito Community is NOT affiliated with, endorsed by, or connected to
+Polito Community Portal Portalis NOT affiliated with, endorsed by, or connected to
 Politecnico di Torino. It is an independent, community-built tool
 provided as-is with no warranty.
 
