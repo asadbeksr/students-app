@@ -129,11 +129,6 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
           text = await response.text();
         }
 
-        // Limit to 12000 chars for context
-        if (text.length > 12000) {
-          text = text.slice(0, 12000) + '\n\n[... document truncated for context ...]';
-        }
-
         docContentStore.setContent(preview.id, text);
         setDocExtracting(false);
       } catch (error) {

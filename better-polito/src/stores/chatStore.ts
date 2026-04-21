@@ -1,5 +1,29 @@
 import { create } from 'zustand';
 import { db } from '@/lib/db';
+
+// Extract a window of pages around `centerPage` from extracted PDF text
+function extractPageWindow(fullText: string, centerPage: number, radius: number): string {
+  const startPage = Math.max(1, centerPage - radius);
+  const endPage = centerPage + radius;
+  const pageRegex = /--- Page (\d+) ---/g;
+
+  // Split into sections by page marker
+  const sections: { page: number; start: number }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pageRegex.exec(fullText)) !== null) {
+    sections.push({ page: parseInt(match[1], 10), start: match.index });
+  }
+
+  const inWindow = sections.filter(s => s.page >= startPage && s.page <= endPage);
+  if (!inWindow.length) return fullText;
+
+  const first = inWindow[0].start;
+  const lastSection = inWindow[inWindow.length - 1];
+  const nextIdx = sections.findIndex(s => s.page > lastSection.page);
+  const end = nextIdx >= 0 ? sections[nextIdx].start : fullText.length;
+
+  return `[Showing pages ${startPage}–${Math.min(endPage, lastSection.page)} of the document]\n\n` + fullText.slice(first, end).trim();
+}
 import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getSystemPrompt, type ExplanationModes } from '@/lib/prompts';
@@ -303,7 +327,20 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           }
 
           if (cachedDoc && cachedDoc.text) {
-            openDocumentText = cachedDoc.text;
+            const fullText = cachedDoc.text;
+            const currentPage = portalState.previewPage;
+
+            if (currentPage) {
+              // Extract a window of pages around the current page for focused context
+              openDocumentText = extractPageWindow(fullText, currentPage, 2);
+            } else {
+              openDocumentText = fullText;
+            }
+
+            // Cap at 12k chars
+            if (openDocumentText && openDocumentText.length > 12000) {
+              openDocumentText = openDocumentText.slice(0, 12000) + '\n\n[... document truncated for context ...]';
+            }
           }
         }
       } catch {}

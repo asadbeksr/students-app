@@ -1126,7 +1126,7 @@ export default function CourseDetailPage() {
   }, [courseId, updateCourseState]);
 
   const onPreviewIdChange = useCallback((preview: { id: string; name: string; url: string } | null) => {
-    updateCourseState(courseId, { preview });
+    updateCourseState(courseId, { preview, previewPage: null });
   }, [courseId, updateCourseState]);
 
   const chatRef = usePanelRef();

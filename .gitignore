@@ -1,6 +1,7 @@
 build/
 .idea
 .env
+.next/
 
 # OSX
 #

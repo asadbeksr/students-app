@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useCoursePortalStore } from '@/lib/stores/coursePortalStore';
 import type { Material } from '@/types';
 import {
   X,
@@ -23,7 +24,7 @@ interface PDFViewerProps {
 
 export default function PDFViewer({
   material,
-  courseId: _courseId,
+  courseId,
   onClose,
   url: propUrl,
   name: propName,
@@ -31,6 +32,9 @@ export default function PDFViewer({
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [pdfHash, setPdfHash] = useState<string>('');
+  const [pageInput, setPageInput] = useState('');
+  const updateCourseState = useCoursePortalStore(s => s.updateCourseState);
+  const previewPage = useCoursePortalStore(s => s.getCourseState(courseId).previewPage);
 
   const displayName = propName ?? material?.name ?? 'Document';
   const { toast } = useToast();
@@ -43,8 +47,15 @@ export default function PDFViewer({
     return () => window.removeEventListener('pdf-navigate', handlePdfNavigate as EventListener);
   }, []);
 
+  // Sync pageInput with stored previewPage (e.g. on mount)
+  useEffect(() => {
+    setPageInput(previewPage ? String(previewPage) : '');
+  }, [previewPage]);
+
   useEffect(() => {
     setPdfHash(''); // Reset hash when new document loads
+    setPageInput('');
+    updateCourseState(courseId, { previewPage: null });
     if (!propUrl) {
       const pdfData = material?.fileData || (material as any)?.content;
       if (pdfData instanceof ArrayBuffer) {
@@ -114,7 +125,26 @@ export default function PDFViewer({
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-semibold text-foreground truncate">{displayName}</h2>
         </div>
-        <div className="flex items-center gap-1 ml-4 shrink-0">
+        <div className="flex items-center gap-2 mx-3 shrink-0">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">AI page:</span>
+          <input
+            type="number"
+            min={1}
+            placeholder="–"
+            value={pageInput}
+            onChange={e => setPageInput(e.target.value)}
+            onBlur={() => {
+              const n = parseInt(pageInput, 10);
+              updateCourseState(courseId, { previewPage: Number.isFinite(n) && n > 0 ? n : null });
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+            className="w-14 h-7 text-xs text-center rounded border border-border bg-background px-1 focus:outline-none focus:ring-1 focus:ring-primary"
+            title="Tell the AI which page you're reading"
+          />
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" title="Download PDF" asChild>
             <a href={blobUrl} download={`${displayName}.pdf`}>
               <Download className="h-4 w-4" />

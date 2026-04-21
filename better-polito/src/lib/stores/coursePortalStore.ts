@@ -16,6 +16,7 @@ export interface CoursePortalState {
   folders: string[];
   grid: string[];
   preview: PreviewFile | null;
+  previewPage: number | null;
 }
 
 const defaultState: CoursePortalState = {
@@ -27,6 +28,7 @@ const defaultState: CoursePortalState = {
   folders: [],
   grid: [],
   preview: null,
+  previewPage: null,
 };
 
 // Separate non-persisted store for document content cache
