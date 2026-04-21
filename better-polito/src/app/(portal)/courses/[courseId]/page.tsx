@@ -10,7 +10,8 @@ import { useToolkitStore } from '@/lib/stores/toolkitStore';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useQueries } from '@tanstack/react-query';
-import { Bell, X, ChevronDown, BookOpen, Clock3, ArrowUpDown, ExternalLink, Building2, Mail, Phone, Bot } from 'lucide-react';
+import { Bell, X, ChevronDown, BookOpen, Clock3, ArrowUpDown, ExternalLink, Building2, Mail, Phone, Bot, TrendingUp } from 'lucide-react';
+import * as Popover from '@radix-ui/react-popover';
 import Link from 'next/link';
 import * as Dialog from '@radix-ui/react-dialog';
 import ChatWindow from '@/components/chat/ChatWindow';
@@ -1389,20 +1390,57 @@ export default function CourseDetailPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-2 shrink-0">
-              {/* ── tag progress ───────────────────────────────────── */}
+              {/* ── tag progress button ────────────────────────────── */}
               {tagProgress && tagProgress.totalTagged > 0 && (
-                <div className="hidden sm:flex items-center gap-2 mr-1 shrink-0">
-                  {tagProgress.perTag.map(({ tagName, color, completed, total }) => (
-                    <div key={tagName} className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                      <span className="text-[10px] text-muted-foreground">{tagName}</span>
-                      <span className="text-[10px] font-semibold tabular-nums text-foreground">{completed}/{total}</span>
-                    </div>
-                  ))}
-                  <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-green-500 transition-all duration-300" style={{ width: `${tagProgress.totalPct}%` }} />
-                  </div>
-                </div>
+                <Popover.Root>
+                  <Popover.Trigger asChild>
+                    <Button variant="outline" size="sm" className="rounded-full gap-2 border-border/40 hover:bg-muted/50 text-muted-foreground shadow-sm">
+                      <TrendingUp className="w-4 h-4 text-foreground/80" />
+                      <span className="font-medium text-foreground/80 hidden sm:inline-block tabular-nums">
+                        {tagProgress.completedTagged}/{tagProgress.totalTagged}
+                      </span>
+                      <span className="font-medium text-foreground/60 hidden sm:inline-block tabular-nums text-[11px]">
+                        {tagProgress.totalPct}%
+                      </span>
+                    </Button>
+                  </Popover.Trigger>
+                  <Popover.Portal>
+                    <Popover.Content
+                      side="bottom"
+                      align="end"
+                      sideOffset={8}
+                      className="z-50 w-64 rounded-xl border border-border bg-card shadow-xl p-4 space-y-3 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                    >
+                      <p className="text-xs font-semibold text-foreground">Study Progress</p>
+                      <div className="space-y-3">
+                        {tagProgress.perTag.map(({ tagName, color, completed, total, pct }) => (
+                          <div key={tagName} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                <span className="text-xs text-foreground capitalize">{tagName}</span>
+                              </div>
+                              <span className="text-xs tabular-nums text-muted-foreground">{completed}/{total}</span>
+                            </div>
+                            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{ width: `${pct}%`, backgroundColor: color }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-1 border-t border-border/60 flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Total</span>
+                        <span className="text-xs font-semibold tabular-nums text-foreground">{tagProgress.completedTagged}/{tagProgress.totalTagged} · {tagProgress.totalPct}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-green-500 transition-all duration-300" style={{ width: `${tagProgress.totalPct}%` }} />
+                      </div>
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
               )}
               <AcademicYearSelect
                 value={selectedYearOption?.value ?? ''}
