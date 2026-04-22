@@ -299,6 +299,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const personality = settings?.aiPersonality || 'broski';
       const intensity = settings?.personalityIntensity || 'c';
       const visualModeEnabled = settings?.visualMode?.enabled ?? true;
+      const manimModeEnabled = settings?.manimMode ?? true;
       const aiModel = settings?.aiModel || 'gemini-flash-latest';
       const customSystemPrompt = settings?.customSystemPrompt || null;
 
@@ -348,7 +349,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       const systemPrompt = getSystemPrompt(
         course, materials, personality, intensity,
-        hasAttachments, visualModeEnabled, customSystemPrompt,
+        hasAttachments, visualModeEnabled, manimModeEnabled, customSystemPrompt,
         openDocumentName, studentContext || null,
         openDocumentPage
       );

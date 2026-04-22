@@ -18,6 +18,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import { parseStreamingSegments, hasVisualizations } from '@/lib/parseMessageContent';
 import { VisualizationFrame, VisualizationSkeleton } from '@/components/chat/VisualizationFrame';
+import { ManimFrame, ManimSkeleton } from '@/components/chat/ManimFrame';
 import { messageToMarkdown, copyToClipboard, downloadMarkdown, generateFilename, addExportFooter } from '@/lib/exportUtils';
 import type { ChatMessage, Conversation } from '@/types';
 import ChatSettingsPanel from './ChatSettingsPanel';
@@ -580,6 +581,10 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
                             return <VisualizationFrame key={i} html={seg.html} title={seg.title} />;
                           } else if (seg.type === 'visualization_loading') {
                             return <VisualizationSkeleton key={i} title={seg.title} />;
+                          } else if (seg.type === 'manim') {
+                            return <ManimFrame key={i} script={seg.script} title={seg.title} />;
+                          } else if (seg.type === 'manim_loading') {
+                            return <ManimSkeleton key={i} title={seg.title} />;
                           }
                           return null;
                         })}
