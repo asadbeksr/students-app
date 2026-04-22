@@ -20,6 +20,7 @@ interface ExplanationTabsProps {
 import { MathBlockRenderer } from '@/components/visualBlocks';
 import { parseStreamingSegments, hasVisualizations } from '@/lib/parseMessageContent';
 import { VisualizationFrame, VisualizationSkeleton } from '@/components/chat/VisualizationFrame';
+import { ManimFrame, ManimSkeleton } from '@/components/chat/ManimFrame';
 
 // Custom rehype plugin to preserve original LaTeX in data attributes
 function rehypePreserveLatex(): any {
