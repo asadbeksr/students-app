@@ -1468,7 +1468,7 @@ export default function CourseDetailPage() {
                 className={`rounded-full gap-1.5 border-border/40 shadow-sm ${
                   isChatOpen
                     ? 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'
-                    : 'hover:bg-muted/50 text-muted-foreground'
+                    : 'hover:bg-muted/50 text-foreground'
                 }`}
               >
                 <Bot className="w-4 h-4" />

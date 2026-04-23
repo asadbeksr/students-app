@@ -13,7 +13,7 @@ export default function PeoplePage() {
   const { data: people = [], isLoading } = useGetPeople(search, search.length >= 2);
 
   return (
-    <div className="space-y-6 w-full max-w-3xl">
+    <div className="space-y-6 w-full">
       <div>
         <h1 className="text-3xl font-light text-foreground">People</h1>
         <p className="text-sm text-muted-foreground mt-1">Search professors, staff, and students.</p>
@@ -30,14 +30,14 @@ export default function PeoplePage() {
       </div>
 
       {search.length < 2 ? (
-        <div className="py-16 text-center">
-          <Users className="w-10 h-10 text-border mx-auto mb-3" />
+        <div className="py-16">
+          <Users className="w-10 h-10 text-border mb-3" />
           <p className="text-muted-foreground">Type at least 2 characters to search.</p>
         </div>
       ) : isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16" />)}</div>
       ) : (people as any[]).length === 0 ? (
-        <div className="py-12 text-center">
+        <div className="py-12">
           <p className="text-muted-foreground">No results for &ldquo;{search}&rdquo;</p>
         </div>
       ) : (

@@ -18,7 +18,7 @@ function LoginContent() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/dashboard');
+      router.replace('/courses');
     }
   }, [status, router]);
 
@@ -50,7 +50,7 @@ function LoginContent() {
       if (result?.error) {
         setError('Incorrect username or password.');
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = '/courses';
       }
     } catch {
       setError('Something went wrong. Please try again.');

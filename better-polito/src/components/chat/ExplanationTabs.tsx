@@ -20,6 +20,7 @@ interface ExplanationTabsProps {
 import { MathBlockRenderer } from '@/components/visualBlocks';
 import { parseStreamingSegments, hasVisualizations } from '@/lib/parseMessageContent';
 import { VisualizationFrame, VisualizationSkeleton } from '@/components/chat/VisualizationFrame';
+import { ManimFrame, ManimSkeleton } from '@/components/chat/ManimFrame';
 
 // Custom rehype plugin to preserve original LaTeX in data attributes
 function rehypePreserveLatex(): any {
@@ -237,6 +238,10 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
             return <VisualizationFrame key={i} html={seg.html} title={seg.title} />;
           } else if (seg.type === 'visualization_loading') {
             return <VisualizationSkeleton key={i} title={seg.title} />;
+          } else if (seg.type === 'manim') {
+            return <ManimFrame key={i} script={seg.script} title={seg.title} />;
+          } else if (seg.type === 'manim_loading') {
+            return <ManimSkeleton key={i} title={seg.title} />;
           }
           return null;
         })}

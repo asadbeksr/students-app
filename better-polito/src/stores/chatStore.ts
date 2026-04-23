@@ -299,6 +299,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const personality = settings?.aiPersonality || 'broski';
       const intensity = settings?.personalityIntensity || 'c';
       const visualModeEnabled = settings?.visualMode?.enabled ?? true;
+      const manimModeEnabled = settings?.manimMode ?? true;
       const aiModel = settings?.aiModel || 'gemini-flash-latest';
       const customSystemPrompt = settings?.customSystemPrompt || null;
 
@@ -348,7 +349,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       const systemPrompt = getSystemPrompt(
         course, materials, personality, intensity,
-        hasAttachments, visualModeEnabled, customSystemPrompt,
+        hasAttachments, visualModeEnabled, manimModeEnabled, customSystemPrompt,
         openDocumentName, studentContext || null,
         openDocumentPage
       );
@@ -457,6 +458,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       await db.chatMessages.add(assistantMessage);
       await get().fetchMessages(conversationId);
 
+      // Reset streaming state immediately so we don't show duplicate messages during title generation
+      get().resetStreamingState();
+      set({ loading: false });
+
       // Update conversation timestamp and auto-name if it's the first message
       const conv = await db.conversations.get(conversationId);
       const now = new Date().toISOString();
@@ -495,10 +500,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
 
       await get().fetchConversations(courseId);
-
-      // Reset streaming state
-      get().resetStreamingState();
-      set({ loading: false });
 
     } catch (error) {
       const errorMessage = (error as Error).message;

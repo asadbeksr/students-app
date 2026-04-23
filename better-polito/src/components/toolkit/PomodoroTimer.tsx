@@ -159,7 +159,7 @@ export function PomodoroPanel() {
 // ─── topbar chip (shown when timer is active) ─────────────────────────────────
 
 export function PomodoroChip() {
-  const { pomodoro, togglePomodoroPanel } = useToolkitStore();
+  const { pomodoro } = useToolkitStore();
   const isActive = pomodoro.mode === 'work' || pomodoro.mode === 'break' || pomodoro.mode === 'paused';
 
   if (!isActive) return null;
@@ -168,9 +168,13 @@ export function PomodoroChip() {
   const isPaused = pomodoro.mode === 'paused';
   const accent = isBreak ? '#34C759' : '#FF6B8B';
 
+  const openPomodoro = () => {
+    window.dispatchEvent(new CustomEvent('open-command-palette', { detail: { view: 'pomodoro' } }));
+  };
+
   return (
     <button
-      onClick={togglePomodoroPanel}
+      onClick={openPomodoro}
       className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:opacity-80"
       style={{ borderColor: `${accent}40`, background: `${accent}15`, color: accent }}
     >

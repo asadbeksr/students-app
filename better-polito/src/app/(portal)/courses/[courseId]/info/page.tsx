@@ -236,7 +236,7 @@ export default function CourseInfoPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
+    <div className="space-y-6 w-full">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild className="rounded-full">

@@ -48,6 +48,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             autoExpandBlocks: true,
             preferredBlockSize: 'normal',
           },
+          manimMode: true,
         };
         await db.settings.add(settings);
       }
@@ -76,6 +77,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           gifsEnabled: true,
           giphyApiKey: null,
         });
+      }
+
+      // Migrate existing settings without Manim Mode
+      if (settings.manimMode === undefined) {
+        settings.manimMode = true;
+        await db.settings.update('settings', { manimMode: true });
       }
 
       // Migrate existing settings without Visual Mode

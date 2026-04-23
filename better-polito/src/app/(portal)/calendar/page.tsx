@@ -81,7 +81,7 @@ export default function AgendaPage() {
   return (
     <div className="space-y-6 w-full">
       <div>
-        <h1 className="text-3xl font-light text-foreground">Agenda</h1>
+        <h1 className="text-3xl font-light text-foreground">Calendar</h1>
         <p className="text-sm text-muted-foreground mt-1">Your weekly schedule and deadlines.</p>
       </div>
 
@@ -117,11 +117,10 @@ export default function AgendaPage() {
                 <button
                   key={i}
                   onClick={() => setSelectedDay(d.toDateString())}
-                  className={`flex flex-col items-center gap-1 py-2 rounded-xl transition-colors ${
-                    isSelected ? 'bg-foreground text-surface' :
-                    isToday ? 'bg-background text-foreground font-semibold' :
-                    'hover:bg-background text-muted-foreground'
-                  }`}
+                  className={`flex flex-col items-center gap-1 py-2 rounded-xl transition-colors ${isSelected ? 'bg-foreground text-surface' :
+                      isToday ? 'bg-background text-foreground font-semibold' :
+                        'hover:bg-background text-muted-foreground'
+                    }`}
                 >
                   <span className="text-[10px] font-medium uppercase">{DAYS[i]}</span>
                   <span className="text-base">{d.getDate()}</span>
@@ -138,8 +137,8 @@ export default function AgendaPage() {
             {isLoading ? (
               <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-14" />)}</div>
             ) : selectedEvents.length === 0 ? (
-              <div className="py-6 text-center">
-                <Calendar className="w-6 h-6 text-border mx-auto mb-1" />
+              <div className="py-6">
+                <Calendar className="w-6 h-6 text-border mb-1" />
                 <p className="text-xs text-muted-foreground">No events this day</p>
               </div>
             ) : (
@@ -168,8 +167,8 @@ export default function AgendaPage() {
           {deadlinesLoading ? (
             <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12" />)}</div>
           ) : upcoming.length === 0 ? (
-            <div className="py-8 text-center">
-              <Clock className="w-7 h-7 text-border mx-auto mb-2" />
+            <div className="py-8">
+              <Clock className="w-7 h-7 text-border mb-2" />
               <p className="text-sm text-muted-foreground">No upcoming deadlines.</p>
             </div>
           ) : (

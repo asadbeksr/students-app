@@ -18,6 +18,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import { parseStreamingSegments, hasVisualizations } from '@/lib/parseMessageContent';
 import { VisualizationFrame, VisualizationSkeleton } from '@/components/chat/VisualizationFrame';
+import { ManimFrame, ManimSkeleton } from '@/components/chat/ManimFrame';
 import { messageToMarkdown, copyToClipboard, downloadMarkdown, generateFilename, addExportFooter } from '@/lib/exportUtils';
 import type { ChatMessage, Conversation } from '@/types';
 import ChatSettingsPanel from './ChatSettingsPanel';
@@ -403,9 +404,9 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-2 md:p-4 scroll-smooth bg-background dark:bg-background"
+        className="flex-1 overflow-y-auto scroll-smooth bg-background dark:bg-background"
       >
-        <div className="space-y-4 md:space-y-6 max-w-4xl mx-auto">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
           {messages.length === 0 && (
             <div className="text-center py-12">
               <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
@@ -580,6 +581,10 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
                             return <VisualizationFrame key={i} html={seg.html} title={seg.title} />;
                           } else if (seg.type === 'visualization_loading') {
                             return <VisualizationSkeleton key={i} title={seg.title} />;
+                          } else if (seg.type === 'manim') {
+                            return <ManimFrame key={i} script={seg.script} title={seg.title} />;
+                          } else if (seg.type === 'manim_loading') {
+                            return <ManimSkeleton key={i} title={seg.title} />;
                           }
                           return null;
                         })}

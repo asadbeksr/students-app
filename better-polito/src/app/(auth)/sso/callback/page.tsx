@@ -30,7 +30,7 @@ function SSOCallbackContent() {
         setErrorMsg('SSO sign-in failed. Your session may have expired — please try again.');
         setStatus('error');
       } else {
-        router.replace('/dashboard');
+        router.replace('/courses');
       }
     }).catch(() => {
       setErrorMsg('An unexpected error occurred.');

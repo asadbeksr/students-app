@@ -143,6 +143,18 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
               />
             </div>
 
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🎥</span>
+                <span className="text-sm">Manim Animations</span>
+              </div>
+              <Switch
+                checked={settings.manimMode ?? true}
+                onCheckedChange={(checked) => updateSettings({ manimMode: checked })}
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🎞️</span>

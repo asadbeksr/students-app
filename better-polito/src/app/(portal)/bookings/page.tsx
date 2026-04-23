@@ -42,8 +42,8 @@ export default function BookingsPage() {
         <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-28" />)}</div>
       ) : all.length === 0 ? (
         <Card>
-          <CardContent className="py-16 text-center">
-            <CalendarCheck className="w-10 h-10 text-border mx-auto mb-3" />
+          <CardContent className="py-16">
+            <CalendarCheck className="w-10 h-10 text-border mb-3" />
             <p className="text-muted-foreground">No bookings found.</p>
           </CardContent>
         </Card>

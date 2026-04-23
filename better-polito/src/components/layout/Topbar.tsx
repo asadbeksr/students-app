@@ -78,9 +78,8 @@ function NotificationBell() {
 }
 
 const routeMap: Record<string, { title: string, desc: string }> = {
-  '/dashboard': { title: 'Dashboard', desc: "Here's what's happening with your studies." },
-  '/courses': { title: 'Courses', desc: 'Your enrolled courses this semester.' },
-  '/agenda': { title: 'Agenda', desc: 'Your upcoming classes and events.' },
+  '/courses': { title: 'Courses', desc: 'Your enrolled courses and study materials.' },
+  '/calendar': { title: 'Calendar', desc: 'Your upcoming classes and events.' },
   '/transcript': { title: 'Transcript', desc: 'Your academic record and grades.' },
   '/exams': { title: 'Exams', desc: 'Manage your exam bookings and results.' },
   '/bookings': { title: 'Bookings', desc: 'Your room and facility reservations.' },
@@ -90,12 +89,15 @@ const routeMap: Record<string, { title: string, desc: string }> = {
   '/services': { title: 'Services', desc: 'Additional university services.' },
   '/surveys': { title: 'Surveys', desc: 'Pending evaluations.' },
   '/messages': { title: 'Messages', desc: 'Official student communications.' },
+  '/ai/chatbot':       { title: 'AI Assistant',   desc: 'Chat with your AI study buddy.'     },
+  '/ai/study-planner': { title: 'Study Planner',   desc: 'AI-powered study schedule.'         },
+  '/ai/analytics':     { title: 'Analytics',       desc: 'Performance insights.'              },
   '/profile': { title: 'Profile', desc: 'Manage your account settings.' },
 };
 
 function getHeaderInfo(pathname: string) {
   if (routeMap[pathname]) return routeMap[pathname];
-  if (pathname.startsWith('/courses/')) return { title: 'Course Details', desc: 'Manage course materials and notices.' };
+  if (pathname.startsWith('/courses/')) return { title: 'Course', desc: 'Manage course materials and notices.' };
   if (pathname.startsWith('/tickets/')) return { title: 'Ticket Thread', desc: 'View and reply to ticket.' };
   if (pathname.startsWith('/ai/')) return { title: 'AI Features', desc: 'Supercharge your studies with AI.' };
   return null;
@@ -116,8 +118,8 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
   const isCourseDetail = !!pathname.match(/^\/courses\/[^/]+$/);
 
   return (
-    <div className={cn("bg-card border-b border-border shrink-0 sticky top-0 z-40 transition-colors", isCourseDetail ? "flex md:hidden" : "block")}>
-      <div className="h-[52px] w-full px-3 md:px-6 py-0 flex items-center md:flex-row gap-3 md:gap-6">
+    <div className={cn("bg-card border-b border-border shrink-0 sticky top-0 z-40", isCourseDetail ? "flex md:hidden" : "block")}>
+      <div className="h-[52px] w-full px-3 py-0 flex items-center md:flex-row">
 
         {/* Mobile menu and Brand */}
         <div className="flex items-center gap-2 lg:hidden shrink-0">
@@ -129,11 +131,11 @@ export function Topbar({ onMobileMenuOpen }: TopbarProps) {
           >
             <Menu className="w-5 h-5 text-foreground" />
           </Button>
-          <Link href="/dashboard" className="flex items-center gap-2">
+          {/* <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
               <span className="text-primary text-[11px] font-bold">PCP</span>
             </div>
-          </Link>
+          </Link> */}
         </div>
 
         {/* Dynamic Page Info */}

@@ -68,6 +68,39 @@ DO visualize: mathematical functions/graphs, data comparisons (3+ items), flowch
 DO NOT visualize: single facts, short lists (<3 items), simple definitions, conversational replies, greetings
 `;
 
+
+const MANIM_MODE_INSTRUCTIONS = `
+## Manim Animation Protocol
+
+When explaining mathematical or geometric concepts, you can generate an animated Manim scene.
+Output EXACTLY this format:
+
+<manim title="Descriptive Title">
+// JavaScript code for manim-web here
+// Do not include any HTML, <script> tags, or markdown code blocks inside the <manim> tag!
+// The 'scene' variable is already globally available and initialized.
+// Available objects from manim-web are globally available without importing:
+// Circle, Square, Sphere, Cube, Dot, Dot3D, Line, Text, MathTex, Create, Transform, FadeIn, FadeOut, ThreeDAxes, makeDraggable, BLUE, GREEN, RED, YELLOW, WHITE, etc.
+
+const circle = new Circle({ radius: 0.5, color: BLUE, fillOpacity: 0.8 });
+circle.moveTo([-2, 1, 0]);
+scene.add(circle);
+// DO NOT use top-level await unless wrapped in an async IIFE, OR just rely on scene.play()
+// Example:
+// await scene.play(new Create(circle));
+// Actually, top level await is supported in the environment.
+
+makeDraggable(circle, scene);
+</manim>
+
+### Rules for Manim:
+- Do NOT use \`import\` statements (e.g. \`import { Circle } from 'manim-web';\`). All exports from manim-web are globally available.
+- Do NOT include \`const scene = new Scene(...)\`. It is already created for you.
+- Use 3D objects (\`Sphere\`, \`Cube\`, \`ThreeDAxes\`) for 3D concepts.
+- Use \`makeDraggable(object, scene)\` to make things interactive.
+- You can use \`scene.add(...)\` or \`await scene.play(...)\` for animations.
+`;
+
 export function getSystemPrompt(
   course: Course,
   materials: Material[],
@@ -75,6 +108,7 @@ export function getSystemPrompt(
   intensity: 'a' | 'b' | 'c' = 'c',
   hasAttachments: boolean = false,
   visualModeEnabled: boolean = false,
+  manimModeEnabled: boolean = true,
   customSystemPrompt: string | null = null,
   openDocumentName: string | null = null,
   studentContext: string | null = null,
@@ -87,6 +121,7 @@ export function getSystemPrompt(
   const key = `${personality}-${intensity}`;
   const personalityInstruction = PERSONALITY_INSTRUCTIONS[key] || PERSONALITY_INSTRUCTIONS['broski-c'];
   const visualInstructions = visualModeEnabled ? VISUAL_MODE_INSTRUCTIONS : '';
+  const manimInstructions = manimModeEnabled ? MANIM_MODE_INSTRUCTIONS : '';
 
   const customPromptSection = customSystemPrompt
     ? `\n## Custom Instructions from Student\n${customSystemPrompt}\n`
@@ -118,7 +153,7 @@ CRITICAL RULES FOR PDF LINKS:
     ? `\n\n## Student Profile\n${studentContext}\nNote: Only use this profile context if the student explicitly asks a question where their background is strictly necessary to solve the problem. Do NOT randomly bring up their major or courses in normal conversation.`
     : '';
 
-  const baseContext = `${personalityInstruction}${visualInstructions}${customPromptSection}
+  const baseContext = `${personalityInstruction}${visualInstructions}${manimInstructions}${customPromptSection}
 
 You are an AI assistant helping a student with their course: ${course.name}.${studentSection}
 

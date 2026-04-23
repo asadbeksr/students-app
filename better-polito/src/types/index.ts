@@ -183,6 +183,7 @@ export interface AppSettings {
   gifsEnabled: boolean;
   giphyApiKey: string | null;
   visualMode?: VisualModeSettings;
+  manimMode?: boolean;
 }
 
 export interface VisualModeSettings {

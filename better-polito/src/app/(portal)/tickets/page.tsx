@@ -27,8 +27,8 @@ export default function TicketsPage() {
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>
       ) : (tickets as any[]).length === 0 ? (
         <Card>
-          <CardContent className="py-16 text-center">
-            <Ticket className="w-10 h-10 text-border mx-auto mb-3" />
+          <CardContent className="py-16">
+            <Ticket className="w-10 h-10 text-border mb-3" />
             <p className="text-muted-foreground">No open tickets.</p>
           </CardContent>
         </Card>

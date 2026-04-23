@@ -6,9 +6,8 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { CommandPalette } from '@/components/layout/CommandPalette';
-import { PomodoroPanel } from '@/components/toolkit/PomodoroTimer';
 import { Scratchpad } from '@/components/toolkit/Scratchpad';
-import { ToolkitDock } from '@/components/toolkit/ToolkitDock';
+import { PomodoroTicker } from '@/components/toolkit/PomodoroTicker';
 import { useToolkitStore } from '@/lib/stores/toolkitStore';
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -41,9 +40,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <CommandPalette />
-      <PomodoroPanel />
+      <PomodoroTicker />
       <Scratchpad />
-      <ToolkitDock />
       <Sidebar />
       <MobileNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 

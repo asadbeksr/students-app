@@ -4,12 +4,23 @@ import { getGeminiClient } from '@/lib/gemini';
 export async function POST(req: Request) {
   try {
     const ai = getGeminiClient();
-    const { exams, grades } = await req.json();
+    const { exams, grades, courses, student } = await req.json();
 
-    const prompt = `You are a study planner AI. Given this student's data, create a 4-week study plan.
+    const prompt = `You are an expert AI Study Planner acting as an academic advisor for a university student. Given their data, create a detailed, highly personalized 4-week study plan.
+    
+Student Profile:
+- Degree: ${student?.degreeName || 'Not specified'}
+- Average Grade: ${student?.weightedAverage || student?.mean || 'Not specified'}
+- Acquired Credits: ${student?.acquiredCredits || 'Not specified'}
 
-Exams: ${JSON.stringify((exams ?? []).slice(0, 5))}
-Grades (recent): ${JSON.stringify((grades ?? []).slice(0, 5))}
+Upcoming Exams/Deadlines: 
+${JSON.stringify((exams ?? []).slice(0, 10))}
+
+Current Enrolled Courses:
+${JSON.stringify((courses ?? []).map((c: any) => ({ name: c.name || c.description, code: c.code })).slice(0, 10))}
+
+Recent Grades:
+${JSON.stringify((grades ?? []).slice(0, 10))}
 
 Return valid JSON in this exact structure:
 {
@@ -17,12 +28,11 @@ Return valid JSON in this exact structure:
     {
       "label": "Week 1 — Focus",
       "tasks": [
-        { "subject": "Mathematics", "description": "Review chapters 1-3, practice problems" },
-        { "subject": "Physics", "description": "Past exam papers" }
+        { "subject": "Mathematics", "description": "Review chapters 1-3, practice problems" }
       ]
     }
   ],
-  "summary": "A short personalized recommendation paragraph."
+  "summary": "A short, highly personalized, and encouraging recommendation paragraph tailored specifically to their major, grades, and upcoming workload."
 }`;
 
     const response = await ai.models.generateContent({
