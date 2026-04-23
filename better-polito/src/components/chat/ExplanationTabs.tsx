@@ -238,6 +238,10 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
             return <VisualizationFrame key={i} html={seg.html} title={seg.title} />;
           } else if (seg.type === 'visualization_loading') {
             return <VisualizationSkeleton key={i} title={seg.title} />;
+          } else if (seg.type === 'manim') {
+            return <ManimFrame key={i} script={seg.script} title={seg.title} />;
+          } else if (seg.type === 'manim_loading') {
+            return <ManimSkeleton key={i} title={seg.title} />;
           }
           return null;
         })}

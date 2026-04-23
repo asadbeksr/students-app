@@ -24,7 +24,7 @@ function SSOCallback() {
       if (result?.error) {
         setError('SSO sign-in failed. Please try again.');
       } else {
-        window.location.href = '/dashboard';
+        window.location.href = '/courses';
       }
     }).catch(() => {
       setError('Something went wrong. Please try again.');

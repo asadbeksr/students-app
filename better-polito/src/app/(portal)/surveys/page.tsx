@@ -12,7 +12,7 @@ export default function SurveysPage() {
   const done = (surveys as any[]).filter(s => s.isCompiled);
 
   return (
-    <div className="space-y-6 w-full max-w-3xl mx-auto">
+    <div className="space-y-6 w-full">
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-light text-foreground">Surveys</h1>
@@ -25,8 +25,8 @@ export default function SurveysPage() {
         <div className="space-y-3">{[1, 2].map(i => <Skeleton key={i} className="h-20" />)}</div>
       ) : (surveys as any[]).length === 0 ? (
         <Card>
-          <CardContent className="py-16 text-center">
-            <ClipboardCheck className="w-10 h-10 text-border mx-auto mb-3" />
+          <CardContent className="py-16">
+            <ClipboardCheck className="w-10 h-10 text-border mb-3" />
             <p className="text-muted-foreground">No surveys available.</p>
           </CardContent>
         </Card>

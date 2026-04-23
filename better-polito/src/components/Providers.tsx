@@ -1,6 +1,5 @@
 'use client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from 'next-themes';
 import { Toaster } from 'sonner';
@@ -26,9 +25,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ApiProvider>
             {children}
             <Toaster position="bottom-right" richColors />
-            {process.env.NODE_ENV !== 'production' && (
-              <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
-            )}
           </ApiProvider>
         </ThemeProvider>
       </QueryClientProvider>

@@ -404,9 +404,9 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-2 md:p-4 scroll-smooth bg-background dark:bg-background"
+        className="flex-1 overflow-y-auto scroll-smooth bg-background dark:bg-background"
       >
-        <div className="space-y-4 md:space-y-6 max-w-4xl mx-auto">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6">
           {messages.length === 0 && (
             <div className="text-center py-12">
               <div className="bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">

@@ -458,6 +458,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       await db.chatMessages.add(assistantMessage);
       await get().fetchMessages(conversationId);
 
+      // Reset streaming state immediately so we don't show duplicate messages during title generation
+      get().resetStreamingState();
+      set({ loading: false });
+
       // Update conversation timestamp and auto-name if it's the first message
       const conv = await db.conversations.get(conversationId);
       const now = new Date().toISOString();
@@ -496,10 +500,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       }
 
       await get().fetchConversations(courseId);
-
-      // Reset streaming state
-      get().resetStreamingState();
-      set({ loading: false });
 
     } catch (error) {
       const errorMessage = (error as Error).message;

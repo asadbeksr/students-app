@@ -38,7 +38,7 @@ export default function ServicesPage() {
           {newsLoading ? (
             <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}</div>
           ) : (news as any[]).length === 0 ? (
-            <div className="py-12 text-center"><p className="text-muted-foreground">No news available.</p></div>
+            <div className="py-12"><p className="text-muted-foreground">No news available.</p></div>
           ) : (
             <div className="space-y-3">
               {(news as any[]).slice(0, 20).map((item: any) => (
@@ -65,7 +65,7 @@ export default function ServicesPage() {
           {jobsLoading ? (
             <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}</div>
           ) : (jobs as any[]).length === 0 ? (
-            <div className="py-12 text-center"><p className="text-muted-foreground">No job offers available.</p></div>
+            <div className="py-12"><p className="text-muted-foreground">No job offers available.</p></div>
           ) : (
             <div className="space-y-3">
               {(jobs as any[]).slice(0, 20).map((job: any) => (

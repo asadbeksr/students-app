@@ -33,7 +33,7 @@ export default function TicketDetailPage() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-3xl mx-auto">
+    <div className="space-y-6 w-full">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild className="rounded-full">
           <Link href="/tickets"><ArrowLeft className="w-4 h-4" /></Link>

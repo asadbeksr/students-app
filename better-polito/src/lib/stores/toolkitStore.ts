@@ -263,15 +263,43 @@ export function formatTime(seconds: number): string {
 export function playBeep(type: 'work' | 'break' = 'work') {
   try {
     const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = type === 'work' ? 523 : 440;
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.6);
+
+    // notes: work-done = triumphant ascending 3-chime, break-done = soft descending 2-chime
+    const notes: { freq: number; start: number; duration: number }[] =
+      type === 'work'
+        ? [
+            { freq: 523, start: 0,    duration: 0.18 }, // C5
+            { freq: 659, start: 0.22, duration: 0.18 }, // E5
+            { freq: 784, start: 0.44, duration: 0.35 }, // G5
+          ]
+        : [
+            { freq: 659, start: 0,    duration: 0.22 }, // E5
+            { freq: 523, start: 0.28, duration: 0.35 }, // C5
+          ];
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.18, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+
+    for (const note of notes) {
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.value = note.freq;
+
+      const t = ctx.currentTime + note.start;
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(1, t + 0.01);
+      env.gain.exponentialRampToValueAtTime(0.001, t + note.duration);
+
+      osc.connect(env);
+      env.connect(masterGain);
+      osc.start(t);
+      osc.stop(t + note.duration + 0.05);
+    }
+
+    // close context after all notes finish
+    setTimeout(() => ctx.close(), (notes[notes.length - 1].start + notes[notes.length - 1].duration + 0.2) * 1000);
   } catch {}
 }
