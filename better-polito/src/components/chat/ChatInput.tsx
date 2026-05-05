@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, Paperclip, Plus, LineChart, Zap, Brain, PlaySquare } from 'lucide-react';
+import { ArrowUp, Paperclip, Plus, LineChart, Zap, Brain, PlaySquare, ImageIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -49,6 +49,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
 
   const visualModeEnabled = settings?.visualMode?.enabled ?? true;
   const manimModeEnabled = settings?.manimMode ?? true;
+  const imageGenerationEnabled = settings?.imageGeneration ?? false;
   const aiModel = settings?.aiModel || 'gemini-flash-latest';
   const currentVisualModeEnabled = settings?.visualMode?.enabled ?? true;
 
@@ -76,6 +77,11 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
   const toggleManimMode = async () => {
     if (!settings) return;
     await updateSettings({ manimMode: !manimModeEnabled });
+  };
+
+  const toggleImageGeneration = async () => {
+    if (!settings) return;
+    await updateSettings({ imageGeneration: !imageGenerationEnabled });
   };
 
   // Auto-resize textarea
@@ -195,9 +201,13 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                   <div className={`
                     relative flex items-center justify-center rounded-lg
                     transition-all duration-300
-                    ${visualModeEnabled && manimModeEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-purple-500' : 
+                    ${visualModeEnabled && manimModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 via-purple-500 to-orange-500' :
+                      visualModeEnabled && manimModeEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-purple-500' :
+                      visualModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-orange-500' :
+                      manimModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-purple-500 to-orange-500' :
                       visualModeEnabled ? 'p-[2px] bg-green-500' : 
-                      manimModeEnabled ? 'p-[2px] bg-purple-500' : 'p-0'}
+                      manimModeEnabled ? 'p-[2px] bg-purple-500' :
+                      imageGenerationEnabled ? 'p-[2px] bg-orange-500' : 'p-0'}
                   `}>
                     <Button
                       variant="ghost"
@@ -206,7 +216,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                         h-8 w-8 md:h-9 md:w-9 p-0 rounded-[6px] group
                         transition-all duration-200
                         active:scale-90
-                        ${visualModeEnabled || manimModeEnabled
+                        ${visualModeEnabled || manimModeEnabled || imageGenerationEnabled
                           ? 'bg-card hover:bg-muted text-foreground'
                           : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
                         }
@@ -251,6 +261,17 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                     </span>
                   </DropdownMenuCheckboxItem>
 
+                  <DropdownMenuCheckboxItem
+                    checked={imageGenerationEnabled}
+                    onCheckedChange={toggleImageGeneration}
+                    className="cursor-pointer text-sm font-normal py-2 transition-colors duration-150"
+                  >
+                    <span className="flex items-center">
+                      <ImageIcon className={`mr-3 h-4 w-4 transition-colors duration-200 ${imageGenerationEnabled ? 'text-orange-500' : 'text-muted-foreground'}`} />
+                      <span>Image Generation <span className="text-muted-foreground text-xs">🍌</span></span>
+                    </span>
+                  </DropdownMenuCheckboxItem>
+
                   <DropdownMenuSeparator className="my-1" />
 
                   <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
@@ -290,7 +311,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                   className="absolute inset-0 flex items-center pointer-events-none text-sm md:text-[15px] text-muted-foreground/60 transition-opacity duration-300 select-none"
                   style={{ opacity: placeholderVisible ? 1 : 0 }}
                 >
-                  {PLACEHOLDERS[placeholderIdx]}
+                  {imageGenerationEnabled ? '🍌 Describe an image to generate…' : PLACEHOLDERS[placeholderIdx]}
                 </span>
               )}
               <textarea
@@ -302,7 +323,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 disabled={disabled}
-                placeholder={isFocused ? 'Ask anything…' : ''}
+                placeholder={isFocused ? (imageGenerationEnabled ? 'Describe an image…' : 'Ask anything…') : ''}
                 rows={1}
                 className="
                   w-full resize-none bg-transparent border-0 outline-none
@@ -338,6 +359,16 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
             </div>
           </div>
         </div>
+        {/* Image Generation Mode Indicator */}
+        {imageGenerationEnabled && (
+          <div className="flex items-center justify-center gap-1.5 mt-1.5 animate-in fade-in slide-in-from-bottom-1 duration-200">
+            <span className="text-[11px] text-orange-500/80 font-medium flex items-center gap-1">
+              <ImageIcon className="h-3 w-3" />
+              Image Generation Mode — Nano Banana 2
+              <span className="text-[10px]">🍌</span>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

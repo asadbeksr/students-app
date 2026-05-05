@@ -73,6 +73,11 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface GeneratedImage {
+  data: string; // base64 encoded image data
+  mimeType: string; // e.g. 'image/png'
+}
+
 export interface ChatMessage {
   id: string;
   courseId: string;
@@ -89,6 +94,7 @@ export interface ChatMessage {
     materialId: string;
     materialName: string;
   }[];
+  generatedImages?: GeneratedImage[];
   gifUrl?: string;
   gifMood?: string;
   gifPreviewUrl?: string;
@@ -184,6 +190,7 @@ export interface AppSettings {
   giphyApiKey: string | null;
   visualMode?: VisualModeSettings;
   manimMode?: boolean;
+  imageGeneration?: boolean;
 }
 
 export interface VisualModeSettings {

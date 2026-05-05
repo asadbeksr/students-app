@@ -24,7 +24,7 @@ function extractPageWindow(fullText: string, centerPage: number, radius: number)
 
   return `[Showing pages ${startPage}–${Math.min(endPage, lastSection.page)} of the document]\n\n` + fullText.slice(first, end).trim();
 }
-import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation } from '@/types';
+import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation, GeneratedImage } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getSystemPrompt } from '@/lib/prompts';
 import { generateImageThumbnail } from '@/lib/fileProcessing';
@@ -299,6 +299,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const visualModeEnabled = settings?.visualMode?.enabled ?? true;
       const manimModeEnabled = settings?.manimMode ?? false;
       const aiModel = settings?.aiModel || 'gemini-flash-latest';
+      const imageGenerationEnabled = settings?.imageGeneration ?? false;
       const customSystemPrompt = settings?.customSystemPrompt || null;
 
       // Build system prompt
@@ -354,6 +355,108 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       const assistantMessageId = uuidv4();
 
+      // ============ IMAGE GENERATION MODE ============
+      if (imageGenerationEnabled) {
+        // Initialize streaming state for image gen
+        set({
+          streamingState: {
+            isThinking: true,
+            thinkingContent: '',
+            isStreaming: false,
+            streamingContent: '',
+            streamingMessageId: assistantMessageId,
+          },
+        });
+
+        try {
+          const response = await fetch('/api/ai/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: content,
+              conversationHistory: conversationHistory.slice(0, -1),
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Image generation failed: ${response.status}`);
+          }
+
+          const result = await response.json();
+          const generatedImages: GeneratedImage[] = result.images || [];
+          const responseText = result.text || (generatedImages.length > 0 ? '' : 'No image was generated.');
+
+          // Show generated text in streaming state briefly
+          if (responseText) {
+            set(state => ({
+              streamingState: {
+                ...state.streamingState,
+                isThinking: false,
+                isStreaming: true,
+                streamingContent: responseText,
+              },
+            }));
+          }
+
+          const assistantMessage: ChatMessage = {
+            id: assistantMessageId,
+            courseId,
+            conversationId,
+            role: 'assistant',
+            content: responseText,
+            generatedImages: generatedImages.length > 0 ? generatedImages : undefined,
+            timestamp: new Date().toISOString(),
+          };
+
+          await db.chatMessages.add(assistantMessage);
+          await get().fetchMessages(conversationId);
+          get().resetStreamingState();
+          set({ loading: false });
+
+          // Update conversation timestamp and auto-name
+          const now = new Date().toISOString();
+          await db.conversations.update(conversationId, { updatedAt: now });
+
+          const conv = await db.conversations.get(conversationId);
+          if (conv && conv.title === 'New Chat') {
+            try {
+              const titleResponse = await fetch('/api/ai/course-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  messages: [{ role: 'user', content: content }],
+                  systemPrompt: 'Generate a very short title (max 5 words) for this chat conversation based on the user message. Reply with ONLY the title, nothing else. No quotes, no punctuation at the end.',
+                  model: 'gemini-flash-latest',
+                }),
+              });
+              if (titleResponse.ok) {
+                const titleReader = titleResponse.body!.getReader();
+                const titleDecoder = new TextDecoder();
+                let title = '';
+                while (true) {
+                  const { done, value } = await titleReader.read();
+                  if (done) break;
+                  title += titleDecoder.decode(value, { stream: true });
+                }
+                title = title.replace(/^["*]+|["*]+$/g, '').trim().slice(0, 50);
+                if (title) await get().renameConversation(conversationId, title);
+              }
+            } catch {}
+          }
+
+          await get().fetchConversations(courseId);
+          return;
+        } catch (error) {
+          const errorMessage = (error as Error).message;
+          set({ error: `Image generation failed: ${errorMessage}`, loading: false });
+          get().resetStreamingState();
+          return;
+        }
+      }
+
+      // ============ NORMAL CHAT MODE ============
+
       // Initialize streaming state
       set({
         streamingState: {
@@ -366,7 +469,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       });
 
       // Serialize attachments for the API (convert ArrayBuffer to base64)
-      const serializedAttachments = hasAttachments
+      const serializedAttachments = attachments.length > 0
         ? attachments.map(att => ({
             fileName: att.fileName,
             fileType: att.fileType,

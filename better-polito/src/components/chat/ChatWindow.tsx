@@ -12,6 +12,7 @@ import ExplanationTabs from './ExplanationTabs';
 import ChatInput from './ChatInput';
 import MessageAttachments from './MessageAttachments';
 import { GifDisplay } from './GifDisplay';
+import GeneratedImageDisplay from './GeneratedImageDisplay';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -473,6 +474,11 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
                         mood={message.gifMood}
                       />
                     </div>
+                  )}
+
+                  {/* Generated Images */}
+                  {message.generatedImages && message.generatedImages.length > 0 && (
+                    <GeneratedImageDisplay images={message.generatedImages} />
                   )}
 
                   {/* Message text */}
