@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { Copy, Download, Check, PlaySquare, RefreshCw, Maximize, Video, Loader2 } from 'lucide-react';
+import { Copy, Download, Check, PlaySquare } from 'lucide-react';
 
 interface ManimFrameProps {
   script: string;
@@ -11,8 +11,6 @@ interface ManimFrameProps {
 
 export function ManimFrame({ script, title }: ManimFrameProps) {
   const [copied, setCopied] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [key, setKey] = useState(0); // for re-running the animation
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { theme } = useTheme();
 
@@ -117,56 +115,27 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       loadingBox.style.display = 'none';
       container.style.display = 'block';
 
-      const runScene = async (record = false) => {
-        container.innerHTML = '';
-        const scene = new manimWeb.Scene(container, {
-          width: container.clientWidth,
-          height: container.clientHeight,
-        });
-        window.scene = scene;
-
-        let mediaRecorder = null;
-        let chunks = [];
-        
-        if (record) {
-          await new Promise(r => setTimeout(r, 100)); // wait for canvas
-          const canvas = container.querySelector('canvas');
-          if (canvas) {
-            const stream = canvas.captureStream(30);
-            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-            mediaRecorder.onstop = () => {
-              const blob = new Blob(chunks, { type: 'video/webm' });
-              parent.postMessage({ type: 'video-ready', blob }, '*');
-            };
-            mediaRecorder.start();
-          }
-        }
-
-        // Decode the user script from Base64
-        const userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
-
-        // Execute the user script as an async function with 'scene' as a local variable too
-        const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-        const userFn = new AsyncFunction('scene', userScriptText);
-        
-        try {
-          await userFn(scene);
-        } finally {
-          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-          }
-        }
-      };
-
-      window.addEventListener('message', (e) => {
-        if (e.data?.type === 'download-video') {
-          runScene(true).catch(err => console.error(err));
-        }
+      // Initialize the Player
+      const player = new manimWeb.Player(container, {
+        width: container.clientWidth,
+        height: container.clientHeight,
       });
+      window.player = player;
 
-      // Initial run
-      await runScene(false);
+      // Decode the user script from Base64
+      const userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
+
+      // Execute the user script as an async function with 'scene' as a local variable too
+      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+      const userFn = new AsyncFunction('scene', userScriptText);
+      
+      await player.sequence(async (scene) => {
+        window.scene = scene;
+        await userFn(scene);
+      });
+      
+      // Auto-play the sequence
+      player.play();
 
     } catch (err) {
       console.error("Manim execution error:", err);
@@ -178,23 +147,7 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
   </script>
 </body>
 </html>`;
-  }, [script, isDark, key]);
-
-  useEffect(() => {
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data?.type === 'video-ready' && e.data.blob) {
-        const url = URL.createObjectURL(e.data.blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${(title || 'manim_scene').replace(/[^a-zA-Z0-9]/g, '_')}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setIsRecording(false);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [title]);
+  }, [script, isDark]);
 
   const handleCopy = async () => {
     try {
@@ -214,28 +167,6 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadVideo = () => {
-    if (isRecording) return;
-    setIsRecording(true);
-    iframeRef.current?.contentWindow?.postMessage({ type: 'download-video' }, '*');
-  };
-
-  const handleFullscreen = () => {
-    if (iframeRef.current) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        iframeRef.current.requestFullscreen().catch(err => {
-          console.error(`Error attempting to enable fullscreen: ${err.message}`);
-        });
-      }
-    }
-  };
-
-  const handleRerun = () => {
-    setKey(k => k + 1);
-  };
-
   return (
     <div className="my-3 rounded-xl overflow-hidden border border-border/20">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/20">
@@ -246,20 +177,6 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={handleFullscreen}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Fullscreen"
-          >
-            <Maximize className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleRerun}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Re-run Animation"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
           <button
             onClick={handleCopy}
             className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -274,25 +191,16 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
           >
             <Download className="w-3.5 h-3.5" />
           </button>
-          <button
-            onClick={handleDownloadVideo}
-            disabled={isRecording}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-            title="Download Video"
-          >
-            {isRecording ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Video className="w-3.5 h-3.5" />}
-          </button>
         </div>
       </div>
 
       <div style={{ height: '320px', width: '100%' }}>
         <iframe
-          key={key}
           ref={iframeRef}
           srcDoc={wrappedHtml}
           title={title ?? 'Manim Animation'}
           style={{ width: '100%', height: '100%', border: 'none', display: 'block', backgroundColor: 'var(--background)' }}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts allow-same-origin allow-downloads"
           allowFullScreen
         />
       </div>
