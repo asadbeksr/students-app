@@ -1,7 +1,7 @@
 'use client';
 
 import { useSettingsStore } from '@/stores/settingsStore';
-import { X, Zap, Brain, Microscope, LineChart } from 'lucide-react';
+import { X, Zap, Brain, LineChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -12,21 +12,9 @@ interface ChatSettingsPanelProps {
 }
 
 export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanelProps) {
-  const { settings, setAiModel, setAiPersonality, setCustomSystemPrompt, updateSettings } = useSettingsStore();
+  const { settings, setAiModel, setCustomSystemPrompt, updateSettings } = useSettingsStore();
 
   if (!isOpen || !settings) return null;
-
-  const personalityOptions = [
-    { value: 'broski' as const, label: 'Bro', desc: 'Casual & hype' },
-    { value: 'bestie' as const, label: 'Bestie', desc: 'Warm & supportive' },
-    { value: 'professor' as const, label: 'Professor', desc: 'Academic & formal' },
-  ];
-
-  const intensityOptions = [
-    { value: 'a' as const, label: 'Mild' },
-    { value: 'b' as const, label: 'Medium' },
-    { value: 'c' as const, label: 'Max' },
-  ];
 
   return (
     <div className="absolute inset-0 z-50 flex">
@@ -77,45 +65,6 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
             </div>
           </div>
 
-          {/* Personality */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Personality</Label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {personalityOptions.map(p => (
-                <button
-                  key={p.value}
-                  onClick={() => setAiPersonality(p.value)}
-                  className={`p-2 rounded-lg border text-center transition-colors ${settings.aiPersonality === p.value
-                    ? 'border-primary/50 bg-primary/10 text-foreground'
-                    : 'border-border hover:bg-muted text-muted-foreground'
-                    }`}
-                >
-                  <div className="text-xs font-medium">{p.label}</div>
-                  <div className="text-[10px] text-muted-foreground">{p.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Intensity */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Intensity</Label>
-            <div className="flex gap-1.5">
-              {intensityOptions.map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => updateSettings({ personalityIntensity: opt.value })}
-                  className={`flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors ${settings.personalityIntensity === opt.value
-                    ? 'border-primary/50 bg-primary/10 text-foreground'
-                    : 'border-border hover:bg-muted text-muted-foreground'
-                    }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Modes */}
           <div className="space-y-3">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Modes</Label>
@@ -146,7 +95,7 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
                 <span className="text-sm">Manim Animations</span>
               </div>
               <Switch
-                checked={settings.manimMode ?? true}
+                checked={settings.manimMode ?? false}
                 onCheckedChange={(checked) => updateSettings({ manimMode: checked })}
               />
             </div>

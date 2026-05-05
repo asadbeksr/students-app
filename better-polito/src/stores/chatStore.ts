@@ -288,7 +288,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       // Prepare conversation history
       const conversationHistory = previousMessages
-        .slice(-20) // Last 10 exchanges
+        .slice(-20) // Last 20 messages (~10 exchanges)
         .map(msg => ({
           role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
           content: msg.content,
@@ -296,10 +296,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       // Get settings
       const settings = await db.settings.get('settings');
-      const personality = settings?.aiPersonality || 'broski';
-      const intensity = settings?.personalityIntensity || 'c';
       const visualModeEnabled = settings?.visualMode?.enabled ?? true;
-      const manimModeEnabled = settings?.manimMode ?? true;
+      const manimModeEnabled = settings?.manimMode ?? false;
       const aiModel = settings?.aiModel || 'gemini-flash-latest';
       const customSystemPrompt = settings?.customSystemPrompt || null;
 
@@ -348,7 +346,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       } catch {}
 
       const systemPrompt = getSystemPrompt(
-        course, materials, personality, intensity,
+        course, materials,
         hasAttachments, visualModeEnabled, manimModeEnabled, customSystemPrompt,
         openDocumentName, studentContext || null,
         openDocumentPage
@@ -430,7 +428,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       // Fetch GIF if enabled
       const gifsEnabled = settings?.gifsEnabled ?? true;
-      if (gifsEnabled && shouldShowGif(personality, intensity)) {
+      if (gifsEnabled && shouldShowGif('professor', 'a')) {
         try {
           const isFirstMessage = previousMessages.length <= 1;
           const moodResult = detectMoodFromContext(

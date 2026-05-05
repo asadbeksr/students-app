@@ -14,8 +14,6 @@ interface SettingsStore {
   setAiModel: (model: 'gemini-pro-latest' | 'gemini-flash-latest') => Promise<void>;
   setCustomSystemPrompt: (prompt: string | null) => Promise<void>;
   setLanguage: (language: 'en' | 'it') => Promise<void>;
-  setAiPersonality: (personality: 'broski' | 'bestie' | 'professor') => Promise<void>;
-  setPersonalityIntensity: (intensity: 'a' | 'b' | 'c') => Promise<void>;
   setTheme: (theme: 'light' | 'dark') => Promise<void>;
 }
 
@@ -139,14 +137,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   setLanguage: async (language) => {
     await get().updateSettings({ language });
-  },
-
-  setAiPersonality: async (personality) => {
-    await get().updateSettings({ aiPersonality: personality });
-  },
-
-  setPersonalityIntensity: async (intensity) => {
-    await get().updateSettings({ personalityIntensity: intensity });
   },
 
   setTheme: async (theme) => {
