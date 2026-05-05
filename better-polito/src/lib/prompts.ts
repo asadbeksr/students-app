@@ -72,7 +72,7 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 ### BEST PRACTICES FOR INTERACTIVE LEARNING:
 1. **Interactive Objects**: Use \`makeDraggable(obj, scene)\` to allow students to interact with points, vectors, and shapes. This turns passive video into an active playground.
 2. **Updaters**: Use \`obj.addUpdater((mobj, dt) => { ... })\` to create dynamic physics simulations or dependent geometric relationships (e.g. a tangent line that updates as a point moves).
-3. **Slides Mode**: If breaking down a long proof or multi-step problem, enable slides mode via \`player.setSlidesMode(true);\`. This lets students process one segment before proceeding.
+3. **Slides Mode**: By default, animations play as a single continuous video. If breaking down a long proof or multi-step problem where pauses are helpful, you can explicitly enable slides mode via \`player.setSlidesMode(true);\`.
 4. **3D Scenes**: Use \`new ThreeDAxes()\` or \`new Surface3D()\` for multivariable calculus.
 
 ### CRITICAL Rules — read carefully:
@@ -157,7 +157,7 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 - \`makeClickable(obj, scene, { onClick: () => {} })\`
 - \`obj.addUpdater((mobj, dt) => { ... })\` — ONLY on Mobjects, NOT on scene. To update something each frame, attach the updater to a specific Mobject.
 - \`obj.removeUpdater(func)\` — ONLY on Mobjects
-- \`player.setSlidesMode(true)\` — enable slides mode (only in Player mode, never use with addUpdater)
+- \`player.setSlidesMode(true)\` — enable slides mode (only in Player mode, never use with addUpdater). Note: Slides are disabled by default.
 
 ### ⚠️ Mode Restrictions — do NOT mix these patterns:
 - **Player mode** (default): Use \`scene.play()\`, \`scene.wait()\`, \`player.setSlidesMode()\`. The \`player\` variable is available.

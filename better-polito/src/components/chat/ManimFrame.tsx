@@ -295,6 +295,7 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
         const player = new manimWeb.Player(container, {
           width: container.clientWidth,
           height: container.clientHeight,
+          slides: false,
         });
         window.player = player;
 
