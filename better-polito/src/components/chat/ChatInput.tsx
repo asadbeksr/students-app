@@ -195,7 +195,9 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                   <div className={`
                     relative flex items-center justify-center rounded-lg
                     transition-all duration-300
-                    ${visualModeEnabled ? 'p-[2px] bg-green-500' : 'p-0'}
+                    ${visualModeEnabled && manimModeEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-purple-500' : 
+                      visualModeEnabled ? 'p-[2px] bg-green-500' : 
+                      manimModeEnabled ? 'p-[2px] bg-purple-500' : 'p-0'}
                   `}>
                     <Button
                       variant="ghost"
@@ -204,13 +206,13 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                         h-8 w-8 md:h-9 md:w-9 p-0 rounded-[6px] group
                         transition-all duration-200
                         active:scale-90
-                        ${visualModeEnabled
+                        ${visualModeEnabled || manimModeEnabled
                           ? 'bg-card hover:bg-muted text-foreground'
                           : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
                         }
                       `}
                     >
-                      <Plus className={`h-5 w-5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMenuOpen ? 'rotate-[135deg]' : 'hover:rotate-90'}`} />
+                      <Plus className={`h-5 w-5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMenuOpen ? 'rotate-[135deg]' : ''}`} />
                       <span className="sr-only">Open menu</span>
                     </Button>
                   </div>

@@ -65,9 +65,15 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 
 <manim title="Descriptive Title">
 // Your JavaScript code here. Top-level await IS supported.
-// The variable 'scene' (a Scene instance) is already initialized.
+// The variables 'scene' and 'player' are already initialized.
 // All manim-web exports below are available as globals — do NOT use import statements.
 </manim>
+
+### BEST PRACTICES FOR INTERACTIVE LEARNING:
+1. **Interactive Objects**: Use \`makeDraggable(obj, scene)\` to allow students to interact with points, vectors, and shapes. This turns passive video into an active playground.
+2. **Updaters**: Use \`obj.addUpdater((mobj, dt) => { ... })\` to create dynamic physics simulations or dependent geometric relationships (e.g. a tangent line that updates as a point moves).
+3. **Slides Mode**: If breaking down a long proof or multi-step problem, enable slides mode via \`player.setSlidesMode(true);\`. This lets students process one segment before proceeding.
+4. **3D Scenes**: Use \`new ThreeDAxes()\` or \`new Surface3D()\` for multivariable calculus.
 
 ### CRITICAL Rules — read carefully:
 - Do NOT use \`import\` statements. All exports are globals.
@@ -143,19 +149,27 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 ### Directions: UP, DOWN, LEFT, RIGHT, ORIGIN, UL, UR, DL, DR
 ### Constants: PI, TAU
 
-### Interaction:
+### Interaction & Updaters:
 - \`makeDraggable(obj, scene)\` — make object draggable
 - \`makeClickable(obj, scene, { onClick: () => {} })\`
+- \`obj.addUpdater((mobj, dt) => { /* logic to update mobj */ })\`
+- \`obj.removeUpdater(func)\`
+- \`player.setSlidesMode(true)\` — enable slides mode so animation pauses between steps
 
-### Complete Working Example — Circle to Square:
+### Complete Working Example — Interactive Draggable Point:
 \`\`\`
-const c = new Circle({ radius: 1, color: '#e94560', strokeWidth: 4 });
-const s = new Square({ sideLength: 2, color: '#0f3460', strokeWidth: 4 });
-scene.add(c);
-await scene.play(new Create(c));
-await scene.wait(0.5);
-await scene.play(new Transform(c, s));
-await scene.wait(0.5);
+player.setSlidesMode(true);
+const axes = new Axes({ xRange: [-5, 5, 1], yRange: [-5, 5, 1], xLength: 8, axisConfig: { color: WHITE } });
+const graph = axes.plot(x => 0.5 * x * x, { color: BLUE });
+const dot = new Dot({ point: axes.i2gp(2, graph), color: YELLOW });
+
+scene.add(axes, graph);
+await scene.play(new Create(dot));
+
+makeDraggable(dot, scene);
+const label = new MathTexImage({ latex: "f(x) = 0.5x^2", color: WHITE });
+label.addUpdater(m => m.nextTo(dot, UP));
+scene.add(label);
 \`\`\`
 
 ### Complete Working Example — Plotting sin(x) and cos(x):

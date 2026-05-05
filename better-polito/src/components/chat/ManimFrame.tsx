@@ -125,13 +125,13 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       // Decode the user script from Base64
       const userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
 
-      // Execute the user script as an async function with 'scene' as a local variable too
+      // Execute the user script as an async function with 'scene' and 'player' as local variables
       const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-      const userFn = new AsyncFunction('scene', userScriptText);
+      const userFn = new AsyncFunction('scene', 'player', userScriptText);
       
       await player.sequence(async (scene) => {
         window.scene = scene;
-        await userFn(scene);
+        await userFn(scene, player);
       });
       
       // Auto-play the sequence
