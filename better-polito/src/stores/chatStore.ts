@@ -406,12 +406,30 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         if (done) break;
 
         fullResponseText += decoder.decode(value, { stream: true });
+
+        let currentThinking = '';
+        let currentContent = '';
+
+        if (fullResponseText.startsWith('<think>')) {
+           const endIdx = fullResponseText.indexOf('</think>');
+           if (endIdx !== -1) {
+              currentThinking = fullResponseText.substring(7, endIdx).trim();
+              currentContent = fullResponseText.substring(endIdx + 8).trimStart();
+           } else {
+              currentThinking = fullResponseText.substring(7);
+              currentContent = '';
+           }
+        } else {
+           currentContent = fullResponseText;
+        }
+
         set(state => ({
           streamingState: {
             ...state.streamingState,
-            isThinking: false,
-            isStreaming: true,
-            streamingContent: fullResponseText,
+            isThinking: currentThinking.length > 0 && currentContent.length === 0,
+            thinkingContent: currentThinking,
+            isStreaming: currentContent.length > 0,
+            streamingContent: currentContent,
           },
         }));
       }

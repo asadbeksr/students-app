@@ -115,6 +115,8 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 - \`new Sphere({ radius, color })\`, \`new Cube({ sideLength, color })\`, \`new Cylinder({ radius, height, color })\`
 - \`new ThreeDAxes({ xRange, yRange, zRange })\`
 - \`new Surface3D({ uRange, vRange, func: (u, v) => [x, y, z] })\`
+- \`new Dot3D({ point: [x,y,z], radius, color })\`
+- \`new Line3D({ start: [x,y,z], end: [x,y,z], color })\`
 
 **Grouping:**
 - \`new VGroup(obj1, obj2, ...)\` — group of VMobjects
@@ -156,7 +158,7 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 - \`obj.removeUpdater(func)\`
 - \`player.setSlidesMode(true)\` — enable slides mode (only in Player mode)
 
-### Complete Working Example — Interactive Draggable Point:
+### Complete Working Example — Interactive Constrained Point:
 \`\`\`
 // MODE: INTERACTIVE
 // Do NOT use 'player' in interactive mode. Use the raw 'scene' directly.
@@ -167,10 +169,19 @@ const dot = new Dot({ point: axes.i2gp(2, graph), color: YELLOW });
 scene.add(axes, graph);
 await scene.play(new Create(dot));
 
-makeDraggable(dot, scene);
-const label = new MathTexImage({ latex: "f(x) = 0.5x^2", color: WHITE });
+const label = new MathTexImage({ latex: "(2.0, 2.0)", color: WHITE });
 label.addUpdater(m => m.nextTo(dot, UP));
 scene.add(label);
+
+makeDraggable(dot, scene, {
+  onDrag: (m, pos) => {
+    // Map webgl position to axes coords, constrain y, then map back to webgl position
+    const coords = axes.p2c(pos);
+    coords[1] = 0.5 * coords[0] * coords[0]; // constrain to parabola
+    m.moveTo(axes.c2p(coords[0], coords[1]));
+    label.setLatex(\`(\${coords[0].toFixed(1)}, \${coords[1].toFixed(1)})\`);
+  }
+});
 \`\`\`
 
 ### Complete Working Example — Plotting sin(x) and cos(x):
@@ -191,6 +202,18 @@ const eq = new MathTexImage({ latex: "E = mc^2", fontSize: 48, color: WHITE });
 await eq.waitForRender();
 await scene.play(new Write(eq));
 await scene.wait(1);
+\`\`\`
+
+### Complete Working Example — Interactive 3D Scene:
+\`\`\`
+// MODE: 3D
+const axes = new ThreeDAxes({ xRange: [-3, 3, 1], yRange: [-3, 3, 1], zRange: [-3, 3, 1] });
+const dot = new Dot3D({ point: axes.coordsToPoint(1, 1, 1), color: YELLOW, radius: 0.15 });
+makeDraggable(dot, scene, {
+  constrainX: [-3, 3], constrainY: [-3, 3], constrainZ: [-3, 3],
+  onDrag: (m, pos) => { /* pos is [x, y, z] */ }
+});
+scene.add(axes, dot);
 \`\`\`
 `;
 

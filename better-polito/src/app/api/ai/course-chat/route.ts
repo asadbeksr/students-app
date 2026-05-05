@@ -132,18 +132,34 @@ ${docTextToUse}`;
         try {
           let finalContents = contents;
 
-          // If tool is available, do a non-streaming pass first to resolve any tool calls
+          // If tool is available, do a streaming pass to check for tool calls
           if (hasTool) {
-            const toolResponse = await ai.models.generateContent({
+            const toolStream = await ai.models.generateContentStream({
               model: selectedModel,
               contents,
               config: { ...genConfig, tools: [READ_PDF_PAGES_TOOL] },
             } as any);
 
-            const fcs = (toolResponse as any).functionCalls as Array<{ name: string; args: any }> | undefined;
+            let hasFunctionCall = false;
+            let fcs: any[] = [];
+            let modelParts: Part[] = [];
 
-            if (fcs && fcs.length > 0) {
-              const modelParts = toolResponse.candidates?.[0]?.content?.parts ?? [];
+            for await (const chunk of toolStream) {
+               if ((chunk as any).functionCalls && (chunk as any).functionCalls.length > 0) {
+                  hasFunctionCall = true;
+                  fcs.push(...(chunk as any).functionCalls);
+               }
+               if (!hasFunctionCall && (chunk as any).text) {
+                  // We didn't call a function, stream text immediately!
+                  controller.enqueue(encoder.encode((chunk as any).text));
+               }
+               
+               if ((chunk as any).candidates?.[0]?.content?.parts) {
+                   modelParts.push(...(chunk as any).candidates[0].content.parts);
+               }
+            }
+
+            if (hasFunctionCall) {
               const toolResultParts: Part[] = fcs.map(fc => {
                 if (fc.name === 'read_pdf_pages') {
                   const pages = (fc.args?.pages ?? []) as number[];
@@ -162,9 +178,7 @@ ${docTextToUse}`;
                 { role: 'user', parts: toolResultParts },
               ];
             } else {
-              // No tool call needed — stream directly from this response text
-              const text = (toolResponse as any).text as string | undefined;
-              if (text) controller.enqueue(encoder.encode(text));
+              // No tool call needed — stream was already handled!
               controller.close();
               return;
             }

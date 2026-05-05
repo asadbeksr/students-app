@@ -117,16 +117,20 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
 
       // Decode the user script from Base64
       const userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
-      const isInteractive = userScriptText.includes('// MODE: INTERACTIVE') || userScriptText.includes('makeDraggable');
+      const is3D = userScriptText.includes('ThreeD') || userScriptText.includes('Dot3D') || userScriptText.includes('Surface3D') || userScriptText.includes('Cube') || userScriptText.includes('Sphere') || userScriptText.includes('Cylinder');
+      const isInteractive = is3D || userScriptText.includes('// MODE: INTERACTIVE') || userScriptText.includes('makeDraggable');
 
       const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
       if (isInteractive) {
         // Interactive Mode: Raw Scene without Player timeline overrides
-        const scene = new manimWeb.Scene(container, {
+        const SceneClass = is3D ? manimWeb.ThreeDScene : manimWeb.Scene;
+        const sceneOptions = {
           width: container.clientWidth,
           height: container.clientHeight,
-        });
+          ...(is3D && { enableOrbitControls: true, distance: 20 })
+        };
+        const scene = new SceneClass(container, sceneOptions);
         window.scene = scene;
         
         // Execute directly on the raw scene
@@ -167,7 +171,7 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       await navigator.clipboard.writeText(script);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch { }
   };
 
   const handleDownload = () => {
