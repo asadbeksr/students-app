@@ -50,11 +50,10 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setAiModel('gemini-flash-latest')}
-                className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm transition-colors ${
-                  settings.aiModel === 'gemini-flash-latest'
-                    ? 'border-yellow-500/50 bg-yellow-500/10 text-foreground'
-                    : 'border-border hover:bg-muted text-muted-foreground'
-                }`}
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm transition-colors ${settings.aiModel === 'gemini-flash-latest'
+                  ? 'border-yellow-500/50 bg-yellow-500/10 text-foreground'
+                  : 'border-border hover:bg-muted text-muted-foreground'
+                  }`}
               >
                 <Zap className={`w-4 h-4 ${settings.aiModel === 'gemini-flash-latest' ? 'text-yellow-500' : ''}`} />
                 <div className="text-left">
@@ -64,11 +63,10 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
               </button>
               <button
                 onClick={() => setAiModel('gemini-pro-latest')}
-                className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm transition-colors ${
-                  settings.aiModel === 'gemini-pro-latest'
-                    ? 'border-purple-500/50 bg-purple-500/10 text-foreground'
-                    : 'border-border hover:bg-muted text-muted-foreground'
-                }`}
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-sm transition-colors ${settings.aiModel === 'gemini-pro-latest'
+                  ? 'border-purple-500/50 bg-purple-500/10 text-foreground'
+                  : 'border-border hover:bg-muted text-muted-foreground'
+                  }`}
               >
                 <Brain className={`w-4 h-4 ${settings.aiModel === 'gemini-pro-latest' ? 'text-purple-500' : ''}`} />
                 <div className="text-left">
@@ -87,11 +85,10 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
                 <button
                   key={p.value}
                   onClick={() => setAiPersonality(p.value)}
-                  className={`p-2 rounded-lg border text-center transition-colors ${
-                    settings.aiPersonality === p.value
-                      ? 'border-primary/50 bg-primary/10 text-foreground'
-                      : 'border-border hover:bg-muted text-muted-foreground'
-                  }`}
+                  className={`p-2 rounded-lg border text-center transition-colors ${settings.aiPersonality === p.value
+                    ? 'border-primary/50 bg-primary/10 text-foreground'
+                    : 'border-border hover:bg-muted text-muted-foreground'
+                    }`}
                 >
                   <div className="text-xs font-medium">{p.label}</div>
                   <div className="text-[10px] text-muted-foreground">{p.desc}</div>
@@ -108,11 +105,10 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
                 <button
                   key={opt.value}
                   onClick={() => updateSettings({ personalityIntensity: opt.value })}
-                  className={`flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors ${
-                    settings.personalityIntensity === opt.value
-                      ? 'border-primary/50 bg-primary/10 text-foreground'
-                      : 'border-border hover:bg-muted text-muted-foreground'
-                  }`}
+                  className={`flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors ${settings.personalityIntensity === opt.value
+                    ? 'border-primary/50 bg-primary/10 text-foreground'
+                    : 'border-border hover:bg-muted text-muted-foreground'
+                    }`}
                 >
                   {opt.label}
                 </button>
@@ -175,15 +171,12 @@ export default function ChatSettingsPanel({ isOpen, onClose }: ChatSettingsPanel
             <textarea
               value={settings.customSystemPrompt || ''}
               onChange={(e) => {
-                const value = e.target.value.slice(0, 500);
+                const value = e.target.value;
                 setCustomSystemPrompt(value || null);
               }}
               placeholder="Add custom instructions for your AI tutor..."
-              className="w-full h-24 px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/60"
+              className="w-full min-h-[120px] px-3 py-2 text-sm bg-muted/50 border border-border rounded-lg resize-y focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/60"
             />
-            <p className="text-[10px] text-muted-foreground text-right">
-              {(settings.customSystemPrompt || '').length}/500
-            </p>
           </div>
         </div>
       </div>
