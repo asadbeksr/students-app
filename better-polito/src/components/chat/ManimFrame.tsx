@@ -36,7 +36,7 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     body {
       font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
       overflow: hidden;
-      background: var(--color-background-primary);
+      background: #000;
       color: var(--color-text-primary);
       display: flex;
       justify-content: center;
@@ -44,15 +44,28 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       width: 100%;
       height: 100vh;
       margin: 0;
+      position: relative;
     }
     #manim-container {
       width: 100%;
       height: 100%;
+      position: relative;
+    }
+    /* Fullscreen: constrain to 16:9 aspect ratio, centered */
+    body:fullscreen #manim-container {
+      width: 100vw;
+      height: 100vh;
+      max-width: calc(100vh * 16 / 9);
+      max-height: calc(100vw * 9 / 16);
+      margin: auto;
+      position: absolute;
+      top: 0; bottom: 0; left: 0; right: 0;
     }
     #manim-container canvas {
       width: 100% !important;
       height: 100% !important;
       display: block;
+      object-fit: contain;
     }
     #error-box {
       display: none;
@@ -85,13 +98,20 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #fs-btn {
+    .controls {
       position: absolute;
-      bottom: 16px;
-      right: 16px;
-      background: var(--color-background-primary);
-      color: var(--color-text-primary);
-      border: 1px solid rgba(128, 128, 128, 0.3);
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      gap: 6px;
+      z-index: 1000;
+    }
+    .ctrl-btn {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 6px;
       width: 32px;
       height: 32px;
@@ -100,12 +120,14 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       align-items: center;
       justify-content: center;
       transition: all 0.2s;
-      z-index: 1000;
-      opacity: 0.7;
     }
-    #fs-btn:hover {
-      opacity: 1;
-      background: rgba(128, 128, 128, 0.1);
+    .ctrl-btn:hover {
+      color: #fff;
+      background: rgba(0, 0, 0, 0.7);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    .ctrl-btn.visible {
+      display: flex;
     }
   </style>
 </head>
@@ -115,9 +137,14 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     <span>Loading Manim…</span>
   </div>
   <div id="manim-container" style="display:none;"></div>
-  <button id="fs-btn" title="Fullscreen">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-  </button>
+  <div class="controls">
+    <button id="replay-btn" class="ctrl-btn" title="Replay">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+    <button id="fs-btn" class="ctrl-btn" title="Fullscreen">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    </button>
+  </div>
   <div id="error-box"></div>
 
   <script type="module">
@@ -135,31 +162,56 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       for (const key of Object.keys(manimWeb)) {
         window[key] = manimWeb[key];
       }
+      // Alias MathTex -> MathTexImage (common user mistake / old naming)
+      if (manimWeb.MathTexImage && !window.MathTex) {
+        window.MathTex = manimWeb.MathTexImage;
+      }
 
       // Hide loading, show container
       loadingBox.style.display = 'none';
       container.style.display = 'block';
 
       // Decode the user script from Base64
-      const userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
+      let userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
+
+      // --- Preprocess user code ---
+      // 1. Strip import statements (all manim-web exports are already global)
+      userScriptText = userScriptText.replace(/^\\s*import\\s+\\{[^}]*\\}\\s+from\\s+['"][^'"]*['"];?\\s*$/gm, '');
+      userScriptText = userScriptText.replace(/^\\s*import\\s+.*from\\s+['"][^'"]*['"];?\\s*$/gm, '');
+      // 2. Strip standalone Scene/container creation (we provide our own)
+      //    e.g. const container = document.getElementById('container');
+      //    e.g. const scene = new Scene(document.getElementById('container'), { ... });
+      userScriptText = userScriptText.replace(/^\\s*const\\s+container\\s*=\\s*document\\.getElementById\\([^)]*\\);?\\s*$/gm, '');
+      userScriptText = userScriptText.replace(/^\\s*const\\s+scene\\s*=\\s*new\\s+Scene\\s*\\([\\s\\S]*?\\);\\s*$/gm, '');
+      // 3. Replace MathTex constructor with MathTexImage (the actual class name)
+      userScriptText = userScriptText.replace(/\\bnew\\s+MathTex\\s*\\(/g, 'new MathTexImage(');
+
+      // --- Detect execution mode ---
       const is3D = userScriptText.includes('ThreeD') || userScriptText.includes('Dot3D') || userScriptText.includes('Surface3D') || userScriptText.includes('Cube') || userScriptText.includes('Sphere') || userScriptText.includes('Cylinder');
-      const isInteractive = is3D || userScriptText.includes('// MODE: INTERACTIVE') || userScriptText.includes('makeDraggable');
+      // Updater-based animations (addUpdater + scene.wait) need a raw Scene, not a Player.
+      // The Player records a timeline for scrubbing; updaters run in real-time and aren't compatible.
+      const usesUpdaters = userScriptText.includes('addUpdater');
+      const isInteractive = is3D || usesUpdaters || userScriptText.includes('// MODE: INTERACTIVE') || userScriptText.includes('makeDraggable');
 
       const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
       if (isInteractive) {
-        // Interactive Mode: Raw Scene without Player timeline overrides
+        // Raw Scene Mode: for interactive, updater-based, or 3D scenes
         const SceneClass = is3D ? manimWeb.ThreeDScene : manimWeb.Scene;
+        // Detect backgroundColor from user code if present
+        const bgMatch = userScriptText.match(/backgroundColor\\s*:\\s*(\\w+)/);
+        const bgColor = bgMatch ? (window[bgMatch[1]] || '#000000') : '#000000';
         const sceneOptions = {
           width: container.clientWidth,
           height: container.clientHeight,
+          backgroundColor: bgColor,
           ...(is3D && { enableOrbitControls: true, distance: 20 })
         };
-        const scene = new SceneClass(container, sceneOptions);
+        let scene = new SceneClass(container, sceneOptions);
         window.scene = scene;
         
         const fsBtn = document.getElementById('fs-btn');
-        fsBtn.style.display = 'flex';
+        fsBtn.classList.add('visible');
         fsBtn.onclick = () => {
           if (!document.fullscreenElement) {
             document.body.requestFullscreen().catch(console.error);
@@ -170,7 +222,25 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
 
         // Execute directly on the raw scene
         const userFn = new AsyncFunction('scene', userScriptText);
-        await userFn(scene);
+
+        async function runAnimation() {
+          const replayBtn = document.getElementById('replay-btn');
+          replayBtn.classList.remove('visible');
+          await userFn(scene);
+          // Animation finished — show replay button
+          replayBtn.classList.add('visible');
+        }
+
+        document.getElementById('replay-btn').addEventListener('click', async () => {
+          // Dispose old scene, create a fresh one
+          try { scene.dispose(); } catch {}
+          container.innerHTML = '';
+          scene = new SceneClass(container, sceneOptions);
+          window.scene = scene;
+          await runAnimation();
+        });
+
+        await runAnimation();
       } else {
         // Animation Mode: Player with Timeline Scrubber
         const player = new manimWeb.Player(container, {
