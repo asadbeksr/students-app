@@ -199,6 +199,9 @@ export interface AppSettings {
   manimMode?: boolean;
   imageGeneration?: boolean;
   videoGeneration?: boolean;
+  videoAspectRatio?: '16:9' | '9:16';
+  videoDuration?: 4 | 6 | 8;
+  videoResolution?: '720p' | '1080p';
 }
 
 export interface VisualModeSettings {

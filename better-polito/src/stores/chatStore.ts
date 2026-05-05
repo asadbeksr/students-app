@@ -372,7 +372,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           const response = await fetch('/api/ai/generate-video', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: content }),
+            body: JSON.stringify({
+              prompt: content,
+              aspectRatio: settings?.videoAspectRatio || '16:9',
+              duration: settings?.videoDuration || 8,
+              resolution: settings?.videoResolution || '720p',
+            }),
           });
 
           if (!response.ok) {
