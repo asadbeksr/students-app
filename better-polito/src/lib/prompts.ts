@@ -78,7 +78,7 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 ### CRITICAL Rules — read carefully:
 - Do NOT use \`import\` statements. All exports are globals.
 - Do NOT create your own Scene (\`new Scene(...)\`). Use the pre-initialized \`scene\` variable.
-- Do NOT call methods that don't exist. There is NO \`setOption\`, \`set_color_by_tex\`, \`setFill\`, \`setStroke\`, \`getEntries\`, or \`setOpacity\` method. Only use the API documented below.
+- Do NOT call methods that don't exist. There is NO \`scene.addUpdater\`, \`scene.removeUpdater\`, \`setOption\`, \`set_color_by_tex\`, \`setFill\`, \`setStroke\`, \`getEntries\`, or \`setOpacity\` method. \`addUpdater\`/\`removeUpdater\` belong to Mobjects, NOT Scene. Only use the API documented below.
 - Top-level \`await\` IS supported.
 
 ### Available Constructors (pass options as an object):
@@ -135,6 +135,7 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 - \`await scene.play(animation1, animation2, ...)\` — play one or more animations (in parallel)
 - \`await scene.wait(seconds)\` — pause
 - \`scene.clear()\` — remove everything
+- ⚠️ Scene does NOT have \`addUpdater\`, \`removeUpdater\`, \`setColor\`, etc. Those are Mobject methods.
 
 ### Animations (create with \`new\`):
 - \`new Create(obj)\` — draw/create an object
@@ -154,9 +155,14 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 ### Interaction & Updaters:
 - \`makeDraggable(obj, scene)\` — make object draggable
 - \`makeClickable(obj, scene, { onClick: () => {} })\`
-- \`obj.addUpdater((mobj, dt) => { /* logic to update mobj */ })\`
-- \`obj.removeUpdater(func)\`
-- \`player.setSlidesMode(true)\` — enable slides mode (only in Player mode)
+- \`obj.addUpdater((mobj, dt) => { ... })\` — ONLY on Mobjects, NOT on scene. To update something each frame, attach the updater to a specific Mobject.
+- \`obj.removeUpdater(func)\` — ONLY on Mobjects
+- \`player.setSlidesMode(true)\` — enable slides mode (only in Player mode, never use with addUpdater)
+
+### ⚠️ Mode Restrictions — do NOT mix these patterns:
+- **Player mode** (default): Use \`scene.play()\`, \`scene.wait()\`, \`player.setSlidesMode()\`. The \`player\` variable is available.
+- **Interactive mode** (when code contains \`addUpdater\`, \`makeDraggable\`, or \`// MODE: INTERACTIVE\`): Use a raw Scene with updaters. The \`player\` variable is NOT available. Do NOT call \`player.setSlidesMode()\`.
+- Never mix \`player.setSlidesMode()\` with \`obj.addUpdater()\` — they are incompatible execution modes.
 
 ### Complete Working Example — Interactive Constrained Point:
 \`\`\`

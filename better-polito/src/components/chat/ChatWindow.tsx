@@ -272,6 +272,18 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
     return () => window.removeEventListener('ask-ai-quote', handleAskAIQuote);
   }, []);
 
+  // Listen for manim animation error fix requests
+  useEffect(() => {
+    const handleFixRequest = (e: Event) => {
+      const { error } = (e as CustomEvent).detail;
+      if (loading) return; // Don't send if already processing
+      const fixMessage = `Your manim animation code crashed with this error:\n\`${error}\`\n\nPlease fix the animation code and regenerate it.`;
+      sendMessage(courseId, fixMessage, [], studentContext, courseName);
+    };
+    window.addEventListener('manim-fix-request', handleFixRequest);
+    return () => window.removeEventListener('manim-fix-request', handleFixRequest);
+  }, [courseId, loading, sendMessage, studentContext, courseName]);
+
   // Auto-scroll when new messages arrive or content streams (only if user hasn't scrolled up)
   useEffect(() => {
     if (!isUserScrolledUp) {

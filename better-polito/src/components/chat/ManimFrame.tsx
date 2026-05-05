@@ -14,6 +14,20 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { theme } = useTheme();
 
+  // Listen for error fix requests from the iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'manim-error' && iframeRef.current?.contentWindow === e.source) {
+        // Dispatch a global event so ChatWindow can auto-send a fix message
+        window.dispatchEvent(new CustomEvent('manim-fix-request', {
+          detail: { error: e.data.error, script, title }
+        }));
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [script, title]);
+
   const isDark = theme === 'dark';
 
   // Safely encode the user script into the iframe HTML.
@@ -69,16 +83,47 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     }
     #error-box {
       display: none;
-      color: #ff5555;
-      padding: 1rem;
-      border: 1px solid #ff5555;
-      border-radius: 8px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px;
+      text-align: center;
+      width: 100%;
+      height: 100%;
+    }
+    #error-box .error-msg {
+      color: rgba(255,255,255,0.5);
       font-family: monospace;
-      font-size: 12px;
-      white-space: pre-wrap;
-      max-width: 90%;
-      max-height: 90%;
-      overflow: auto;
+      font-size: 11px;
+      max-width: 80%;
+      max-height: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
+    }
+    #error-box .error-title {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    #fix-btn {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #fix-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.35);
     }
     #loading-box {
       display: flex;
@@ -263,8 +308,18 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       console.error("Manim execution error:", err);
       loadingBox.style.display = 'none';
       container.style.display = 'none';
-      errorBox.style.display = 'block';
-      errorBox.textContent = "Error: " + err.message + "\\n\\nStack: " + (err.stack || '(no stack)');
+      errorBox.style.display = 'flex';
+      const errMsg = err.message || String(err);
+      errorBox.innerHTML = '<div class="error-title">Animation failed</div>'
+        + '<div class="error-msg">' + errMsg.replace(/</g,'&lt;') + '</div>'
+        + '<button id="fix-btn">'
+        + '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>'
+        + 'Regenerate</button>';
+      document.getElementById('fix-btn').addEventListener('click', () => {
+        window.parent.postMessage({ type: 'manim-error', error: errMsg }, '*');
+        document.getElementById('fix-btn').textContent = 'Sent to AI…';
+        document.getElementById('fix-btn').disabled = true;
+      });
     }
   </script>
 </body>
