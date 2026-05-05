@@ -236,21 +236,20 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
             <div className="flex items-center gap-0.5 md:gap-1">
               <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <DropdownMenuTrigger asChild>
-                  <div className={`
-                    relative flex items-center justify-center rounded-lg
-                    transition-all duration-300
-                    ${(() => {
-                      const active = [
-                        visualModeEnabled && 'green-500',
-                        manimModeEnabled && 'purple-500',
-                        imageGenerationEnabled && 'orange-500',
-                        videoGenerationEnabled && 'cyan-500',
+                  <div
+                    className="relative flex items-center justify-center rounded-lg transition-all duration-300"
+                    style={(() => {
+                      const colors = [
+                        visualModeEnabled && '#22c55e',
+                        manimModeEnabled && '#a855f7',
+                        imageGenerationEnabled && '#f97316',
+                        videoGenerationEnabled && '#06b6d4',
                       ].filter(Boolean) as string[];
-                      if (active.length === 0) return 'p-0';
-                      if (active.length === 1) return `p-[2px] bg-${active[0]}`;
-                      return `p-[2px] bg-gradient-to-tr from-${active[0]} to-${active[active.length - 1]}`;
+                      if (colors.length === 0) return {};
+                      if (colors.length === 1) return { padding: 2, background: colors[0], borderRadius: 10 };
+                      return { padding: 2, background: `linear-gradient(to top right, ${colors[0]}, ${colors[colors.length - 1]})`, borderRadius: 10 };
                     })()}
-                  `}>
+                  >
                     <Button
                       variant="ghost"
                       size="sm"
