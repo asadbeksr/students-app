@@ -115,27 +115,40 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       loadingBox.style.display = 'none';
       container.style.display = 'block';
 
-      // Initialize the Player
-      const player = new manimWeb.Player(container, {
-        width: container.clientWidth,
-        height: container.clientHeight,
-      });
-      window.player = player;
-
       // Decode the user script from Base64
       const userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
+      const isInteractive = userScriptText.includes('// MODE: INTERACTIVE') || userScriptText.includes('makeDraggable');
 
-      // Execute the user script as an async function with 'scene' and 'player' as local variables
       const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-      const userFn = new AsyncFunction('scene', 'player', userScriptText);
-      
-      await player.sequence(async (scene) => {
+
+      if (isInteractive) {
+        // Interactive Mode: Raw Scene without Player timeline overrides
+        const scene = new manimWeb.Scene(container, {
+          width: container.clientWidth,
+          height: container.clientHeight,
+        });
         window.scene = scene;
-        await userFn(scene, player);
-      });
-      
-      // Auto-play the sequence
-      player.play();
+        
+        // Execute directly on the raw scene
+        const userFn = new AsyncFunction('scene', userScriptText);
+        await userFn(scene);
+      } else {
+        // Animation Mode: Player with Timeline Scrubber
+        const player = new manimWeb.Player(container, {
+          width: container.clientWidth,
+          height: container.clientHeight,
+        });
+        window.player = player;
+
+        const userFn = new AsyncFunction('scene', 'player', userScriptText);
+        await player.sequence(async (sceneProxy) => {
+          window.scene = sceneProxy;
+          await userFn(sceneProxy, player);
+        });
+        
+        // Auto-play the sequence
+        player.play();
+      }
 
     } catch (err) {
       console.error("Manim execution error:", err);

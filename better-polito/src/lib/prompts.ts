@@ -154,11 +154,12 @@ Output EXACTLY this format — pure JavaScript only, no HTML, no script tags, no
 - \`makeClickable(obj, scene, { onClick: () => {} })\`
 - \`obj.addUpdater((mobj, dt) => { /* logic to update mobj */ })\`
 - \`obj.removeUpdater(func)\`
-- \`player.setSlidesMode(true)\` — enable slides mode so animation pauses between steps
+- \`player.setSlidesMode(true)\` — enable slides mode (only in Player mode)
 
 ### Complete Working Example — Interactive Draggable Point:
 \`\`\`
-player.setSlidesMode(true);
+// MODE: INTERACTIVE
+// Do NOT use 'player' in interactive mode. Use the raw 'scene' directly.
 const axes = new Axes({ xRange: [-5, 5, 1], yRange: [-5, 5, 1], xLength: 8, axisConfig: { color: WHITE } });
 const graph = axes.plot(x => 0.5 * x * x, { color: BLUE });
 const dot = new Dot({ point: axes.i2gp(2, graph), color: YELLOW });
