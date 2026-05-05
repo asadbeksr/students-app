@@ -72,33 +72,39 @@ DO NOT visualize: single facts, short lists (<3 items), simple definitions, conv
 const MANIM_MODE_INSTRUCTIONS = `
 ## Manim Animation Protocol
 
-When explaining mathematical or geometric concepts, you can generate an animated Manim scene.
+When explaining mathematical or geometric concepts, generate an animated Manim scene.
 Output EXACTLY this format:
 
 <manim title="Descriptive Title">
-// JavaScript code for manim-web here
-// Do not include any HTML, <script> tags, or markdown code blocks inside the <manim> tag!
-// The 'scene' variable is already globally available and initialized.
-// Available objects from manim-web are globally available without importing:
-// Circle, Square, Sphere, Cube, Dot, Dot3D, Line, Text, MathTex, Create, Transform, FadeIn, FadeOut, ThreeDAxes, makeDraggable, BLUE, GREEN, RED, YELLOW, WHITE, etc.
+// Pure JavaScript code only — no HTML, no <script> tags, no markdown fences!
+// Top-level await IS supported. The variable 'scene' is already initialized.
+// All manim-web exports are available as globals: Circle, Square, Rectangle,
+// Line, Arrow, Dot, Arc, Star, Polygon, Text, MathTex, Tex, Axes, NumberPlane,
+// FunctionGraph, ParametricFunction, Sphere, Cube, Cylinder, ThreeDAxes,
+// Create, FadeIn, FadeOut, Transform, Write, GrowFromCenter, AnimationGroup,
+// LaggedStart, makeDraggable, makeHoverable, makeClickable,
+// BLUE, GREEN, RED, YELLOW, WHITE, ORANGE, PURPLE, PINK, TEAL, GOLD,
+// PI, TAU, DEGREES, UP, DOWN, LEFT, RIGHT, ORIGIN, ValueTracker, etc.
 
-const circle = new Circle({ radius: 0.5, color: BLUE, fillOpacity: 0.8 });
-circle.moveTo([-2, 1, 0]);
-scene.add(circle);
-// DO NOT use top-level await unless wrapped in an async IIFE, OR just rely on scene.play()
-// Example:
-// await scene.play(new Create(circle));
-// Actually, top level await is supported in the environment.
+const circle = new Circle({ radius: 1.5, color: BLUE, fillOpacity: 0.5 });
+await scene.play(new Create(circle));
 
-makeDraggable(circle, scene);
+const square = new Square({ sideLength: 2, color: RED });
+await scene.play(new Transform(circle, square));
+
+await scene.play(new FadeOut(square));
 </manim>
 
 ### Rules for Manim:
-- Do NOT use \`import\` statements (e.g. \`import { Circle } from 'manim-web';\`). All exports from manim-web are globally available.
-- Do NOT include \`const scene = new Scene(...)\`. It is already created for you.
-- Use 3D objects (\`Sphere\`, \`Cube\`, \`ThreeDAxes\`) for 3D concepts.
-- Use \`makeDraggable(object, scene)\` to make things interactive.
-- You can use \`scene.add(...)\` or \`await scene.play(...)\` for animations.
+- Do NOT use \`import\` statements. All manim-web exports are globally available.
+- Do NOT create your own Scene (\`new Scene(...)\`). The \`scene\` variable is pre-initialized.
+- Top-level \`await\` IS supported — use \`await scene.play(...)\` for sequential animations.
+- Use \`scene.add(obj)\` to add objects without animation, \`await scene.play(new Create(obj))\` to animate them in.
+- Use \`makeDraggable(object, scene)\` to make objects interactive/draggable.
+- For 3D: use \`Sphere\`, \`Cube\`, \`Cylinder\`, \`ThreeDAxes\`, \`Surface3D\`.
+- For graphing: use \`Axes\`, \`FunctionGraph\`, \`NumberPlane\`, \`ParametricFunction\`.
+- For LaTeX: use \`new MathTex("\\\\frac{a}{b}")\` or \`new Tex("Hello")\`.
+- Keep animations focused and concise — prefer quality over quantity.
 `;
 
 export function getSystemPrompt(

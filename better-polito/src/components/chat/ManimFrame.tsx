@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { Copy, Download, Check, PlaySquare } from 'lucide-react';
+import { Copy, Download, Check, PlaySquare, RefreshCw } from 'lucide-react';
 
 interface ManimFrameProps {
   script: string;
@@ -11,12 +11,19 @@ interface ManimFrameProps {
 
 export function ManimFrame({ script, title }: ManimFrameProps) {
   const [copied, setCopied] = useState(false);
+  const [key, setKey] = useState(0); // for re-running the animation
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { theme } = useTheme();
 
   const isDark = theme === 'dark';
 
-  const wrappedHtml = `<!DOCTYPE html>
+  // Safely encode the user script into the iframe HTML.
+  // We Base64-encode it to avoid ANY escaping issues with template literals,
+  // backticks, ${}, quotes, etc. inside the user-generated code.
+  const wrappedHtml = useMemo(() => {
+    const encodedScript = btoa(unescape(encodeURIComponent(script)));
+
+    return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -42,9 +49,12 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     #manim-container {
       width: 100%;
       height: 100%;
-      max-height: 400px;
     }
-    /* Simple error boundary styling */
+    #manim-container canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
     #error-box {
       display: none;
       color: #ff5555;
@@ -52,50 +62,86 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       border: 1px solid #ff5555;
       border-radius: 8px;
       font-family: monospace;
+      font-size: 12px;
       white-space: pre-wrap;
       max-width: 90%;
       max-height: 90%;
       overflow: auto;
     }
-  </style>
-  <script type="module">
-    import * as manimWeb from 'https://cdn.jsdelivr.net/npm/manim-web@0.3.18/dist/manim-web.browser.js';
-
-    // Extract everything to window to simulate global imports as prompted to AI
-    for (const key in manimWeb) {
-      window[key] = manimWeb[key];
+    #loading-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: var(--color-text-primary);
+      opacity: 0.6;
+      font-size: 13px;
     }
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      const container = document.getElementById('manim-container');
-      const errorBox = document.getElementById('error-box');
-
-      try {
-        // Initialize Scene
-        window.scene = new manimWeb.Scene(container, {
-          width: container.clientWidth,
-          height: container.clientHeight
-        });
-
-        // Run user script
-        const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-        const userCode = new AsyncFunction(script);
-        await userCode();
-
-      } catch (err) {
-        console.error("Manim execution error:", err);
-        container.style.display = 'none';
-        errorBox.style.display = 'block';
-        errorBox.textContent = "Error executing Manim script:\\n" + err.message;
-      }
-    });
-  </script>
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(128, 128, 128, 0.2);
+      border-top-color: rgba(128, 128, 128, 0.7);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-  <div id="manim-container"></div>
+  <div id="loading-box">
+    <div class="spinner"></div>
+    <span>Loading Manim…</span>
+  </div>
+  <div id="manim-container" style="display:none;"></div>
   <div id="error-box"></div>
+
+  <script type="module">
+    const ENCODED_SCRIPT = "${encodedScript}";
+
+    const container = document.getElementById('manim-container');
+    const errorBox = document.getElementById('error-box');
+    const loadingBox = document.getElementById('loading-box');
+
+    try {
+      // Import manim-web from CDN
+      const manimWeb = await import('https://cdn.jsdelivr.net/npm/manim-web@0.3.20/dist/manim-web.browser.js');
+
+      // Expose all exports globally so user code can reference Circle, Scene, etc.
+      for (const key of Object.keys(manimWeb)) {
+        window[key] = manimWeb[key];
+      }
+
+      // Hide loading, show container
+      loadingBox.style.display = 'none';
+      container.style.display = 'block';
+
+      // Initialize the Scene
+      const scene = new manimWeb.Scene(container, {
+        width: container.clientWidth,
+        height: container.clientHeight,
+      });
+      window.scene = scene;
+
+      // Decode the user script from Base64
+      const userScriptText = decodeURIComponent(escape(atob(ENCODED_SCRIPT)));
+
+      // Execute the user script as an async function with 'scene' as a local variable too
+      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+      const userFn = new AsyncFunction('scene', userScriptText);
+      await userFn(scene);
+
+    } catch (err) {
+      console.error("Manim execution error:", err);
+      loadingBox.style.display = 'none';
+      container.style.display = 'none';
+      errorBox.style.display = 'block';
+      errorBox.textContent = "Error: " + err.message + "\\n\\nStack: " + (err.stack || '(no stack)');
+    }
+  </script>
 </body>
 </html>`;
+  }, [script, isDark, key]);
 
   const handleCopy = async () => {
     try {
@@ -115,6 +161,10 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleRerun = () => {
+    setKey(k => k + 1);
+  };
+
   return (
     <div className="my-3 rounded-xl overflow-hidden border border-border/20">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/20">
@@ -125,6 +175,13 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleRerun}
+            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="Re-run Animation"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={handleCopy}
             className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -144,6 +201,7 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
 
       <div style={{ height: '320px', width: '100%' }}>
         <iframe
+          key={key}
           ref={iframeRef}
           srcDoc={wrappedHtml}
           title={title ?? 'Manim Animation'}
