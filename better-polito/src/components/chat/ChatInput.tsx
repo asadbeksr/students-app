@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, Paperclip, Plus, LineChart, Zap, Brain, PlaySquare, ImageIcon } from 'lucide-react';
+import { ArrowUp, Paperclip, Plus, LineChart, Zap, Brain, PlaySquare, ImageIcon, Video } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -34,6 +34,16 @@ const IMAGE_PLACEHOLDERS = [
   '✏️ Sketch a free-body diagram…',
 ];
 
+const VIDEO_PLACEHOLDERS = [
+  '🎬 Describe a video to generate…',
+  '🔬 Visualize a chemical reaction…',
+  '🌍 Show plate tectonics in motion…',
+  '📐 Animate a geometric proof…',
+  '🚀 Simulate projectile motion…',
+  '⚡ Demonstrate electromagnetic waves…',
+  '🧬 Animate DNA replication…',
+];
+
 interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -60,10 +70,11 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
   const visualModeEnabled = settings?.visualMode?.enabled ?? true;
   const manimModeEnabled = settings?.manimMode ?? true;
   const imageGenerationEnabled = settings?.imageGeneration ?? false;
+  const videoGenerationEnabled = settings?.videoGeneration ?? false;
   const aiModel = settings?.aiModel || 'gemini-flash-latest';
   const currentVisualModeEnabled = settings?.visualMode?.enabled ?? true;
 
-  const activePlaceholders = imageGenerationEnabled ? IMAGE_PLACEHOLDERS : PLACEHOLDERS;
+  const activePlaceholders = videoGenerationEnabled ? VIDEO_PLACEHOLDERS : imageGenerationEnabled ? IMAGE_PLACEHOLDERS : PLACEHOLDERS;
 
   // Cycle placeholder text with fade
   useEffect(() => {
@@ -93,7 +104,22 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
 
   const toggleImageGeneration = async () => {
     if (!settings) return;
-    await updateSettings({ imageGeneration: !imageGenerationEnabled });
+    // Disable video generation if enabling image generation
+    if (!imageGenerationEnabled && videoGenerationEnabled) {
+      await updateSettings({ imageGeneration: true, videoGeneration: false });
+    } else {
+      await updateSettings({ imageGeneration: !imageGenerationEnabled });
+    }
+  };
+
+  const toggleVideoGeneration = async () => {
+    if (!settings) return;
+    // Disable image generation if enabling video generation
+    if (!videoGenerationEnabled && imageGenerationEnabled) {
+      await updateSettings({ videoGeneration: true, imageGeneration: false });
+    } else {
+      await updateSettings({ videoGeneration: !videoGenerationEnabled });
+    }
   };
 
   // Auto-resize textarea
@@ -213,13 +239,17 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                   <div className={`
                     relative flex items-center justify-center rounded-lg
                     transition-all duration-300
-                    ${visualModeEnabled && manimModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 via-purple-500 to-orange-500' :
-                      visualModeEnabled && manimModeEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-purple-500' :
-                        visualModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-orange-500' :
-                          manimModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-purple-500 to-orange-500' :
-                            visualModeEnabled ? 'p-[2px] bg-green-500' :
-                              manimModeEnabled ? 'p-[2px] bg-purple-500' :
-                                imageGenerationEnabled ? 'p-[2px] bg-orange-500' : 'p-0'}
+                    ${(() => {
+                      const active = [
+                        visualModeEnabled && 'green-500',
+                        manimModeEnabled && 'purple-500',
+                        imageGenerationEnabled && 'orange-500',
+                        videoGenerationEnabled && 'cyan-500',
+                      ].filter(Boolean) as string[];
+                      if (active.length === 0) return 'p-0';
+                      if (active.length === 1) return `p-[2px] bg-${active[0]}`;
+                      return `p-[2px] bg-gradient-to-tr from-${active[0]} to-${active[active.length - 1]}`;
+                    })()}
                   `}>
                     <Button
                       variant="ghost"
@@ -228,7 +258,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                         h-8 w-8 md:h-9 md:w-9 p-0 rounded-[6px] group
                         transition-all duration-200
                         active:scale-90
-                        ${visualModeEnabled || manimModeEnabled || imageGenerationEnabled
+                        ${visualModeEnabled || manimModeEnabled || imageGenerationEnabled || videoGenerationEnabled
                           ? 'bg-card hover:bg-muted text-foreground'
                           : 'bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground'
                         }
@@ -284,6 +314,17 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                     </span>
                   </DropdownMenuCheckboxItem>
 
+                  <DropdownMenuCheckboxItem
+                    checked={videoGenerationEnabled}
+                    onCheckedChange={toggleVideoGeneration}
+                    className="cursor-pointer text-sm font-normal py-2 transition-colors duration-150"
+                  >
+                    <span className="flex items-center">
+                      <Video className={`mr-3 h-4 w-4 transition-colors duration-200 ${videoGenerationEnabled ? 'text-cyan-500' : 'text-muted-foreground'}`} />
+                      <span>Video Generation <span className="text-muted-foreground text-xs">🎬</span></span>
+                    </span>
+                  </DropdownMenuCheckboxItem>
+
                   <DropdownMenuSeparator className="my-1" />
 
                   <DropdownMenuLabel className="text-xs font-normal text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
@@ -335,7 +376,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 disabled={disabled}
-                placeholder={isFocused ? (imageGenerationEnabled ? 'Describe an image…' : 'Ask anything…') : ''}
+                placeholder={isFocused ? (videoGenerationEnabled ? 'Describe a video…' : imageGenerationEnabled ? 'Describe an image…' : 'Ask anything…') : ''}
                 rows={1}
                 className="
                   w-full resize-none bg-transparent border-0 outline-none

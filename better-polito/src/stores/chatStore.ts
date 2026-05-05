@@ -24,7 +24,7 @@ function extractPageWindow(fullText: string, centerPage: number, radius: number)
 
   return `[Showing pages ${startPage}–${Math.min(endPage, lastSection.page)} of the document]\n\n` + fullText.slice(first, end).trim();
 }
-import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation, GeneratedImage } from '@/types';
+import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation, GeneratedImage, GeneratedVideoData } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getSystemPrompt } from '@/lib/prompts';
 import { generateImageThumbnail } from '@/lib/fileProcessing';
@@ -300,6 +300,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const manimModeEnabled = settings?.manimMode ?? false;
       const aiModel = settings?.aiModel || 'gemini-flash-latest';
       const imageGenerationEnabled = settings?.imageGeneration ?? false;
+      const videoGenerationEnabled = settings?.videoGeneration ?? false;
       const customSystemPrompt = settings?.customSystemPrompt || null;
 
       // Build system prompt
@@ -354,6 +355,127 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       );
 
       const assistantMessageId = uuidv4();
+
+      // ============ VIDEO GENERATION MODE ============
+      if (videoGenerationEnabled) {
+        set({
+          streamingState: {
+            isThinking: true,
+            thinkingContent: '',
+            isStreaming: false,
+            streamingContent: '',
+            streamingMessageId: assistantMessageId,
+          },
+        });
+
+        try {
+          const response = await fetch('/api/ai/generate-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: content }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Video generation failed: ${response.status}`);
+          }
+
+          // Parse SSE stream for progress + result
+          const reader = response.body!.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let videoResult: GeneratedVideoData | null = null;
+          let errorMsg: string | null = null;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.status === 'error') {
+                  errorMsg = data.error;
+                } else if (data.status === 'complete' && data.video) {
+                  videoResult = {
+                    data: data.video.data,
+                    uri: data.video.uri,
+                    mimeType: data.video.mimeType || 'video/mp4',
+                  };
+                } else if (data.message) {
+                  set(state => ({
+                    streamingState: {
+                      ...state.streamingState,
+                      thinkingContent: data.message,
+                    },
+                  }));
+                }
+              } catch { /* skip malformed SSE lines */ }
+            }
+          }
+
+          if (errorMsg) throw new Error(errorMsg);
+          if (!videoResult) throw new Error('No video was generated.');
+
+          const assistantMessage: ChatMessage = {
+            id: assistantMessageId,
+            courseId,
+            conversationId,
+            role: 'assistant',
+            content: '',
+            generatedVideos: [videoResult],
+            timestamp: new Date().toISOString(),
+          };
+
+          await db.chatMessages.add(assistantMessage);
+          await get().fetchMessages(conversationId);
+          get().resetStreamingState();
+          set({ loading: false });
+
+          // Auto-name conversation
+          const now = new Date().toISOString();
+          await db.conversations.update(conversationId, { updatedAt: now });
+          const conv = await db.conversations.get(conversationId);
+          if (conv && conv.title === 'New Chat') {
+            try {
+              const titleResponse = await fetch('/api/ai/course-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  messages: [{ role: 'user', content }],
+                  systemPrompt: 'Generate a very short title (max 5 words) for this chat conversation based on the user message. Reply with ONLY the title, nothing else. No quotes, no punctuation at the end.',
+                  model: 'gemini-flash-latest',
+                }),
+              });
+              if (titleResponse.ok) {
+                const titleReader = titleResponse.body!.getReader();
+                const titleDecoder = new TextDecoder();
+                let title = '';
+                while (true) {
+                  const { done, value } = await titleReader.read();
+                  if (done) break;
+                  title += titleDecoder.decode(value, { stream: true });
+                }
+                title = title.replace(/^["*]+|["*]+$/g, '').trim().slice(0, 50);
+                if (title) await get().renameConversation(conversationId, title);
+              }
+            } catch {}
+          }
+
+          await get().fetchConversations(courseId);
+          return;
+        } catch (error) {
+          const errorMessage = (error as Error).message;
+          set({ error: `Video generation failed: ${errorMessage}`, loading: false });
+          get().resetStreamingState();
+          return;
+        }
+      }
 
       // ============ IMAGE GENERATION MODE ============
       if (imageGenerationEnabled) {

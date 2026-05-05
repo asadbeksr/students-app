@@ -13,6 +13,7 @@ import ChatInput from './ChatInput';
 import MessageAttachments from './MessageAttachments';
 import { GifDisplay } from './GifDisplay';
 import GeneratedImageDisplay from './GeneratedImageDisplay';
+import GeneratedVideoDisplay from './GeneratedVideoDisplay';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -491,6 +492,11 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
                   {/* Generated Images */}
                   {message.generatedImages && message.generatedImages.length > 0 && (
                     <GeneratedImageDisplay images={message.generatedImages} />
+                  )}
+
+                  {/* Generated Videos */}
+                  {message.generatedVideos && message.generatedVideos.length > 0 && (
+                    <GeneratedVideoDisplay videos={message.generatedVideos} />
                   )}
 
                   {/* Message text */}

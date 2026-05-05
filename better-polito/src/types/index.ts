@@ -78,6 +78,12 @@ export interface GeneratedImage {
   mimeType: string; // e.g. 'image/png'
 }
 
+export interface GeneratedVideoData {
+  data?: string; // base64 encoded video bytes
+  uri?: string; // fallback: direct URI to video
+  mimeType: string; // e.g. 'video/mp4'
+}
+
 export interface ChatMessage {
   id: string;
   courseId: string;
@@ -95,6 +101,7 @@ export interface ChatMessage {
     materialName: string;
   }[];
   generatedImages?: GeneratedImage[];
+  generatedVideos?: GeneratedVideoData[];
   gifUrl?: string;
   gifMood?: string;
   gifPreviewUrl?: string;
@@ -191,6 +198,7 @@ export interface AppSettings {
   visualMode?: VisualModeSettings;
   manimMode?: boolean;
   imageGeneration?: boolean;
+  videoGeneration?: boolean;
 }
 
 export interface VisualModeSettings {

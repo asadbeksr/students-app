@@ -89,6 +89,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         await db.settings.update('settings', { imageGeneration: false });
       }
 
+      // Migrate existing settings without Video Generation
+      if (settings.videoGeneration === undefined) {
+        settings.videoGeneration = false;
+        await db.settings.update('settings', { videoGeneration: false });
+      }
+
       // Migrate existing settings without Visual Mode
       if (!settings.visualMode) {
         settings.visualMode = {
