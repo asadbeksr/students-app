@@ -369,12 +369,22 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         });
 
         try {
+          // Serialize image attachments for the image generation API
+          const imageAttachments = attachments
+            .filter(att => att.fileType.startsWith('image/'))
+            .map(att => ({
+              base64Data: arrayBufferToBase64(att.fileData),
+              mimeType: att.fileType,
+              fileName: att.fileName,
+            }));
+
           const response = await fetch('/api/ai/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               prompt: content,
               conversationHistory: conversationHistory.slice(0, -1),
+              attachments: imageAttachments.length > 0 ? imageAttachments : undefined,
             }),
           });
 

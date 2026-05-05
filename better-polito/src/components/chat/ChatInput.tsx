@@ -24,6 +24,16 @@ const PLACEHOLDERS = [
   'Create practice questions on this topic…',
 ];
 
+const IMAGE_PLACEHOLDERS = [
+  '🍌 Describe an image to generate…',
+  '🎨 Draw a diagram of a circuit…',
+  '📐 Visualize this math problem…',
+  '🧬 Generate a biology cell diagram…',
+  '📊 Create a chart comparing…',
+  '🖼️ Illustrate the concept of…',
+  '✏️ Sketch a free-body diagram…',
+];
+
 interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -53,18 +63,20 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
   const aiModel = settings?.aiModel || 'gemini-flash-latest';
   const currentVisualModeEnabled = settings?.visualMode?.enabled ?? true;
 
+  const activePlaceholders = imageGenerationEnabled ? IMAGE_PLACEHOLDERS : PLACEHOLDERS;
+
   // Cycle placeholder text with fade
   useEffect(() => {
     if (isFocused || value) return;
     const id = setInterval(() => {
       setPlaceholderVisible(false);
       setTimeout(() => {
-        setPlaceholderIdx(i => (i + 1) % PLACEHOLDERS.length);
+        setPlaceholderIdx(i => (i + 1) % activePlaceholders.length);
         setPlaceholderVisible(true);
       }, 300);
     }, 3000);
     return () => clearInterval(id);
-  }, [isFocused, value]);
+  }, [isFocused, value, activePlaceholders]);
 
   const toggleVisualMode = async () => {
     if (!settings) return;
@@ -174,8 +186,8 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
             ${isFocused
               ? 'border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.08)] shadow-xl'
               : isDragging
-              ? 'border-primary bg-primary/5 shadow-lg scale-[1.005]'
-              : 'border-border shadow-md hover:border-border/80 hover:shadow-lg'
+                ? 'border-primary bg-primary/5 shadow-lg scale-[1.005]'
+                : 'border-border shadow-md hover:border-border/80 hover:shadow-lg'
             }
           `}
           onDragOver={handleDragOver}
@@ -203,11 +215,11 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                     transition-all duration-300
                     ${visualModeEnabled && manimModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 via-purple-500 to-orange-500' :
                       visualModeEnabled && manimModeEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-purple-500' :
-                      visualModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-orange-500' :
-                      manimModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-purple-500 to-orange-500' :
-                      visualModeEnabled ? 'p-[2px] bg-green-500' : 
-                      manimModeEnabled ? 'p-[2px] bg-purple-500' :
-                      imageGenerationEnabled ? 'p-[2px] bg-orange-500' : 'p-0'}
+                        visualModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-green-500 to-orange-500' :
+                          manimModeEnabled && imageGenerationEnabled ? 'p-[2px] bg-gradient-to-tr from-purple-500 to-orange-500' :
+                            visualModeEnabled ? 'p-[2px] bg-green-500' :
+                              manimModeEnabled ? 'p-[2px] bg-purple-500' :
+                                imageGenerationEnabled ? 'p-[2px] bg-orange-500' : 'p-0'}
                   `}>
                     <Button
                       variant="ghost"
@@ -311,7 +323,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
                   className="absolute inset-0 flex items-center pointer-events-none text-sm md:text-[15px] text-muted-foreground/60 transition-opacity duration-300 select-none"
                   style={{ opacity: placeholderVisible ? 1 : 0 }}
                 >
-                  {imageGenerationEnabled ? '🍌 Describe an image to generate…' : PLACEHOLDERS[placeholderIdx]}
+                  {activePlaceholders[placeholderIdx]}
                 </span>
               )}
               <textarea
@@ -360,7 +372,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
           </div>
         </div>
         {/* Image Generation Mode Indicator */}
-        {imageGenerationEnabled && (
+        {/* {imageGenerationEnabled && (
           <div className="flex items-center justify-center gap-1.5 mt-1.5 animate-in fade-in slide-in-from-bottom-1 duration-200">
             <span className="text-[11px] text-orange-500/80 font-medium flex items-center gap-1">
               <ImageIcon className="h-3 w-3" />
@@ -368,7 +380,7 @@ export default function ChatInput({ value, onChange, onSubmit, disabled, attachm
               <span className="text-[10px]">🍌</span>
             </span>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

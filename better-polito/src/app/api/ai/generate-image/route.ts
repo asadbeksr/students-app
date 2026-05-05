@@ -4,7 +4,7 @@ import { getGeminiClient } from '@/lib/gemini';
 export async function POST(req: Request) {
   try {
     const ai = getGeminiClient();
-    const { prompt, conversationHistory } = await req.json();
+    const { prompt, conversationHistory, attachments } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -24,9 +24,25 @@ export async function POST(req: Request) {
       }
     }
 
+    // Build user parts: text prompt + any attached images
+    const userParts: any[] = [{ text: prompt }];
+
+    if (attachments && Array.isArray(attachments)) {
+      for (const att of attachments) {
+        if (att.base64Data && att.mimeType) {
+          userParts.push({
+            inlineData: {
+              data: att.base64Data,
+              mimeType: att.mimeType,
+            },
+          });
+        }
+      }
+    }
+
     contents.push({
       role: 'user',
-      parts: [{ text: prompt }],
+      parts: userParts,
     });
 
     const response = await ai.models.generateContent({

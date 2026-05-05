@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { Copy, Code, Check, PlaySquare } from 'lucide-react';
+import { Copy, Code, Check, PlaySquare, Sparkles, Send, X } from 'lucide-react';
 
 interface ManimFrameProps {
   script: string;
@@ -11,6 +11,10 @@ interface ManimFrameProps {
 
 export function ManimFrame({ script, title }: ManimFrameProps) {
   const [copied, setCopied] = useState(false);
+  const [polishOpen, setPolishOpen] = useState(false);
+  const [polishText, setPolishText] = useState('');
+  const [polishSent, setPolishSent] = useState(false);
+  const polishInputRef = useRef<HTMLInputElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { theme } = useTheme();
 
@@ -344,6 +348,26 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handlePolishOpen = () => {
+    setPolishOpen(true);
+    setPolishSent(false);
+    setPolishText('');
+    setTimeout(() => polishInputRef.current?.focus(), 50);
+  };
+
+  const handlePolishSubmit = () => {
+    if (!polishText.trim()) return;
+    window.dispatchEvent(new CustomEvent('manim-polish-request', {
+      detail: { feedback: polishText.trim(), script, title }
+    }));
+    setPolishSent(true);
+    setTimeout(() => {
+      setPolishOpen(false);
+      setPolishSent(false);
+      setPolishText('');
+    }, 1500);
+  };
+
   return (
     <div className="my-3 rounded-xl overflow-hidden border border-border/20">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/20">
@@ -381,6 +405,55 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
           allow="fullscreen"
           allowFullScreen
         />
+      </div>
+
+      {/* Polish / Refine bar */}
+      <div className="border-t border-border/20 bg-card/50">
+        {!polishOpen ? (
+          <button
+            onClick={handlePolishOpen}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>Refine animation</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 px-2 py-1.5">
+            <input
+              ref={polishInputRef}
+              type="text"
+              value={polishText}
+              onChange={(e) => setPolishText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handlePolishSubmit(); if (e.key === 'Escape') setPolishOpen(false); }}
+              placeholder="e.g. labels are overlapping, make colors brighter..."
+              disabled={polishSent}
+              className="flex-1 min-w-0 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none py-1 px-1.5"
+            />
+            {polishSent ? (
+              <span className="flex items-center gap-1 text-xs text-green-500 shrink-0 px-1">
+                <Check className="w-3 h-3" /> Sent
+              </span>
+            ) : (
+              <>
+                <button
+                  onClick={handlePolishSubmit}
+                  disabled={!polishText.trim()}
+                  className="p-1 rounded-md text-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+                  title="Send refinement"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setPolishOpen(false)}
+                  className="p-1 rounded-md text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                  title="Cancel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

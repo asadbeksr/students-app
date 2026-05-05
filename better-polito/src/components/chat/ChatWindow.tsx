@@ -285,6 +285,18 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
     return () => window.removeEventListener('manim-fix-request', handleFixRequest);
   }, [courseId, loading, sendMessage, studentContext, courseName]);
 
+  // Listen for manim animation polish/refine requests
+  useEffect(() => {
+    const handlePolishRequest = (e: Event) => {
+      const { feedback } = (e as CustomEvent).detail;
+      if (loading) return;
+      const polishMessage = `Please refine the manim animation you just created. Here's what needs to be changed:\n\n${feedback}\n\nRegenerate the full animation code with these fixes applied.`;
+      sendMessage(courseId, polishMessage, [], studentContext, courseName);
+    };
+    window.addEventListener('manim-polish-request', handlePolishRequest);
+    return () => window.removeEventListener('manim-polish-request', handlePolishRequest);
+  }, [courseId, loading, sendMessage, studentContext, courseName]);
+
   // Auto-scroll when new messages arrive or content streams (only if user hasn't scrolled up)
   useEffect(() => {
     if (!isUserScrolledUp) {
