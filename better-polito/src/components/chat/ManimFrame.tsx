@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { useTheme } from 'next-themes';
-import { Copy, Download, Check, PlaySquare } from 'lucide-react';
+import { Copy, Code, Check, PlaySquare } from 'lucide-react';
 
 interface ManimFrameProps {
   script: string;
@@ -85,6 +85,28 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    #fs-btn {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      background: var(--color-background-primary);
+      color: var(--color-text-primary);
+      border: 1px solid rgba(128, 128, 128, 0.3);
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      z-index: 1000;
+      opacity: 0.7;
+    }
+    #fs-btn:hover {
+      opacity: 1;
+      background: rgba(128, 128, 128, 0.1);
+    }
   </style>
 </head>
 <body>
@@ -93,6 +115,9 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
     <span>Loading Manim…</span>
   </div>
   <div id="manim-container" style="display:none;"></div>
+  <button id="fs-btn" title="Fullscreen">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+  </button>
   <div id="error-box"></div>
 
   <script type="module">
@@ -133,6 +158,16 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
         const scene = new SceneClass(container, sceneOptions);
         window.scene = scene;
         
+        const fsBtn = document.getElementById('fs-btn');
+        fsBtn.style.display = 'flex';
+        fsBtn.onclick = () => {
+          if (!document.fullscreenElement) {
+            document.body.requestFullscreen().catch(console.error);
+          } else {
+            document.exitFullscreen();
+          }
+        };
+
         // Execute directly on the raw scene
         const userFn = new AsyncFunction('scene', userScriptText);
         await userFn(scene);
@@ -206,7 +241,7 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
             className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Download Script"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Code className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -218,6 +253,7 @@ export function ManimFrame({ script, title }: ManimFrameProps) {
           title={title ?? 'Manim Animation'}
           style={{ width: '100%', height: '100%', border: 'none', display: 'block', backgroundColor: 'var(--background)' }}
           sandbox="allow-scripts allow-same-origin allow-downloads"
+          allow="fullscreen"
           allowFullScreen
         />
       </div>
