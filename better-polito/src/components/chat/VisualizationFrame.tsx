@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Copy, Download, Check, BarChart3 } from 'lucide-react';
+import { Copy, Download, Check, BarChart3, Maximize } from 'lucide-react';
 
 interface VisualizationFrameProps {
   html: string;
@@ -107,6 +107,18 @@ export function VisualizationFrame({ html, title }: VisualizationFrameProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleFullscreen = () => {
+    if (iframeRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        iframeRef.current.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+      }
+    }
+  };
+
   return (
     <div className="my-3 rounded-xl overflow-hidden border border-border/20">
       {/* Toolbar */}
@@ -118,6 +130,13 @@ export function VisualizationFrame({ html, title }: VisualizationFrameProps) {
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleFullscreen}
+            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="Fullscreen"
+          >
+            <Maximize className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={handleCopy}
             className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -135,14 +154,14 @@ export function VisualizationFrame({ html, title }: VisualizationFrameProps) {
         </div>
       </div>
 
-      {/* Iframe */}
       <iframe
         ref={iframeRef}
         srcDoc={wrappedHtml}
         title={title ?? 'Visualization'}
         height={height}
-        style={{ width: '100%', border: 'none', display: 'block' }}
+        style={{ width: '100%', border: 'none', display: 'block', backgroundColor: 'var(--background)' }}
         sandbox="allow-scripts"
+        allowFullScreen
       />
     </div>
   );
