@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSubject } from '@/config/subjects';
-import { ArrowRight, BookOpen, PenLine, Timer } from 'lucide-react';
+import { ArrowRight, BookOpen, PenLine, Timer, Database } from 'lucide-react';
 
 export default async function SubjectPage({
   params,
@@ -13,7 +13,8 @@ export default async function SubjectPage({
   if (!cfg) notFound();
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-10">
+    <section className="mx-auto max-w-[1400px] px-6 py-10">
+      <div className="max-w-3xl">
       <Link href="/mock" className="text-sm text-muted-foreground hover:text-foreground">
         ← All subjects
       </Link>
@@ -76,6 +77,25 @@ export default async function SubjectPage({
             <ArrowRight className="h-5 w-5 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
           </Link>
         )}
+
+        <Link
+          href={`/mock/${cfg.slug}/bank`}
+          className="group flex items-center justify-between rounded-xl border border-border/60 bg-card p-5 transition hover:border-primary/60"
+        >
+          <div>
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold group-hover:text-primary">
+                Question Bank
+              </h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Browse, filter, select, and export questions as PDF.
+            </p>
+          </div>
+          <ArrowRight className="h-5 w-5 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
+        </Link>
+      </div>
       </div>
     </section>
   );

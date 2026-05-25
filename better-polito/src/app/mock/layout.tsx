@@ -7,11 +7,6 @@ export default function MockLayout({ children }: { children: React.ReactNode }) 
       <link rel="stylesheet" href="/moodle/runner.css" />
       <header className="moodle-navbar">
         <div className="moodle-navbar-inner">
-          <button className="moodle-sidebar-toggle" aria-label="Toggle sidebar">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-            </svg>
-          </button>
           <Link href="/" className="moodle-brand">
             <Image
               src="/moodle/polito_moodle.png"
@@ -21,10 +16,6 @@ export default function MockLayout({ children }: { children: React.ReactNode }) 
               priority
             />
           </Link>
-          <nav className="moodle-nav-links">
-            <Link href="/mock">Dashboard</Link>
-            <Link href="/mock">My courses</Link>
-          </nav>
           <div className="moodle-nav-right">
             <div className="moodle-user-menu">
               <div className="user-avatar-container">

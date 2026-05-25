@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import type { ExamMode, ModeConfig, SubjectConfig } from '@/types/exam';
+import type { AttemptConfig, ExamMode, ModeConfig, SubjectConfig } from '@/types/exam';
 import {
   type Attempt,
   type HistoryEntry,
@@ -12,7 +11,10 @@ import {
   loadAttempt,
   loadHistory,
   saveAttempt,
+  saveHistoricalAttempt,
+  loadHistoricalAttempt,
 } from '@/lib/exam/attempt';
+import { ConfigScreen } from './ConfigScreen';
 import { McqRunner } from './McqRunner';
 import { WrittenViewer } from './WrittenViewer';
 
@@ -30,10 +32,12 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
   useEffect(() => {
     const loaded = loadAttempt(subject.slug, mode);
     if (loaded && isFinished(loaded)) {
-      const entry = attemptToHistory(
-        loaded.submittedAt ? loaded : { ...loaded, submittedAt: loaded.startedAt + loaded.durationMin * 60_000 },
-      );
-      if (entry) appendHistory(entry);
+      const finishedA = loaded.submittedAt ? loaded : { ...loaded, submittedAt: loaded.startedAt + loaded.durationMin * 60_000 };
+      const entry = attemptToHistory(finishedA);
+      if (entry) {
+        appendHistory(entry);
+        saveHistoricalAttempt(finishedA);
+      }
       clearAttempt(subject.slug, mode);
       setAttempt(null);
       return;
@@ -47,7 +51,10 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
       const next = updater(prev);
       if (!prev.submittedAt && next.submittedAt) {
         const entry = attemptToHistory(next);
-        if (entry) appendHistory(entry);
+        if (entry) {
+          appendHistory(entry);
+          saveHistoricalAttempt(next);
+        }
         clearAttempt(next.subject, next.mode);
       } else {
         saveAttempt(next);
@@ -56,14 +63,23 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
     });
   }
 
-  async function start() {
+  function reviewPastAttempt(id: string) {
+    const loaded = loadHistoricalAttempt(id);
+    if (loaded) {
+      setAttempt(loaded);
+    } else {
+      alert("Attempt data not found (it might be from an older version).");
+    }
+  }
+
+  async function start(config: AttemptConfig) {
     setStarting(true);
     setError(null);
     try {
       const res = await fetch('/api/exam/sample', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: subject.slug, mode }),
+        body: JSON.stringify({ subject: subject.slug, mode, config }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -89,25 +105,32 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
   }
 
   function discard() {
-    if (!confirm('Eliminare il tentativo corrente? Questa azione non può essere annullata.')) return;
+    if (attempt && !isFinished(attempt)) {
+      if (!confirm('Delete current attempt? This action cannot be undone.')) return;
+    }
     clearAttempt(subject.slug, mode);
     setAttempt(null);
   }
 
   if (attempt === undefined) {
-    return <div className="exam-page-loading">Caricamento…</div>;
+    return <div className="exam-page-loading">Loading…</div>;
   }
 
   if (attempt === null) {
     return (
-      <StartScreen
-        subject={subject}
-        mode={mode}
-        modeCfg={modeCfg}
-        onStart={start}
-        starting={starting}
-        error={error}
-      />
+      <>
+        <ConfigScreen
+          subject={subject}
+          mode={mode}
+          modeCfg={modeCfg}
+          onStart={start}
+          starting={starting}
+          error={error}
+        />
+        <div className="moodle-quiz" style={{ paddingTop: 0 }}>
+          <PastAttempts subject={subject.slug} mode={mode} onReview={reviewPastAttempt} />
+        </div>
+      </>
     );
   }
 
@@ -132,88 +155,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
   );
 }
 
-function StartScreen({
-  subject,
-  mode,
-  modeCfg,
-  onStart,
-  starting,
-  error,
-}: {
-  subject: SubjectConfig;
-  mode: ExamMode;
-  modeCfg: ModeConfig;
-  onStart: () => void;
-  starting: boolean;
-  error: string | null;
-}) {
-  const modeLabel = mode === 'mcq' ? 'Multiple choice' : 'Written';
-  return (
-    <div className="moodle-quiz">
-      <link rel="stylesheet" href="/moodle/quiz.css" />
-      <link rel="stylesheet" href="/moodle/runner.css" />
-      <div className="quiz-breadcrumb">
-        <Link href="/mock">Mock exams</Link> <span>/</span>{' '}
-        <Link href={`/mock/${subject.slug}`}>{subject.name}</Link> <span>/</span>{' '}
-        <span>{modeLabel}</span>
-      </div>
-      <h1 className="quiz-title">
-        <span className="quiz-icon" /> {subject.name} — {modeLabel} mock exam
-      </h1>
-
-      <div className="start-card">
-        <h2>Riepilogo del quiz</h2>
-        <table className="generaltable generalbox quizreviewsummary mb-0">
-          <tbody>
-            <tr>
-              <th className="cell" scope="row">Numero di domande</th>
-              <td className="cell">{modeCfg.questionCount}</td>
-            </tr>
-            <tr>
-              <th className="cell" scope="row">Tempo</th>
-              <td className="cell">{modeCfg.durationMin} min.</td>
-            </tr>
-            {modeCfg.scoring && (
-              <tr>
-                <th className="cell" scope="row">Punteggio</th>
-                <td className="cell">
-                  +{modeCfg.scoring.correct} corretta · {modeCfg.scoring.wrong} errata ·{' '}
-                  {modeCfg.scoring.blank} in bianco
-                </td>
-              </tr>
-            )}
-            {modeCfg.passScore != null && (
-              <tr>
-                <th className="cell" scope="row">Soglia di superamento</th>
-                <td className="cell">{modeCfg.passScore}%</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        <div className="start-note">
-          Una volta avviato il tentativo, il timer parte e non puoi generare un nuovo set di
-          domande finché il tempo non scade o non termini il tentativo.
-        </div>
-
-        {error && <div className="start-error">{error}</div>}
-
-        <button
-          type="button"
-          className="btn btn-primary start-btn"
-          onClick={onStart}
-          disabled={starting}
-        >
-          {starting ? 'Avvio…' : 'Tenta il quiz ora'}
-        </button>
-      </div>
-
-      <PastAttempts subject={subject.slug} mode={mode} />
-    </div>
-  );
-}
-
-function PastAttempts({ subject, mode }: { subject: string; mode: ExamMode }) {
+function PastAttempts({ subject, mode, onReview }: { subject: string; mode: ExamMode; onReview: (id: string) => void }) {
   const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
 
   useEffect(() => {
@@ -225,16 +167,16 @@ function PastAttempts({ subject, mode }: { subject: string; mode: ExamMode }) {
 
   return (
     <div className="start-card" style={{ marginTop: '1.5rem' }}>
-      <h2>I tuoi tentativi precedenti</h2>
+      <h2>Your previous attempts</h2>
       <table className="generaltable generalbox quizattemptsummary mb-0">
         <thead>
           <tr>
-            <th className="cell" scope="col">Tentativo</th>
-            <th className="cell" scope="col">Stato</th>
-            <th className="cell" scope="col">Iniziato</th>
-            <th className="cell" scope="col">Terminato</th>
-            <th className="cell" scope="col">Tempo impiegato</th>
-            <th className="cell" scope="col">Valutazione</th>
+            <th className="cell" scope="col">Attempt</th>
+            <th className="cell" scope="col">Status</th>
+            <th className="cell" scope="col">Started</th>
+            <th className="cell" scope="col">Finished</th>
+            <th className="cell" scope="col">Time taken</th>
+            <th className="cell" scope="col">Grade</th>
           </tr>
         </thead>
         <tbody>
@@ -246,14 +188,18 @@ function PastAttempts({ subject, mode }: { subject: string; mode: ExamMode }) {
             return (
               <tr key={e.id}>
                 <td className="cell">{num}</td>
-                <td className="cell">Completato</td>
+                <td className="cell">
+                  <button type="button" className="link-btn" style={{ fontWeight: 'bold' }} onClick={() => onReview(e.id)}>
+                    Review
+                  </button>
+                </td>
                 <td className="cell">{formatItDate(started)}</td>
                 <td className="cell">{formatItDate(finished)}</td>
                 <td className="cell">{formatDuration(elapsedSec)}</td>
                 <td className="cell">
                   {e.score ? (
                     <>
-                      <b>{formatIt(e.score.marks)}</b> su {formatIt(e.score.maxMarks)} (
+                      <b>{formatIt(e.score.marks)}</b> out of {formatIt(e.score.maxMarks)} (
                       <b>{Math.round(e.score.pct)}</b>%)
                     </>
                   ) : (
@@ -283,10 +229,10 @@ function formatDuration(totalSec: number): string {
   const mm = m % 60;
   return mm === 0 ? `${h} h` : `${h} h ${mm} min.`;
 }
-const IT_DAYS = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+const IT_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const IT_MONTHS = [
-  'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
-  'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 function formatItDate(d: Date): string {
   return `${IT_DAYS[d.getDay()]}, ${d.getDate()} ${IT_MONTHS[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;

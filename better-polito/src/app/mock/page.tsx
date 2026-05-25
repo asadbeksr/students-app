@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen, PenLine, Timer } from 'lucide-react';
 
 export default function MockSubjectsPage() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-10">
+    <section className="mx-auto max-w-[1400px] px-6 py-10">
       <h1 className="text-3xl font-bold">Exam prep</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Pick a subject to start a mock exam. Defaults mirror the real PoliTO exam timing and question count.

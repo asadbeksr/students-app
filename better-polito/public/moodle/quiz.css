@@ -1,6 +1,6 @@
 
 .moodle-quiz { color: #1d2125; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; line-height: 1.5; }
-.moodle-quiz a { color: #0f6cbf; text-decoration: none; }
+.moodle-quiz a { color: #f7941d; text-decoration: none; }
 .moodle-quiz a:hover { text-decoration: underline; }
 .moodle-quiz h3, .moodle-quiz h4 { margin-top: 0; }
 .moodle-quiz .accesshide, .moodle-quiz .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
@@ -1269,7 +1269,7 @@ body.path-question-type .mform fieldset.hidden{padding:0;margin:.7em 0 0}
 .moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr td.movehere{padding:0}
 .moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr td.movehere a.movehere{display:block;width:100%;margin:5px 0 5px 0;padding:3px 0 3px 0}
 .moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr td.movehere a.movehere hr{border-top:2px dashed #8f959e;margin:0}
-.moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr td.movehere a.movehere:hover hr{border-top:2px dashed #0f6cbf}
+.moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr td.movehere a.movehere:hover hr{border-top:2px dashed #f7941d}
 .moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr.category td{background-color:#fff;border-top:1px solid #dee2e6;border-bottom:1px solid #dee2e6}
 .moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr.category td:first-child{border-left:1px solid #dee2e6}
 .moodle-quiz .path-grade-edit-tree .gradetree-wrapper .setup-grades.generaltable tr.category td:last-child{border-right:1px solid #dee2e6}

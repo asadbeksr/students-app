@@ -52,3 +52,42 @@ export interface SubjectConfig {
   description?: string;
   modes: Partial<Record<ExamMode, ModeConfig>>;
 }
+
+export type LanguageFilter = QuestionLanguage | 'any';
+
+export interface AttemptConfig {
+  topics: string[];
+  difficulties: Difficulty[];
+  language: LanguageFilter;
+  count: number;
+  durationMin: number;
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
+  scoring: ScoringRules;
+  passScore: number;
+  questionIds?: string[];
+}
+
+export interface TopicFacet {
+  topic: string;
+  total: number;
+  byDifficulty: Record<Difficulty, number>;
+}
+
+export interface QuestionFacets {
+  total: number;
+  topics: TopicFacet[];
+  difficulties: Record<Difficulty, number>;
+  languages: Record<QuestionLanguage, number>;
+}
+
+export interface CatalogEntry {
+  id: string;
+  topics: string[];
+  difficulty: Difficulty;
+  language: QuestionLanguage;
+}
+
+export interface FacetsResponse extends QuestionFacets {
+  catalog: CatalogEntry[];
+}

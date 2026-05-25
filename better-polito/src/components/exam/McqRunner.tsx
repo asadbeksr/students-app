@@ -1,9 +1,16 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ListChecks } from 'lucide-react';
 import type { Question, ScoringRules, SubjectConfig } from '@/types/exam';
 import { type Attempt, isFinished, remainingSeconds } from '@/lib/exam/attempt';
 import { MathText } from './MathText';
+
+const CHEMISTRY_INFOS = [
+  { id: -3, title: 'Periodic Table of the Elements', src: '/moodle/periodic_table.png' },
+  { id: -2, title: 'Standard enthalpy of formation (kJ/mol)', src: '/moodle/enthalpy.png' },
+  { id: -1, title: 'Standard electrode potential Eº(volt)', src: '/moodle/electrode_potential.png' },
+];
 
 interface Props {
   subject: SubjectConfig;
@@ -19,6 +26,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
   const [secondsLeft, setSecondsLeft] = useState(() => remainingSeconds(attempt));
   const [currentIdx, setCurrentIdx] = useState(() => isChemistry ? -3 : 0);
   const [isTimerHidden, setIsTimerHidden] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const tickRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -81,66 +89,63 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
       <link rel="stylesheet" href="/moodle/runner.css" />
 
       <div className="quiz-header-toggle-container">
-        <button className="moodle-drawer-toggle" aria-label="Toggle drawer">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-          </svg>
-        </button>
-
         <div className="quiz-breadcrumb">
           <Link href="/mock">2026_06KWRXQ_3</Link> <span>/</span>{' '}
           <Link href={`/mock/${subject.slug}`}>General</Link> <span>/</span>{' '}
-          <span>First trial of self evaluation</span>
+          <span>{subject.name} Mock Exam</span>
         </div>
       </div>
 
-      <h1 className="quiz-title">
-        <span className="quiz-icon" /> First trial of self evaluation
-      </h1>
-
-      <div className="quiz-action-bar">
-        <Link href="/mock" className="btn btn-secondary btn-back">
-          Back
-        </Link>
+      <div className="quiz-title-row">
+        <h1 className="quiz-title">
+          <ListChecks size={32} strokeWidth={2} style={{ color: '#f7941d' }} />
+          <span>{subject.name} Mock Exam</span>
+        </h1>
+        {!finished && (
+          <div className={`moodle-timer-box title-timer ${secondsLeft < 60 ? 'timer-danger' : ''}`} style={{ visibility: isTimerHidden ? 'hidden' : 'visible' }}>
+            Time remaining: <strong>{formatTime(secondsLeft)}</strong>
+          </div>
+        )}
+        <button
+          className={`drawer-toggle-btn ${isDrawerOpen ? 'is-open' : 'is-closed'}`}
+          aria-label={isDrawerOpen ? 'Close block drawer' : 'Open block drawer'}
+          title={isDrawerOpen ? 'Close block drawer' : 'Open block drawer'}
+          onClick={() => setIsDrawerOpen((v) => !v)}
+        >
+          {isDrawerOpen ? (
+            <span className="drawer-toggle-x">×</span>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="drawer-open-svg">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          )}
+        </button>
       </div>
 
       {finished && score && (
         <table className="generaltable generalbox quizreviewsummary mb-0">
-          <caption className="sr-only">Riepilogo del tentativo</caption>
+          <caption className="sr-only">Attempt summary</caption>
           <tbody>
-            <tr><th className="cell" scope="row">Stato</th><td className="cell">Completato</td></tr>
-            <tr><th className="cell" scope="row">Iniziato</th><td className="cell">{formatItDate(startedAt)}</td></tr>
-            <tr><th className="cell" scope="row">Terminato</th><td className="cell">{formatItDate(finishedAt ?? new Date())}</td></tr>
-            <tr><th className="cell" scope="row">Tempo impiegato</th><td className="cell">{formatDuration(elapsedSec)}</td></tr>
+            <tr><th className="cell" scope="row">Status</th><td className="cell">Completed</td></tr>
+            <tr><th className="cell" scope="row">Started</th><td className="cell">{formatItDate(startedAt)}</td></tr>
+            <tr><th className="cell" scope="row">Finished</th><td className="cell">{formatItDate(finishedAt ?? new Date())}</td></tr>
+            <tr><th className="cell" scope="row">Time taken</th><td className="cell">{formatDuration(elapsedSec)}</td></tr>
             <tr>
-              <th className="cell" scope="row">Valutazione</th>
+              <th className="cell" scope="row">Grade</th>
               <td className="cell">
-                <b>{formatIt(score.marks)}</b> su un massimo di {formatIt(score.maxMarks)} (<b>{Math.round(score.pct)}</b>%)
+                <b>{formatIt(score.marks)}</b> out of {formatIt(score.maxMarks)} (<b>{Math.round(score.pct)}</b>%)
               </td>
             </tr>
           </tbody>
         </table>
       )}
 
-      <div className="quiz-layout">
+      <div className={`quiz-layout ${isDrawerOpen ? '' : 'drawer-closed'}`}>
         <main className="quiz-main">
-          {!finished && (
-            <div className="moodle-timer-row">
-              <div className="moodle-timer-wrapper">
-                <div className={`moodle-timer-box ${secondsLeft < 60 ? 'timer-danger' : ''}`} style={{ visibility: isTimerHidden ? 'hidden' : 'visible' }}>
-                  Time left <strong className="moodle-timer-value">{formatTime(secondsLeft)}</strong>
-                </div>
-                <button type="button" className="btn btn-secondary timer-toggle-btn" onClick={() => setIsTimerHidden(!isTimerHidden)}>
-                  {isTimerHidden ? 'Show' : 'Hide'}
-                </button>
-              </div>
-            </div>
-          )}
-
           {finished ? (
             <>
-              {isChemistry && (
-                <div className="que info-block" style={{ marginBottom: '1.8em' }}>
+              {isChemistry && CHEMISTRY_INFOS.map(info => (
+                <div key={info.id} className="que info-block" style={{ marginBottom: '1.8em' }}>
                   <div className="info">
                     <h3 className="no">Information</h3>
                     <div className="state-text">Info question</div>
@@ -148,17 +153,17 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                   <div className="content">
                     <div className="formulation clearfix">
                       <div className="qtext" style={{ fontWeight: 600, fontSize: 18, marginBottom: 12 }}>
-                        Periodic Table of the Elements
+                        {info.title}
                       </div>
                       <img
-                        src="/moodle/periodic_table.png"
-                        alt="Periodic Table of the Elements"
+                        src={info.src}
+                        alt={info.title}
                         style={{ width: '100%', height: 'auto', borderRadius: 4, border: '1px solid #dee2e6' }}
                       />
                     </div>
                   </div>
                 </div>
-              )}
+              ))}
               {attempt.questions.map((q, idx) => (
                 <QuestionBlock
                   key={`${idx}-${q.id}`}
@@ -174,24 +179,30 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
               ))}
             </>
           ) : currentIdx < 0 ? (
-            <div className="que info-block">
-              <div className="info">
-                <h3 className="no">Information</h3>
-                <div className="state-text">Info question</div>
-              </div>
-              <div className="content">
-                <div className="formulation clearfix">
-                  <div className="qtext" style={{ fontWeight: 600, fontSize: 18, marginBottom: 12 }}>
-                    Periodic Table of the Elements
+            (() => {
+              const info = CHEMISTRY_INFOS.find(i => i.id === currentIdx);
+              if (!info) return null;
+              return (
+                <div className="que info-block">
+                  <div className="info">
+                    <h3 className="no">Information</h3>
+                    <div className="state-text">Info question</div>
                   </div>
-                  <img
-                    src="/moodle/periodic_table.png"
-                    alt="Periodic Table of the Elements"
-                    style={{ width: '100%', height: 'auto', borderRadius: 4, border: '1px solid #dee2e6' }}
-                  />
+                  <div className="content">
+                    <div className="formulation clearfix">
+                      <div className="qtext" style={{ fontWeight: 600, fontSize: 18, marginBottom: 12 }}>
+                        {info.title}
+                      </div>
+                      <img
+                        src={info.src}
+                        alt={info.title}
+                        style={{ width: '100%', height: 'auto', borderRadius: 4, border: '1px solid #dee2e6' }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()
           ) : (
             (() => {
               const idx = Math.min(currentIdx, attempt.questions.length - 1);
@@ -235,7 +246,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                   type="button"
                   className="btn btn-primary"
                   onClick={() => {
-                    if (confirm('Terminare il tentativo? Vedrai le risposte corrette e il tuo punteggio.')) submit();
+                    if (confirm('Finish attempt? You will see the correct answers and your score.')) submit();
                   }}
                 >
                   Next page
@@ -246,18 +257,15 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
           {finished && (
             <div className="submit-row">
               <button type="button" className="btn btn-secondary" onClick={onDiscard}>
-                Inizia nuovo tentativo
+                Start new attempt
               </button>
             </div>
           )}
         </main>
 
-        <aside className="quiz-nav-side">
+        <aside className="quiz-nav-side" aria-hidden={!isDrawerOpen}>
           <div className="card-block">
-            <div className="nav-header-row">
-              <h3>Quiz navigation</h3>
-              <button className="nav-close-btn" aria-label="Close navigation">×</button>
-            </div>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '0 0 16px', color: '#1d2125' }}>Quiz navigation</h3>
             <div className="qn_buttons clearfix allquestionsononepage">
               {isChemistry && (
                 <>
@@ -316,7 +324,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                     key={`${idx}-${q.id}`}
                     href={`#question-${idx}`}
                     className={`qnbutton ${state} ${attempt.flagged[q.id] ? 'flagged' : ''} ${isCurrent ? 'thispage' : ''} btn`}
-                    title={`Domanda ${idx + 1}`}
+                    title={`Question ${idx + 1}`}
                     onClick={(e) => {
                       e.preventDefault();
                       if (!finished) {
@@ -340,7 +348,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                 type="button"
                 className="btn-finish-attempt"
                 onClick={() => {
-                  if (confirm('Terminare il tentativo ora?')) submit();
+                  if (confirm('Finish attempt now?')) submit();
                 }}
               >
                 Finish attempt ...
@@ -348,10 +356,10 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
             )}
             {finished && score && (
               <div className="score-summary">
-                <div className="row"><span>Corrette</span><b className="text-correct">{score.correct}</b></div>
-                <div className="row"><span>Errate</span><b className="text-wrong">{score.wrong}</b></div>
-                <div className="row"><span>In bianco</span><b>{score.blank}</b></div>
-                <div className="row total"><span>Punteggio</span><b>{formatIt(score.marks)} / {formatIt(score.maxMarks)}</b></div>
+                <div className="row"><span>Correct</span><b className="text-correct">{score.correct}</b></div>
+                <div className="row"><span>Incorrect</span><b className="text-wrong">{score.wrong}</b></div>
+                <div className="row"><span>Blank</span><b>{score.blank}</b></div>
+                <div className="row total"><span>Score</span><b>{formatIt(score.marks)} / {formatIt(score.maxMarks)}</b></div>
               </div>
             )}
           </div>
@@ -376,6 +384,7 @@ function QuestionBlock({
   onSelect: (label: string) => void;
   onFlag: () => void;
 }) {
+  const [showOriginalImg, setShowOriginalImg] = useState(false);
   const isCorrect = finished && q.correct_answer && selected === q.correct_answer;
   const isWrong = finished && q.correct_answer && selected && selected !== q.correct_answer;
   const isBlank = finished && q.correct_answer && !selected;
@@ -409,6 +418,32 @@ function QuestionBlock({
             {flagged ? 'Remove flag' : 'Flag question'}
           </a>
         </div>
+        {q.original_question_image && (
+          <div className="original-image-toggle" style={{ marginTop: '0.8em' }}>
+            <a
+              role="button"
+              tabIndex={0}
+              className="aabtn"
+              onClick={(e) => { e.preventDefault(); setShowOriginalImg(!showOriginalImg); }}
+              style={{ display: 'inline-flex', alignItems: 'flex-start', gap: '4px', color: '#002B49', fontSize: '0.8125rem', cursor: 'pointer', lineHeight: 1.3 }}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 1 }}>
+                {showOriginalImg ? (
+                  <>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </>
+                ) : (
+                  <>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </>
+                )}
+              </svg>
+              {showOriginalImg ? 'Hide Question Image' : 'Show Question Image'}
+            </a>
+          </div>
+        )}
       </div>
       <div className="content">
         <div className="formulation clearfix">
@@ -416,9 +451,14 @@ function QuestionBlock({
           <div className="qtext">
             <MathText text={q.question_text} />
           </div>
+          {q.original_question_image && showOriginalImg && (
+            <div style={{ marginBottom: 16 }}>
+              <img src={q.original_question_image} alt="Original question" style={{ maxWidth: '100%', border: '1px solid #dee2e6', borderRadius: 4 }} />
+            </div>
+          )}
           {q.question_image && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={q.question_image} alt="" className="img-responsive" style={{ maxWidth: '100%', marginTop: 12 }} />
+            <img src={q.question_image} alt="" className="img-responsive" style={{ maxWidth: '100%', marginBottom: 16 }} />
           )}
           <fieldset className="ablock no-overflow visual-scroll-x">
             <legend className="prompt h6 font-weight-normal">

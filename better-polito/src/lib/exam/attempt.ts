@@ -128,3 +128,20 @@ export function attemptToHistory(a: Attempt): HistoryEntry | null {
     score: computeScore(a),
   };
 }
+
+export function saveHistoricalAttempt(a: Attempt) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(`mock-attempt-history-data:${a.startedAt}`, JSON.stringify(a));
+}
+
+export function loadHistoricalAttempt(id: string): Attempt | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(`mock-attempt-history-data:${id}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as Attempt;
+  } catch {
+    return null;
+  }
+}
+

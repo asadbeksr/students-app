@@ -14,7 +14,23 @@ export const SUBJECTS: SubjectConfig[] = [
         shuffle: true,
         scoring: { correct: 0.6, wrong: -0.12, blank: 0 },
       },
-      written: { questionCount: 3, durationMin: 60 },
+      written: { questionCount: 4, durationMin: 60 },
+    },
+  },
+  {
+    slug: 'mathematical-analysis-1',
+    name: 'Mathematical Analysis I',
+    folder: 'Mathematical_Analysis_1',
+    description: 'Mathematical Analysis I exam prep.',
+    modes: {
+      mcq: {
+        questionCount: 15,
+        durationMin: 45,
+        passScore: 53.33,
+        shuffle: true,
+        scoring: { correct: 1, wrong: 0, blank: 0 },
+      },
+      written: { questionCount: 3, durationMin: 90 },
     },
   },
 ];

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { SubjectConfig } from '@/types/exam';
 import { type Attempt, isFinished, remainingSeconds } from '@/lib/exam/attempt';
 import { MathText } from './MathText';
+import { ListChecks } from 'lucide-react';
 
 interface Props {
   subject: SubjectConfig;
@@ -43,20 +44,21 @@ export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) 
         <span>Written</span>
       </div>
 
-      <h1 className="quiz-title">
-        <span className="quiz-icon" /> {subject.name} — Written mock exam
+      <h1 className="quiz-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <ListChecks size={32} strokeWidth={2} style={{ color: '#f7941d' }} />
+        <span>{subject.name} — Written mock exam</span>
       </h1>
 
       <div className="quiz-status-bar">
         {!finished ? (
           <div className={`timer ${secondsLeft < 60 ? 'timer-danger' : ''}`}>
-            Tempo rimanente: <strong>{formatTime(secondsLeft)}</strong>
+            Time remaining: <strong>{formatTime(secondsLeft)}</strong>
           </div>
         ) : (
-          <div className="timer">Tempo scaduto / tentativo terminato</div>
+          <div className="timer">Time up / attempt finished</div>
         )}
         <button type="button" className="link-danger" onClick={onDiscard}>
-          {finished ? 'Inizia nuovo tentativo' : 'Elimina tentativo'}
+          {finished ? 'Start new attempt' : 'Delete attempt'}
         </button>
       </div>
 
@@ -67,11 +69,11 @@ export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) 
             return (
               <div key={q.id} id={`question-${q.id}`} className="que essay">
                 <div className="info">
-                  <h3 className="no">Domanda <span className="qno">{idx + 1}</span></h3>
+                  <h3 className="no">Question <span className="qno">{idx + 1}</span></h3>
                 </div>
                 <div className="content">
                   <div className="formulation clearfix">
-                    <h4 className="accesshide">Testo della domanda</h4>
+                    <h4 className="accesshide">Question text</h4>
                     <div className="qtext"><MathText text={q.question_text} /></div>
                     {q.question_image && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -86,11 +88,11 @@ export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) 
                           className="btn btn-secondary"
                           onClick={() => setRevealed((r) => ({ ...r, [q.id]: true }))}
                         >
-                          Mostra soluzione
+                          Show solution
                         </button>
                       ) : (
                         <div className="feedback">
-                          <div className="rightanswer">Soluzione</div>
+                          <div className="rightanswer">Solution</div>
                           <div className="generalfeedback" style={{ marginTop: 8 }}>
                             <MathText text={q.solution} />
                           </div>
@@ -106,7 +108,7 @@ export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) 
 
         <aside className="quiz-nav-side">
           <div className="card-block">
-            <h3>Navigazione quiz</h3>
+            <h3>Quiz navigation</h3>
             <div className="qn_buttons clearfix allquestionsononepage">
               {attempt.questions.map((q, idx) => (
                 <a
