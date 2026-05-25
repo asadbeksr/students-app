@@ -1,0 +1,610 @@
+/* ===== Moodle app shell ===== */
+.moodle-app { background: #fff; min-height: 100vh; }
+.moodle-navbar { background: #fff; border-bottom: none; }
+.moodle-navbar-inner {
+  display: flex; align-items: center; gap: 32px;
+  padding: 10px 24px; max-width: 1400px; margin: 0 auto;
+}
+.moodle-brand { display: flex; align-items: center; }
+.moodle-brand img { display: block; height: 40px; width: auto; }
+.moodle-nav-links { display: flex; gap: 24px; }
+.moodle-nav-links a {
+  color: #1d2125; font-size: 14px; font-weight: 500; text-decoration: none;
+  padding: 6px 0;
+}
+.moodle-nav-links a:hover { color: #0f6cbf; }
+.moodle-nav-right { margin-left: auto; }
+.moodle-nav-login {
+  color: #0f6cbf; font-size: 14px; font-weight: 500; text-decoration: none;
+  padding: 6px 12px; border: 1px solid #0f6cbf; border-radius: 4px;
+}
+.moodle-nav-login:hover { background: #0f6cbf; color: #fff; }
+.moodle-navbar-orange { height: 3px; background: #f7941d; }
+.moodle-app-main { background: #fff; }
+
+/* ===== Quiz body chrome ===== */
+.moodle-quiz {
+  max-width: 1280px; margin: 0 auto; padding: 24px 32px 64px;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #1d2125;
+}
+.moodle-quiz p { margin: 0 0 0.5em; }
+.moodle-quiz h3, .moodle-quiz h4 { margin: 0; }
+.moodle-quiz fieldset { border: 0; padding: 0; margin: 0; }
+.moodle-quiz legend { display: block; padding: 0; }
+.moodle-quiz table { border-collapse: collapse; }
+.moodle-quiz a { color: #0f6cbf; text-decoration: none; }
+.moodle-quiz a:hover { text-decoration: underline; }
+.moodle-quiz button { font: inherit; }
+.moodle-quiz .quiz-breadcrumb {
+  font-size: 14px; color: #6c757d; margin-bottom: 12px;
+}
+.moodle-quiz .quiz-breadcrumb a { color: #0f6cbf; text-decoration: none; }
+.moodle-quiz .quiz-breadcrumb a:hover { text-decoration: underline; }
+.moodle-quiz .quiz-breadcrumb span { margin: 0 4px; color: #adb5bd; }
+
+.moodle-quiz .quiz-title {
+  font-size: 28px; font-weight: 700; line-height: 1.2; margin: 0 0 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+.moodle-quiz .quiz-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 4px; background: #e84a8d;
+  flex-shrink: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'><path d='M3 5h18v2H3zm0 4h18v2H3zm0 4h12v2H3zm0 4h12v2H3z'/></svg>");
+  background-position: center; background-repeat: no-repeat; background-size: 20px;
+}
+
+.moodle-quiz .quiz-status-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; margin-bottom: 16px;
+}
+.moodle-quiz .timer {
+  display: inline-block; padding: 6px 14px; border-radius: 999px;
+  background: #f1f3f5; font-variant-numeric: tabular-nums; font-size: 14px;
+}
+.moodle-quiz .timer.timer-danger { background: #fdecea; color: #b3251c; }
+.moodle-quiz .link-danger {
+  background: none; border: none; padding: 4px 8px; cursor: pointer;
+  color: #dc3545; font-size: 13px;
+}
+.moodle-quiz .link-danger:hover { text-decoration: underline; }
+
+/* ===== Summary table ===== */
+.moodle-quiz .quizreviewsummary {
+  width: 100%; border-collapse: collapse; margin-bottom: 24px;
+  background: #fff; border: 1px solid #dee2e6;
+}
+.moodle-quiz .quizreviewsummary th,
+.moodle-quiz .quizreviewsummary td {
+  padding: 10px 14px; border-bottom: 1px solid #e9ecef; text-align: left;
+  font-size: 14px;
+}
+.moodle-quiz .quizreviewsummary tr:last-child th,
+.moodle-quiz .quizreviewsummary tr:last-child td { border-bottom: none; }
+.moodle-quiz .quizreviewsummary th {
+  background: #f8f9fa; font-weight: 600; width: 220px; text-align: right;
+}
+
+/* ===== Layout ===== */
+.moodle-quiz .quiz-layout {
+  display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start;
+}
+@media (max-width: 900px) { .moodle-quiz .quiz-layout { grid-template-columns: 1fr; } }
+.moodle-quiz .quiz-main { min-width: 0; }
+.moodle-quiz .quiz-nav-side { position: sticky; top: 16px; }
+.moodle-quiz .card-block {
+  background: #fff; border: 1px solid #dee2e6; border-radius: 6px; padding: 16px;
+}
+.moodle-quiz .card-block h3 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+
+/* ===== Nav buttons grid ===== */
+.moodle-quiz .qn_buttons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.moodle-quiz .qnbutton {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  height: 40px; padding: 4px; border: 1px solid #ced4da; border-radius: 3px;
+  background: #f1f3f5; color: #1d2125; font-size: 14px; text-decoration: none;
+  font-weight: 500; overflow: hidden;
+}
+.moodle-quiz .qnbutton:hover { border-color: #0f6cbf; text-decoration: none; }
+.moodle-quiz .qnbutton .trafficlight {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: transparent;
+}
+.moodle-quiz .qnbutton.correct .trafficlight { background: #080; }
+.moodle-quiz .qnbutton.incorrect .trafficlight { background: #800; }
+.moodle-quiz .qnbutton.answersaved .trafficlight { background: #6c757d; }
+.moodle-quiz .qnbutton.notyetanswered { background: #f1f3f5; color: #495057; }
+.moodle-quiz .qnbutton.answersaved { background: #e2e6ea; }
+.moodle-quiz .qnbutton.correct { background: #cfc; color: #155724; }
+.moodle-quiz .qnbutton.incorrect { background: #fcc; color: #721c24; }
+.moodle-quiz .qnbutton.thispage {
+  border: 2px solid #1d2125; font-weight: 700;
+}
+.moodle-quiz .qnbutton.flagged::before {
+  content: ''; position: absolute; top: 0; right: 0; width: 0; height: 0;
+  border-style: solid; border-width: 0 12px 12px 0;
+  border-color: transparent #d34141 transparent transparent;
+}
+.moodle-quiz .finish-btn { width: 100%; margin-top: 12px; }
+.moodle-quiz .btn {
+  display: inline-block; padding: 8px 16px; border: 1px solid transparent;
+  border-radius: 4px; font-size: 14px; font-weight: 500; cursor: pointer;
+  text-decoration: none; line-height: 1.5; text-align: center;
+}
+.moodle-quiz .btn-primary { background: #0f6cbf; color: #fff; border-color: #0f6cbf; }
+.moodle-quiz .btn-primary:hover { background: #0a5394; color: #fff; }
+.moodle-quiz .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.moodle-quiz .btn-secondary { background: #6c757d; color: #fff; border-color: #6c757d; }
+.moodle-quiz .btn-secondary:hover { background: #5a6268; color: #fff; }
+
+/* ===== Question block ===== */
+.moodle-quiz .que {
+  display: flex; align-items: flex-start; gap: 1rem;
+  margin: 0 0 1.8em 0; background: transparent; border: none;
+}
+@media (max-width: 700px) { .moodle-quiz .que { flex-direction: column; } }
+
+.moodle-quiz .que .info {
+  flex: 0 0 9.5em; width: 9.5em;
+  padding: 0; background: transparent; border: none;
+  word-wrap: break-word; overflow-wrap: anywhere;
+}
+@media (max-width: 700px) { .moodle-quiz .que .info { width: 100%; flex-basis: auto; } }
+.moodle-quiz .que .info .no { font-size: 0.9375rem; font-weight: 400; margin: 0 0 0.6em; line-height: 1.3; }
+.moodle-quiz .que .info .no .qno { font-size: 0.9375rem; font-weight: 700; }
+.moodle-quiz .que .info .state { font-size: 0.8125rem; margin-bottom: 0.4em; }
+.moodle-quiz .que .info .grade { font-size: 0.8125rem; color: #1d2125; margin-bottom: 0.8em; line-height: 1.3; }
+.moodle-quiz .que .info .questionflag { margin-top: 0.4em; }
+.moodle-quiz .que .info .questionflag a {
+  display: inline-flex; align-items: flex-start; gap: 4px; color: #0f6cbf;
+  font-size: 0.8125rem; cursor: pointer; line-height: 1.3;
+}
+.moodle-quiz .que .info .questionflagimage { width: 12px; height: 14px; margin-top: 1px; flex-shrink: 0; }
+.moodle-quiz .que.correct .info .state { color: #155724; font-weight: 600; }
+.moodle-quiz .que.incorrect .info .state { color: #721c24; font-weight: 600; }
+.moodle-quiz .que.notanswered .info .state { color: #856404; font-weight: 600; }
+
+.moodle-quiz .que .content { flex: 1 1 auto; min-width: 0; }
+.moodle-quiz .formulation {
+  background: #cce6ea; border: 1px solid #b3d9e0; border-radius: 0.5rem;
+  padding: 0.75rem 1.25rem; margin-bottom: 1rem;
+}
+.moodle-quiz .qtext { font-size: 1rem; margin-bottom: 0.5em; display: block; }
+.moodle-quiz .ablock { margin: 0; padding: 0; border: none; }
+.moodle-quiz .ablock .prompt { font-size: 0.9375rem; margin: 0.5em 0; font-weight: 400; }
+.moodle-quiz .answer > div { padding: 0.3em 0; display: flex; align-items: flex-start; gap: 8px; }
+.moodle-quiz .answer input[type=radio] { margin-top: 5px; cursor: pointer; }
+.moodle-quiz .answer input[type=radio]:disabled { cursor: not-allowed; }
+.moodle-quiz .answer label { cursor: pointer; flex: 1; font-size: 0.9375rem; }
+.moodle-quiz .answer .correct::after { content: '✓'; color: #28a745; font-weight: bold; margin-left: 6px; }
+.moodle-quiz .answer .incorrect::after { content: '✕'; color: #dc3545; font-weight: bold; margin-left: 6px; }
+
+/* ===== Feedback box ===== */
+.moodle-quiz .outcome {
+  background: #fcefdc; border: 1px solid #fbe6ca; border-radius: 0.5rem;
+  padding: 0.75rem 1.25rem; margin-bottom: 1rem; color: #8e662e;
+}
+.moodle-quiz .outcome .rightanswer { color: #8e662e; font-size: 0.9375rem; font-weight: 600; margin-bottom: 0.5em; }
+.moodle-quiz .outcome .generalfeedback { color: #8e662e; font-size: 0.875rem; }
+
+.moodle-quiz .submit-row { margin: 20px 0; text-align: right; }
+.moodle-quiz .page-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 20px 0; gap: 12px;
+}
+.moodle-quiz .page-nav .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.moodle-quiz .score-summary { margin-top: 14px; border-top: 1px solid #dee2e6; padding-top: 10px; font-size: 13px; }
+.moodle-quiz .score-summary .row { display: flex; justify-content: space-between; padding: 3px 0; }
+.moodle-quiz .score-summary .row.total {
+  border-top: 1px solid #dee2e6; margin-top: 6px; padding-top: 6px; font-weight: 600;
+}
+.moodle-quiz .score-summary .text-correct { color: #28a745; }
+.moodle-quiz .score-summary .text-wrong { color: #dc3545; }
+
+/* ===== Start screen ===== */
+.moodle-quiz .start-card {
+  background: #fff; border: 1px solid #dee2e6; border-radius: 6px;
+  padding: 24px; max-width: 700px;
+}
+.moodle-quiz .start-card h2 { font-size: 20px; font-weight: 600; margin: 0 0 16px; }
+.moodle-quiz .start-card .quizreviewsummary { margin-bottom: 16px; }
+.moodle-quiz .start-note {
+  background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;
+  padding: 10px 14px; font-size: 13px; color: #856404; margin-bottom: 16px;
+}
+.moodle-quiz .start-error {
+  background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;
+  padding: 10px 14px; font-size: 13px; color: #721c24; margin-bottom: 16px;
+}
+.moodle-quiz .start-btn { padding: 10px 22px; font-size: 15px; }
+
+.exam-page-loading {
+  padding: 60px 24px; text-align: center; color: #6c757d; font-size: 14px;
+}
+
+/* ==========================================
+   MOODLE EXACT HIGH-FIDELITY OVERRIDES
+   ========================================== */
+
+/* Navbar enhancements */
+.moodle-navbar {
+  box-shadow: 0 2px 4px rgba(0,0,0,.04);
+}
+.moodle-sidebar-toggle {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #495057;
+  margin-right: 8px;
+  transition: background-color 0.15s ease-in-out;
+}
+.moodle-sidebar-toggle:hover {
+  background: #e9ecef;
+}
+.moodle-user-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.user-avatar-container {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e9ecef;
+  border: 1px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.user-avatar-svg {
+  width: 24px;
+  height: 24px;
+}
+.user-dropdown-arrow::after {
+  content: "▼";
+  font-size: 9px;
+  color: #6c757d;
+  margin-left: 2px;
+}
+
+/* Main layouts and headers */
+.quiz-header-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.moodle-drawer-toggle {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #495057;
+  transition: all 0.15s ease-in-out;
+}
+.moodle-drawer-toggle:hover {
+  background: #e9ecef;
+}
+.moodle-quiz .quiz-breadcrumb {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: 13.5px;
+}
+.moodle-quiz .quiz-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #1d2125;
+  margin-bottom: 16px;
+  letter-spacing: -0.5px;
+}
+.moodle-quiz .quiz-icon {
+  background: #e84a8d;
+  border-radius: 6px;
+}
+.quiz-action-bar {
+  margin-bottom: 24px;
+}
+.btn-back {
+  background-color: #e9ecef !important;
+  color: #495057 !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px;
+  padding: 6px 14px !important;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: none !important;
+  transition: background-color 0.15s ease;
+}
+.btn-back:hover {
+  background-color: #dee2e6 !important;
+}
+
+/* Timer row */
+.moodle-timer-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+.moodle-timer-wrapper {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  height: 38px;
+}
+.moodle-timer-box {
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #d32f2f;
+  background-color: #fff;
+  font-weight: 500;
+}
+.moodle-timer-value {
+  margin-left: 6px;
+  font-family: monospace;
+  font-size: 15px;
+}
+.timer-toggle-btn {
+  background-color: #e9ecef !important;
+  color: #495057 !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px;
+  padding: 0 16px !important;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.timer-toggle-btn:hover {
+  background-color: #dee2e6 !important;
+}
+
+/* Info Box */
+.moodle-quiz .que .info {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.moodle-quiz .que .info .no {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.moodle-quiz .que .info .state-text {
+  font-size: 12px;
+  color: #495057;
+  margin-bottom: 6px;
+}
+.moodle-quiz .que .info .grade {
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 8px;
+}
+.questionflagimage-svg {
+  fill: #6c757d;
+  transition: fill 0.15s ease;
+}
+.questionflagimage-svg.flagged {
+  fill: #d32f2f;
+}
+.moodle-quiz .que .info .questionflag a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #0f6cbf;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.moodle-quiz .que .info .questionflag a:hover {
+  text-decoration: underline;
+}
+
+/* Formulation Box */
+.moodle-quiz .formulation {
+  background: #deeff0 !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 20px 24px !important;
+  color: #1d2125;
+}
+.moodle-quiz .qtext {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+.moodle-quiz .ablock .prompt {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #495057;
+}
+.moodle-quiz .answer > div {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.moodle-quiz .answer input[type=radio] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+.moodle-quiz .answer label {
+  font-size: 15px;
+  color: #212529;
+  display: flex;
+  align-items: center;
+}
+.option-label-bullet {
+  font-weight: 600;
+  color: #495057;
+  margin-right: 6px;
+}
+
+/* Nav page buttons */
+.moodle-quiz .page-nav {
+  margin-top: 24px;
+}
+.moodle-quiz .page-nav .btn-secondary {
+  background-color: #e9ecef !important;
+  color: #495057 !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px;
+  padding: 8px 18px !important;
+}
+.moodle-quiz .page-nav .btn-secondary:hover {
+  background-color: #dee2e6 !important;
+}
+.moodle-quiz .page-nav .btn-primary {
+  background-color: #0f3057 !important;
+  border-color: #0f3057 !important;
+  color: #fff !important;
+  border-radius: 4px;
+  padding: 8px 18px !important;
+  font-weight: 500;
+  transition: background-color 0.15s ease;
+}
+.moodle-quiz .page-nav .btn-primary:hover {
+  background-color: #061930 !important;
+}
+
+/* Navigation aside container */
+.moodle-quiz .quiz-nav-side .card-block {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+.nav-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e9ecef;
+  padding-bottom: 8px;
+}
+.nav-header-row h3 {
+  font-size: 16.5px;
+  font-weight: 600;
+  margin: 0;
+  color: #1d2125;
+}
+.nav-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.nav-close-btn:hover {
+  color: #1d2125;
+}
+
+/* Navigation Grid */
+.moodle-quiz .qn_buttons {
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.moodle-quiz .qnbutton {
+  width: 36px;
+  height: 40px;
+  border: 1px solid #adb5bd;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #495057;
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.moodle-quiz .qnbutton.info {
+  background-color: #dee2e6;
+  border-color: #dee2e6;
+  color: #495057;
+  font-style: italic;
+  font-family: serif;
+  font-weight: bold;
+}
+.moodle-quiz .qnbutton.answersaved {
+  background-color: #dee2e6 !important;
+  background: #dee2e6 !important;
+  color: #1d2125;
+}
+.moodle-quiz .qnbutton.thispage {
+  border: 3px solid #1d2125 !important;
+  font-weight: bold;
+}
+
+/* Finish attempt link */
+.btn-finish-attempt {
+  display: block;
+  background: none;
+  border: none;
+  color: #0f6cbf;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 16px;
+  text-align: left;
+}
+.btn-finish-attempt:hover {
+  text-decoration: underline;
+}
+
+/* Floating help button */
+.moodle-help-float-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #ced4da;
+  border: none;
+  color: #495057;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+  transition: background-color 0.15s ease;
+}
+.moodle-help-float-btn:hover {
+  background-color: #adb5bd;
+}
+
