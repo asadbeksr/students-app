@@ -39,6 +39,7 @@ export function clearAttempt(subject: string, mode: string) {
 }
 
 export function isExpired(a: Attempt): boolean {
+  if (a.durationMin === 0) return false;
   return Date.now() >= a.startedAt + a.durationMin * 60_000;
 }
 
@@ -48,6 +49,7 @@ export function isFinished(a: Attempt): boolean {
 
 export function remainingSeconds(a: Attempt): number {
   if (a.submittedAt) return 0;
+  if (a.durationMin === 0) return Infinity;
   const left = a.startedAt + a.durationMin * 60_000 - Date.now();
   return Math.max(0, Math.floor(left / 1000));
 }

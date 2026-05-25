@@ -203,7 +203,7 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
           </label>
         </div>
 
-        <details className="advanced-settings" style={{ marginTop: '24px', padding: '16px', border: '1px solid #dee2e6', borderRadius: '8px', background: '#f8f9fa' }}>
+        <details className="advanced-settings" style={{ marginTop: '24px', padding: '16px', border: '1px solid #dee2e6', borderRadius: '8px' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1em', userSelect: 'none' }}>
             Advanced settings
           </summary>

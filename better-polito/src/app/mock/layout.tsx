@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { MoodleThemeToggle } from '@/components/exam/MoodleThemeToggle';
 
 export default function MockLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,16 +8,34 @@ export default function MockLayout({ children }: { children: React.ReactNode }) 
       <link rel="stylesheet" href="/moodle/runner.css" />
       <header className="moodle-navbar">
         <div className="moodle-navbar-inner">
-          <Link href="/" className="moodle-brand">
+          <Link href="/" className="moodle-brand" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <Image
-              src="/moodle/polito_moodle.png"
-              alt="Polito Moodle"
-              width={140}
+              src="/moodle/moodle-logo.svg"
+              alt="Moodle Logo"
+              width={120}
               height={35}
               priority
             />
+            <span style={{
+              position: 'absolute',
+              top: '-6px',
+              right: '-24px',
+              backgroundColor: 'hsl(var(--primary))',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 'bold',
+              padding: '2px 6px',
+              borderRadius: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              pointerEvents: 'none'
+            }}>
+              Mock
+            </span>
           </Link>
           <div className="moodle-nav-right">
+            <MoodleThemeToggle />
             <div className="moodle-user-menu">
               <div className="user-avatar-container">
                 <svg className="user-avatar-svg" viewBox="0 0 24 24" fill="#6c757d">

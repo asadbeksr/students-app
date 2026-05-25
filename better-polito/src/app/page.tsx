@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { SUBJECTS } from '@/config/subjects';
 import { ArrowRight, GraduationCap, BookOpen, Timer } from 'lucide-react';
 
@@ -13,6 +14,7 @@ export default function LandingPage() {
             better-polito
           </Link>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button asChild variant="ghost" size="sm">
               <Link href="/mock">Exam prep</Link>
             </Button>

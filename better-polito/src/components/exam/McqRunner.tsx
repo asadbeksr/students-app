@@ -53,7 +53,14 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
   }
   function selectAnswer(qId: string, label: string) {
     if (finished) return;
-    onUpdate((a) => ({ ...a, answers: { ...a.answers, [qId]: label } }));
+    onUpdate((a) => {
+      if (!label) {
+        const nextAnswers = { ...a.answers };
+        delete nextAnswers[qId];
+        return { ...a, answers: nextAnswers };
+      }
+      return { ...a, answers: { ...a.answers, [qId]: label } };
+    });
   }
   function toggleFlag(qId: string) {
     onUpdate((a) => ({ ...a, flagged: { ...a.flagged, [qId]: !a.flagged[qId] } }));
@@ -81,7 +88,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
   const finishedAt = attempt.submittedAt ? new Date(attempt.submittedAt) : null;
   const elapsedSec = finishedAt
     ? Math.floor((finishedAt.getTime() - attempt.startedAt) / 1000)
-    : attempt.durationMin * 60 - secondsLeft;
+    : (attempt.durationMin === 0 ? Math.floor((Date.now() - attempt.startedAt) / 1000) : attempt.durationMin * 60 - secondsLeft);
 
   return (
     <div className="moodle-quiz">
@@ -101,7 +108,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
           <ListChecks size={32} strokeWidth={2} style={{ color: '#f7941d' }} />
           <span>{subject.name} Mock Exam</span>
         </h1>
-        {!finished && (
+        {!finished && secondsLeft !== Infinity && (
           <div className={`moodle-timer-box title-timer ${secondsLeft < 60 ? 'timer-danger' : ''}`} style={{ visibility: isTimerHidden ? 'hidden' : 'visible' }}>
             Time remaining: <strong>{formatTime(secondsLeft)}</strong>
           </div>
@@ -127,13 +134,13 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
           <caption className="sr-only">Attempt summary</caption>
           <tbody>
             <tr><th className="cell" scope="row">Status</th><td className="cell">Completed</td></tr>
-            <tr><th className="cell" scope="row">Started</th><td className="cell">{formatItDate(startedAt)}</td></tr>
-            <tr><th className="cell" scope="row">Finished</th><td className="cell">{formatItDate(finishedAt ?? new Date())}</td></tr>
+            <tr><th className="cell" scope="row">Started</th><td className="cell">{formatDate(startedAt)}</td></tr>
+            <tr><th className="cell" scope="row">Finished</th><td className="cell">{formatDate(finishedAt ?? new Date())}</td></tr>
             <tr><th className="cell" scope="row">Time taken</th><td className="cell">{formatDuration(elapsedSec)}</td></tr>
             <tr>
               <th className="cell" scope="row">Grade</th>
               <td className="cell">
-                <b>{formatIt(score.marks)}</b> out of {formatIt(score.maxMarks)} (<b>{Math.round(score.pct)}</b>%)
+                <b>{formatGrade(score.marks)}</b> out of {formatGrade(score.maxMarks)} (<b>{Math.round(score.pct)}</b>%)
               </td>
             </tr>
           </tbody>
@@ -142,7 +149,13 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
 
       <div className={`quiz-layout ${isDrawerOpen ? '' : 'drawer-closed'}`}>
         <main className="quiz-main">
-          {finished ? (
+          {attempt.questions.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+              <h2>No questions found</h2>
+              <p style={{ marginTop: '0.5rem', marginBottom: '1.5rem', color: '#6c757d' }}>This exam attempt was generated with 0 questions. Please adjust your filters and try again.</p>
+              <button type="button" className="btn btn-secondary" onClick={onDiscard}>Go back</button>
+            </div>
+          ) : finished ? (
             <>
               {isChemistry && CHEMISTRY_INFOS.map(info => (
                 <div key={info.id} className="que info-block" style={{ marginBottom: '1.8em' }}>
@@ -265,7 +278,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
 
         <aside className="quiz-nav-side" aria-hidden={!isDrawerOpen}>
           <div className="card-block">
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '0 0 16px', color: '#1d2125' }}>Quiz navigation</h3>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '0 0 16px' }}>Quiz navigation</h3>
             <div className="qn_buttons clearfix allquestionsononepage">
               {isChemistry && (
                 <>
@@ -359,7 +372,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                 <div className="row"><span>Correct</span><b className="text-correct">{score.correct}</b></div>
                 <div className="row"><span>Incorrect</span><b className="text-wrong">{score.wrong}</b></div>
                 <div className="row"><span>Blank</span><b>{score.blank}</b></div>
-                <div className="row total"><span>Score</span><b>{formatIt(score.marks)} / {formatIt(score.maxMarks)}</b></div>
+                <div className="row total"><span>Score</span><b>{formatGrade(score.marks)} / {formatGrade(score.maxMarks)}</b></div>
               </div>
             )}
           </div>
@@ -400,9 +413,9 @@ function QuestionBlock({
           {finished ? stateText : (selected ? 'Answer saved' : 'Not yet answered')}
         </div>
         {finished && q.correct_answer ? (
-          <div className="grade">Marked out of {formatIt(scoring.correct)}</div>
+          <div className="grade">Marked out of {formatGrade(scoring.correct)}</div>
         ) : (
-          <div className="grade">Marked out of {formatIt(scoring.correct)}</div>
+          <div className="grade">Marked out of {formatGrade(scoring.correct)}</div>
         )}
         <div className="questionflag editable">
           <a
@@ -425,7 +438,7 @@ function QuestionBlock({
               tabIndex={0}
               className="aabtn"
               onClick={(e) => { e.preventDefault(); setShowOriginalImg(!showOriginalImg); }}
-              style={{ display: 'inline-flex', alignItems: 'flex-start', gap: '4px', color: '#002B49', fontSize: '0.8125rem', cursor: 'pointer', lineHeight: 1.3 }}
+              style={{ display: 'inline-flex', alignItems: 'flex-start', gap: '4px', color: 'var(--primary, #0f6cbf)', fontSize: '0.8125rem', cursor: 'pointer', lineHeight: 1.3 }}
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: 1 }}>
                 {showOriginalImg ? (
@@ -453,7 +466,7 @@ function QuestionBlock({
           </div>
           {q.original_question_image && showOriginalImg && (
             <div style={{ marginBottom: 16 }}>
-              <img src={q.original_question_image} alt="Original question" style={{ maxWidth: '100%', border: '1px solid #dee2e6', borderRadius: 4 }} />
+              <img src={q.original_question_image} alt="Original question" style={{ maxWidth: '100%', border: '1px solid var(--border, #dee2e6)', borderRadius: 4 }} />
             </div>
           )}
           {q.question_image && (
@@ -493,6 +506,20 @@ function QuestionBlock({
                 );
               })}
             </div>
+            {!finished && selected && (
+              <div style={{ marginTop: '0.8em', marginBottom: '0.5em' }}>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSelect('');
+                  }}
+                  style={{ fontSize: '0.875rem', color: '#0056b3', textDecoration: 'none' }}
+                >
+                  Clear my choice
+                </a>
+              </div>
+            )}
           </fieldset>
         </div>
         {finished && q.correct_answer && (
@@ -524,14 +551,14 @@ function formatTime(s: number): string {
   return `${m}:${pad(sec)}`;
 }
 function pad(n: number) { return n.toString().padStart(2, '0'); }
-function formatIt(n: number): string { return n.toFixed(2).replace('.', ','); }
+function formatGrade(n: number): string { return n.toFixed(2); }
 function formatDuration(totalSec: number): string {
   if (totalSec < 60) return `${totalSec} sec.`;
   const m = Math.floor(totalSec / 60);
   return `${m} min.`;
 }
-const IT_DAYS = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
-const IT_MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
-function formatItDate(d: Date): string {
-  return `${IT_DAYS[d.getDay()]}, ${d.getDate()} ${IT_MONTHS[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const EN_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function formatDate(d: Date): string {
+  return `${EN_DAYS[d.getDay()]}, ${d.getDate()} ${EN_MONTHS[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

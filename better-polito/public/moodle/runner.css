@@ -13,7 +13,17 @@
   padding: 6px 0;
 }
 .moodle-nav-links a:hover { color: #f7941d; }
-.moodle-nav-right { margin-left: auto; }
+.moodle-nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.moodle-theme-toggle {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #f8f9fa; border: 1px solid #dee2e6;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #495057;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.moodle-theme-toggle:hover { background: #e9ecef; }
+html.dark .moodle-theme-toggle { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-theme-toggle:hover { background: #3a3d42; }
 .moodle-nav-login {
   color: #f7941d; font-size: 14px; font-weight: 500; text-decoration: none;
   padding: 6px 12px; border: 1px solid #f7941d; border-radius: 4px;
@@ -730,3 +740,150 @@
 
 .moodle-quiz .config-actions { margin-top: 8px; }
 
+/* ==========================================
+   DARK MODE
+   ========================================== */
+html.dark .moodle-app { background: #0f1115; }
+html.dark .moodle-navbar { background: #1a1d22; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
+html.dark .moodle-nav-links a { color: #e6e8eb; }
+html.dark .moodle-app-main { background: #0f1115; }
+html.dark .moodle-brand img { filter: brightness(0.95) invert(0.92) hue-rotate(180deg); }
+
+html.dark .user-avatar-container { background: #2a2d33; border-color: #3a3d42; }
+html.dark .user-avatar-svg { fill: #adb5bd; }
+html.dark .user-dropdown-arrow::after { color: #9ba1a6; }
+html.dark .moodle-sidebar-toggle { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-sidebar-toggle:hover { background: #3a3d42; }
+
+html.dark .moodle-quiz { background: #0f1115; color: #e6e8eb; }
+html.dark .moodle-quiz .quiz-breadcrumb { color: #9ba1a6; }
+html.dark .moodle-quiz .quiz-breadcrumb a { color: #e6e8eb; }
+html.dark .moodle-quiz .quiz-breadcrumb span { color: #5a5f66; }
+html.dark .moodle-quiz .quiz-title { color: #f1f3f5; }
+html.dark .moodle-quiz a { color: #f7941d; }
+
+html.dark .moodle-quiz .timer { background: #2a2d33; color: #e6e8eb; }
+html.dark .moodle-quiz .timer.timer-danger { background: #3a1f1c; color: #ff7a70; }
+html.dark .moodle-timer-box { background: #2a2d33; border-color: #ff7a70; color: #ff7a70; }
+html.dark .timer-toggle-btn { background-color: #2a2d33 !important; color: #e6e8eb !important; border-color: #3a3d42 !important; }
+html.dark .timer-toggle-btn:hover { background-color: #3a3d42 !important; }
+
+html.dark .moodle-drawer-toggle { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-drawer-toggle:hover { background: #3a3d42; }
+html.dark .drawer-toggle-btn { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .drawer-toggle-btn:hover { background-color: #3a3d42; }
+
+html.dark .btn-back { background-color: #2a2d33 !important; color: #e6e8eb !important; border-color: #3a3d42 !important; }
+html.dark .btn-back:hover { background-color: #3a3d42 !important; }
+
+html.dark .moodle-quiz .quizreviewsummary { background: #1a1d22; border-color: #3a3d42; }
+html.dark .moodle-quiz .quizreviewsummary th { background: #242830; color: #e6e8eb; }
+html.dark .moodle-quiz .quizreviewsummary td { color: #e6e8eb; }
+html.dark .moodle-quiz .quizreviewsummary th,
+html.dark .moodle-quiz .quizreviewsummary td { border-bottom-color: #3a3d42; }
+
+html.dark .moodle-quiz .card-block { background: #1a1d22; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-quiz .card-block h3 { color: #f1f3f5; }
+html.dark .moodle-quiz .quiz-nav-side .card-block { background: #1a1d22; border-color: #3a3d42; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+html.dark .nav-header-row { border-bottom-color: #3a3d42; }
+html.dark .nav-header-row h3 { color: #f1f3f5; }
+html.dark .nav-close-btn { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .nav-close-btn:hover { background-color: #3a3d42; }
+
+html.dark .moodle-quiz .qnbutton { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-quiz .qnbutton:hover { border-color: #f7941d; }
+html.dark .moodle-quiz .qnbutton.notyetanswered { background: #2a2d33; color: #adb5bd; }
+html.dark .moodle-quiz .qnbutton.answersaved,
+html.dark .moodle-quiz .qnbutton.answersaved { background-color: #3a3d42 !important; background: #3a3d42 !important; color: #e6e8eb; }
+html.dark .moodle-quiz .qnbutton.correct { background: #1e3a25; color: #6dd58c; }
+html.dark .moodle-quiz .qnbutton.incorrect { background: #3a1f1c; color: #ff7a70; }
+html.dark .moodle-quiz .qnbutton.thispage { border-color: #f1f3f5 !important; }
+html.dark .moodle-quiz .qnbutton.info { background-color: #3a3d42; border-color: #3a3d42; color: #adb5bd; }
+
+html.dark .moodle-quiz .que .info { background: #242830; border-color: #3a3d42; }
+html.dark .moodle-quiz .que .info .no { color: #f1f3f5; }
+html.dark .moodle-quiz .que .info .state-text { color: #adb5bd; }
+html.dark .moodle-quiz .que .info .grade { color: #9ba1a6; border-bottom-color: #3a3d42; }
+html.dark .moodle-quiz .que .info .questionflag a { color: #e6e8eb; }
+html.dark .questionflagimage-svg { fill: #9ba1a6; }
+html.dark .questionflagimage-svg.flagged { fill: #ff7a70; }
+html.dark .moodle-quiz .que.correct .info .state { color: #6dd58c; }
+html.dark .moodle-quiz .que.incorrect .info .state { color: #ff7a70; }
+html.dark .moodle-quiz .que.notanswered .info .state { color: #f0c674; }
+
+html.dark .moodle-quiz .formulation { background: #1c2a30 !important; color: #e6e8eb; }
+html.dark .moodle-quiz .qtext { color: #e6e8eb; }
+html.dark .moodle-quiz .ablock .prompt { color: #adb5bd; }
+html.dark .moodle-quiz .answer label { color: #e6e8eb; }
+html.dark .option-label-bullet { color: #adb5bd; }
+html.dark .moodle-quiz .answer .correct::after { color: #6dd58c; }
+html.dark .moodle-quiz .answer .incorrect::after { color: #ff7a70; }
+
+html.dark .moodle-quiz .outcome { background: #3a2e1c; border-color: #5a4528; color: #f0c674; }
+html.dark .moodle-quiz .outcome .rightanswer,
+html.dark .moodle-quiz .outcome .generalfeedback { color: #f0c674; }
+
+html.dark .moodle-quiz .score-summary { border-top-color: #3a3d42; }
+html.dark .moodle-quiz .score-summary .row.total { border-top-color: #3a3d42; }
+html.dark .moodle-quiz .score-summary .text-correct { color: #6dd58c; }
+html.dark .moodle-quiz .score-summary .text-wrong { color: #ff7a70; }
+
+html.dark .moodle-quiz .page-nav .btn-secondary { background-color: #2a2d33 !important; color: #e6e8eb !important; border-color: #3a3d42 !important; }
+html.dark .moodle-quiz .page-nav .btn-secondary:hover { background-color: #3a3d42 !important; }
+html.dark .moodle-quiz .page-nav .btn-primary { background-color: #f7941d !important; border-color: #f7941d !important; color: #1a1d22 !important; }
+html.dark .moodle-quiz .page-nav .btn-primary:hover { background-color: #ffa53d !important; }
+
+html.dark .moodle-quiz .start-card { background: #1a1d22; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-quiz .start-note { background: #3a2e1c; border-color: #5a4528; color: #f0c674; }
+html.dark .moodle-quiz .start-error { background: #3a1f1c; border-color: #5a2a26; color: #ff7a70; }
+
+html.dark .exam-page-loading { color: #9ba1a6; }
+
+html.dark .moodle-quiz .config-section h3 { color: #adb5bd; }
+html.dark .moodle-quiz .config-hint { color: #9ba1a6; }
+html.dark .moodle-quiz .chip { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-quiz .chip:hover { background: #3a3d42; }
+html.dark .moodle-quiz .chip-active { background: #f7941d; border-color: #f7941d; color: #1a1d22; }
+html.dark .moodle-quiz .config-field { color: #adb5bd; }
+html.dark .moodle-quiz .config-field input[type="number"] { background: #2a2d33; border-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-quiz .config-field small { color: #9ba1a6; }
+html.dark .moodle-quiz .config-checkbox { color: #e6e8eb; }
+
+html.dark .moodle-help-float-btn { background-color: #3a3d42; color: #e6e8eb; }
+html.dark .moodle-help-float-btn:hover { background-color: #4a4d52; }
+
+html.dark .btn-finish-attempt { color: #f7941d; }
+
+/* Override quiz.css high-specificity light rules */
+html.dark .moodle-quiz table.quizreviewsummary th.cell { background: #242830 !important; color: #e6e8eb; }
+html.dark .moodle-quiz table.quizreviewsummary td.cell { background: #1a1d22 !important; color: #e6e8eb; }
+
+html.dark .moodle-quiz .generaltable { color: #e6e8eb; }
+html.dark .moodle-quiz .generaltable tbody tr:nth-of-type(odd) { background-color: rgba(255,255,255,0.03) !important; }
+html.dark .moodle-quiz .generaltable tbody tr:nth-of-type(even) { background-color: #1a1d22 !important; }
+html.dark .moodle-quiz .generaltable thead .sticky-column { background-color: #242830 !important; }
+html.dark .moodle-quiz .generaltable tbody tr:nth-of-type(odd) .sticky-column { background-color: rgba(255,255,255,0.03) !important; }
+html.dark .moodle-quiz .generaltable tbody tr:hover { color: #f1f3f5 !important; background-color: rgba(255,255,255,0.06) !important; }
+html.dark .moodle-quiz .generaltable tbody tr:hover td.sticky-column { background-color: rgba(255,255,255,0.06) !important; }
+html.dark .moodle-quiz .generaltable th,
+html.dark .moodle-quiz .generaltable td { border-color: #3a3d42; }
+
+/* Advanced settings <details> */
+.moodle-quiz .advanced-settings,
+.advanced-settings { background: #f8f9fa; }
+html.dark .moodle-quiz .advanced-settings,
+html.dark .advanced-settings {
+  background: #1a1d22 !important;
+  border-color: #3a3d42 !important;
+  color: #e6e8eb;
+}
+
+/* WrittenViewer Solution box - hidden state (light mode default) */
+.moodle-quiz .outcome.solution-hidden { background: #f1f3f5; border-color: #dee2e6; color: #495057; }
+html.dark .moodle-quiz .outcome.solution-hidden { background: #242830 !important; border-color: #3a3d42 !important; color: #e6e8eb; }
+html.dark .moodle-quiz .outcome { background: #3a2e1c !important; border-color: #5a4528 !important; color: #f0c674 !important; }
+html.dark .moodle-quiz .outcome .rightanswer,
+html.dark .moodle-quiz .outcome .generalfeedback { color: #f0c674 !important; }
+
+/* QuestionBank chip backgrounds */
+html.dark .qb-chip-light { background: #2a2d33 !important; color: #e6e8eb !important; }

@@ -33,6 +33,10 @@ export default async function PrintView({
           body { background: white; margin: 0; padding: 0; }
           .print-view { padding: 0; }
           .page-break { page-break-inside: avoid; }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
         }
         .print-view {
           max-width: 800px;

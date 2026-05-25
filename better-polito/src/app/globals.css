@@ -226,3 +226,56 @@ body {
   50% { transform: translateX(0%); }
   100% { transform: translateX(100%); }
 }
+
+/* QuestionBank Theme Variables */
+:root {
+  --table-header-bg: #f8f9fa;
+  --table-selected-bg: #fff4e1;
+  --table-stripe-bg: #fafbfc;
+  --diff-easy-bg: #e6f7ec;
+  --diff-easy-fg: #1b7a3f;
+  --diff-easy-bd: #b6e3c8;
+  --diff-medium-bg: #fff3e0;
+  --diff-medium-fg: #a55a00;
+  --diff-medium-bd: #ffd9a8;
+  --diff-hard-bg: #fde8e8;
+  --diff-hard-fg: #9b1c1c;
+  --diff-hard-bd: #f5b8b8;
+  --topic-bg: #eef2ff;
+  --topic-fg: #3730a3;
+  --topic-bd: #c7d2fe;
+  --topic-more-bg: #f1f3f5;
+  --topic-more-fg: #495057;
+  --topic-more-bd: #dee2e6;
+  --highlight-bg: #fff8ee;
+}
+
+.dark {
+  --table-header-bg: #242830;
+  --table-selected-bg: #3a2e1c;
+  --table-stripe-bg: rgba(255, 255, 255, 0.03);
+  --diff-easy-bg: rgba(27, 122, 63, 0.2);
+  --diff-easy-fg: #b6e3c8;
+  --diff-easy-bd: #1b7a3f;
+  --diff-medium-bg: rgba(165, 90, 0, 0.2);
+  --diff-medium-fg: #ffd9a8;
+  --diff-medium-bd: #a55a00;
+  --diff-hard-bg: rgba(155, 28, 28, 0.2);
+  --diff-hard-fg: #f5b8b8;
+  --diff-hard-bd: #9b1c1c;
+  --topic-bg: rgba(55, 48, 163, 0.2);
+  --topic-fg: #c7d2fe;
+  --topic-bd: #3730a3;
+  --topic-more-bg: rgba(73, 80, 87, 0.2);
+  --topic-more-fg: #dee2e6;
+  --topic-more-bd: #495057;
+  --highlight-bg: rgba(247, 148, 29, 0.1);
+}
+
+.dark {
+  --card-bg: #1a1d22;
+  --input-bg: #1a1d22;
+  --foreground: #e6e8eb;
+  --border: #3a3d42;
+  --border-light: #2a2d33;
+}

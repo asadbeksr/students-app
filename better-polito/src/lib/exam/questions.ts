@@ -106,7 +106,22 @@ export async function loadPool(subject: SubjectConfig, mode: ExamMode): Promise<
 
 function shuffleOptionsOnQuestion(q: Question): Question {
   if (!q.options || q.options.length === 0) return q;
-  return { ...q, options: shuffle(q.options) };
+  
+  const originalCorrect = q.options.find(o => o.label === q.correct_answer);
+  const shuffled = shuffle(q.options);
+  
+  let newCorrectAnswer = q.correct_answer;
+  const LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  
+  const newOptions = shuffled.map((opt, i) => {
+    const newLabel = LABELS[i] || String.fromCharCode(65 + i);
+    if (opt === originalCorrect) {
+      newCorrectAnswer = newLabel;
+    }
+    return { ...opt, label: newLabel };
+  });
+  
+  return { ...q, options: newOptions, correct_answer: newCorrectAnswer };
 }
 
 export async function sampleExam(

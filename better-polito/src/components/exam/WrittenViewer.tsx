@@ -81,7 +81,7 @@ export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) 
                     )}
                   </div>
                   {q.solution && (
-                    <div className="outcome clearfix" style={{ background: showSolution ? '#fff3cd' : '#f1f3f5' }}>
+                    <div className={`outcome clearfix ${showSolution ? '' : 'solution-hidden'}`}>
                       {!showSolution ? (
                         <button
                           type="button"
