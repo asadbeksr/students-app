@@ -6,12 +6,15 @@ import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
+  const ctx = useTheme();
+  const { resolvedTheme, setTheme } = ctx;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // eslint-disable-next-line no-console
+    console.log('[ThemeToggle] useTheme ctx:', JSON.stringify({ theme: ctx.theme, resolvedTheme: ctx.resolvedTheme, themes: ctx.themes, hasSetTheme: typeof ctx.setTheme }));
+  }, [ctx]);
 
   const isDark = resolvedTheme === 'dark';
 
