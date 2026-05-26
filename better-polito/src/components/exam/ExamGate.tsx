@@ -113,6 +113,11 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
         scoring: data.scoring,
         passScore: data.passScore,
         attemptToken: data.attemptToken,
+        config: {
+          sourceFiles: config.sourceFiles ?? [],
+          topics: config.topics ?? [],
+          language: config.language,
+        },
       };
       saveAttempt(a);
       setAttempt(a);
@@ -121,6 +126,27 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
     } finally {
       setStarting(false);
     }
+  }
+
+  async function retrySelected(questionIds: string[]) {
+    if (questionIds.length === 0) return;
+    const prev = attempt;
+    clearAttempt(subject.slug, mode);
+    setAttempt(null);
+    const cfg: AttemptConfig = {
+      topics: [],
+      sourceFiles: [],
+      difficulties: [],
+      language: prev?.config?.language as AttemptConfig['language'] ?? 'en',
+      count: questionIds.length,
+      durationMin: Math.max(1, Math.ceil(questionIds.length * 1.5)),
+      shuffleQuestions: false,
+      shuffleOptions: false,
+      scoring: prev?.scoring ?? { correct: 1, wrong: 0, blank: 0 },
+      passScore: prev?.passScore ?? 60,
+      questionIds,
+    };
+    await start(cfg);
   }
 
   function discard() {
@@ -161,6 +187,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
         attempt={attempt}
         onUpdate={update}
         onDiscard={discard}
+        onRetrySelected={retrySelected}
       />
     );
   }
@@ -185,13 +212,14 @@ function PastAttempts({ subject, mode, onReview }: { subject: string; mode: Exam
   if (!entries || entries.length === 0) return null;
 
   return (
-    <div className="start-card" style={{ marginTop: '1.5rem' }}>
+    <div className="start-card start-card--wide" style={{ marginTop: '1.5rem' }}>
       <h2>Your previous attempts</h2>
       <table className="generaltable generalbox quizattemptsummary mb-0">
         <thead>
           <tr>
             <th className="cell" scope="col">Attempt</th>
             <th className="cell" scope="col">Status</th>
+            <th className="cell" scope="col">Filter</th>
             <th className="cell" scope="col">Started</th>
             <th className="cell" scope="col">Finished</th>
             <th className="cell" scope="col">Time taken</th>
@@ -212,6 +240,7 @@ function PastAttempts({ subject, mode, onReview }: { subject: string; mode: Exam
                     Review
                   </button>
                 </td>
+                <td className="cell" style={{ color: e.label ? '#1d2125' : '#adb5bd' }}>{e.label ?? 'All'}</td>
                 <td className="cell">{formatItDate(started)}</td>
                 <td className="cell">{formatItDate(finished)}</td>
                 <td className="cell">{formatDuration(elapsedSec)}</td>

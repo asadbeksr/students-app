@@ -182,7 +182,17 @@ export async function sampleExam(
       language: config.language,
     });
   }
-  const ordered = config.shuffleQuestions ? shuffle(candidates) : candidates;
+  const ordered = config.shuffleQuestions
+    ? shuffle(candidates)
+    : [...candidates].sort((a, b) => {
+        const sa = a.source_file ?? '';
+        const sb = b.source_file ?? '';
+        if (sa !== sb) return sa.localeCompare(sb);
+        const pa = a.page_number ?? 0;
+        const pb = b.page_number ?? 0;
+        if (pa !== pb) return pa - pb;
+        return (a.question_number ?? 0) - (b.question_number ?? 0);
+      });
   const sliced = ordered.slice(0, Math.max(0, config.count));
   return config.shuffleOptions ? sliced.map(shuffleOptionsOnQuestion) : sliced;
 }

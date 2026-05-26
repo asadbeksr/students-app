@@ -41,6 +41,8 @@ const LANGUAGE_LABELS: Record<LanguageFilter, string> = {
   en: 'English',
 };
 
+const LANGUAGE_OPTIONS: LanguageFilter[] = ['any', 'en'];
+
 export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error }: Props) {
   const modeLabel = mode === 'mcq' ? 'Multiple choice' : 'Written';
   const initialConfig = useMemo(() => defaultConfig(modeCfg), [modeCfg]);
@@ -130,10 +132,15 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
     void onStart(finalConfig);
   }
 
+  const selectedTopicSet = new Set(config.topics);
+  const baseTopics = facets ? facets.topics.slice(0, 12) : [];
+  const extraSelectedTopics = facets
+    ? facets.topics.filter((t) => selectedTopicSet.has(t.topic) && !baseTopics.includes(t))
+    : [];
   const visibleTopics = facets
     ? showAllTopics
       ? facets.topics
-      : facets.topics.slice(0, 12)
+      : [...baseTopics, ...extraSelectedTopics]
     : [];
   const hiddenTopicCount = facets ? facets.topics.length - visibleTopics.length : 0;
   // Hide "noise" source files (loose photos like 1.jpg, photo_91@..., 120.JPG)
@@ -144,10 +151,15 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
   const meaningfulSources = facets
     ? facets.sourceFiles.filter((s) => !isNoiseSource(s.source_file))
     : [];
+  const selectedSourceSet = new Set(config.sourceFiles);
+  const baseSources = meaningfulSources.slice(0, 12);
+  const extraSelectedSources = facets
+    ? facets.sourceFiles.filter((s) => selectedSourceSet.has(s.source_file) && !baseSources.includes(s))
+    : [];
   const visibleSources = facets
     ? showAllSources
       ? facets.sourceFiles
-      : meaningfulSources.slice(0, 12)
+      : [...baseSources, ...extraSelectedSources]
     : [];
   const hiddenSourceCount = facets ? facets.sourceFiles.length - visibleSources.length : 0;
 
@@ -165,7 +177,8 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
         <span>{subject.name} — {modeLabel} mock exam</span>
       </h1>
 
-      <div className="start-card config-card">
+      <div className="config-layout">
+        <div className="start-card config-card">
         <h2>Configure attempt</h2>
 
         <div className="config-section">
@@ -173,7 +186,7 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
             <h3>Source file</h3>
             <div className="config-section-actions">
               <button type="button" className="link-btn" onClick={resetSourceFiles}>
-                All
+                Reset
               </button>
               <button
                 type="button"
@@ -262,22 +275,8 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
         </div>
 
         <div className="config-section">
-          <h3>Language</h3>
-          <div className="chip-group">
-            {(['any', 'it', 'en'] as LanguageFilter[]).map((l) => (
-              <button
-                type="button"
-                key={l}
-                className={`chip ${config.language === l ? 'chip-active' : ''}`}
-                onClick={() => update('language', l)}
-              >
-                {LANGUAGE_LABELS[l]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="config-grid">
+          <h3>Attempt</h3>
+          <div className="config-grid">
           <label className="config-field">
             <span>Number of questions</span>
             <input
@@ -304,6 +303,27 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
               onChange={(e) => update('durationMin', Math.max(1, Number(e.target.value) || 1))}
             />
           </label>
+          </div>
+        </div>
+
+        <div className="config-section">
+          <h3>Options</h3>
+          <label className="config-checkbox">
+            <input
+              type="checkbox"
+              checked={config.shuffleQuestions}
+              onChange={(e) => update('shuffleQuestions', e.target.checked)}
+            />
+            <span>Shuffle questions <small style={{ color: '#6c757d' }}>(uncheck to follow PDF order)</small></span>
+          </label>
+          <label className="config-checkbox">
+            <input
+              type="checkbox"
+              checked={config.shuffleOptions}
+              onChange={(e) => update('shuffleOptions', e.target.checked)}
+            />
+            <span>Shuffle answer options</span>
+          </label>
         </div>
 
         <details className="advanced-settings" style={{ marginTop: '24px', padding: '16px', border: '1px solid #dee2e6', borderRadius: '8px' }}>
@@ -312,6 +332,22 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
           </summary>
           
           <div style={{ marginTop: '24px' }}>
+            <div className="config-section">
+              <h3>Language</h3>
+              <div className="chip-group">
+                {LANGUAGE_OPTIONS.map((l) => (
+                  <button
+                    type="button"
+                    key={l}
+                    className={`chip ${config.language === l ? 'chip-active' : ''}`}
+                    onClick={() => update('language', l)}
+                  >
+                    {LANGUAGE_LABELS[l]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="config-section">
               <div className="config-section-head">
                 <h3>Topics</h3>
@@ -422,54 +458,81 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
               </div>
             </div>
 
-            <div className="config-section">
-              <h3>Options</h3>
-              <label className="config-checkbox">
-                <input
-                  type="checkbox"
-                  checked={config.shuffleQuestions}
-                  onChange={(e) => update('shuffleQuestions', e.target.checked)}
-                />
-                <span>Shuffle questions</span>
-              </label>
-              <label className="config-checkbox">
-                <input
-                  type="checkbox"
-                  checked={config.shuffleOptions}
-                  onChange={(e) => update('shuffleOptions', e.target.checked)}
-                />
-                <span>Shuffle answer options</span>
-              </label>
-            </div>
           </div>
         </details>
 
-        <div className="start-note">
-          Once the attempt is started, the timer runs and you cannot generate a new set of
-          questions until the time expires or you finish the attempt.
         </div>
 
-        {error && <div className="start-error">{error}</div>}
-
-        <div className="config-actions">
-          <button
-            type="button"
-            className="btn btn-primary start-btn"
-            onClick={handleStart}
-            disabled={!canStart}
-          >
-            {starting
-              ? 'Starting…'
-              : available != null
-                ? `Attempt quiz (${effectiveCount} questions)`
-                : 'Attempt quiz now'}
-          </button>
-          {available === 0 && (
-            <div className="start-error" style={{ marginTop: 12 }}>
-              No questions match the selected filters.
+        <aside className="config-summary">
+          <div className="config-summary-inner">
+            <div className="summary-head">
+              <span className="summary-eyebrow">Ready to start</span>
+              <h3>{subject.name}</h3>
+              <div className="summary-mode">{modeLabel}</div>
             </div>
-          )}
-        </div>
+
+            <dl className="summary-stats">
+              <div>
+                <dt>Questions</dt>
+                <dd>{available != null ? effectiveCount : config.count}</dd>
+              </div>
+              <div>
+                <dt>Time</dt>
+                <dd>{config.durationMin} min</dd>
+              </div>
+              <div>
+                <dt>Pool</dt>
+                <dd>{available != null ? available : '—'}</dd>
+              </div>
+            </dl>
+
+            <ul className="summary-filters">
+              <li>
+                <span>Sources</span>
+                <strong>{config.sourceFiles.length === 0 ? 'All' : config.sourceFiles.length}</strong>
+              </li>
+              <li>
+                <span>Difficulty</span>
+                <strong>{config.difficulties.length === 0 ? 'All' : config.difficulties.map((d) => DIFFICULTY_LABELS[d]).join(', ')}</strong>
+              </li>
+              <li>
+                <span>Topics</span>
+                <strong>{config.topics.length === 0 ? 'All' : config.topics.length}</strong>
+              </li>
+              <li>
+                <span>Language</span>
+                <strong>{LANGUAGE_LABELS[config.language]}</strong>
+              </li>
+              <li>
+                <span>Order</span>
+                <strong>{config.shuffleQuestions ? 'Shuffled' : 'PDF order'}</strong>
+              </li>
+            </ul>
+
+            {error && <div className="start-error">{error}</div>}
+            {available === 0 && (
+              <div className="start-error">No questions match the selected filters.</div>
+            )}
+
+            <button
+              type="button"
+              className="btn btn-primary start-btn summary-cta"
+              onClick={handleStart}
+              disabled={!canStart}
+            >
+              {starting
+                ? 'Starting…'
+                : available != null
+                  ? `Start (${effectiveCount} questions)`
+                  : 'Start attempt'}
+            </button>
+
+            <p className="summary-note">
+              Once started, the timer runs. You can't regenerate questions until the attempt
+              finishes or time expires.
+            </p>
+          </div>
+        </aside>
       </div>
     </div>
   );

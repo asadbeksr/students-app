@@ -11,7 +11,7 @@ export function defaultConfig(modeCfg: ModeConfig): AttemptConfig {
     topics: [],
     sourceFiles: [],
     difficulties: [],
-    language: 'any',
+    language: 'en',
     count: modeCfg.questionCount,
     durationMin: modeCfg.durationMin,
     shuffleQuestions: modeCfg.shuffle ?? true,

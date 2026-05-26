@@ -1,5 +1,11 @@
 import type { GradedResult, RunnerQuestion, ScoringRules } from '@/types/exam';
 
+export interface AttemptConfigSummary {
+  sourceFiles: string[];
+  topics: string[];
+  language?: string;
+}
+
 export interface Attempt {
   subject: string;
   mode: string;
@@ -14,6 +20,21 @@ export interface Attempt {
   attemptToken?: string;
   graded?: Record<string, GradedResult>;
   gradeScore?: AttemptScore | null;
+  config?: AttemptConfigSummary;
+}
+
+function prettySource(name: string): string {
+  return name.replace(/\.(pdf|png|jpe?g)$/i, '').replace(/_/g, ' ').trim();
+}
+
+export function attemptLabel(cfg: AttemptConfigSummary | undefined): string | null {
+  if (!cfg) return null;
+  const parts: string[] = [];
+  if (cfg.sourceFiles.length === 1) parts.push(prettySource(cfg.sourceFiles[0]));
+  else if (cfg.sourceFiles.length > 1) parts.push(`${cfg.sourceFiles.length} sources`);
+  if (cfg.topics.length === 1) parts.push(cfg.topics[0]);
+  else if (cfg.topics.length > 1) parts.push(`${cfg.topics.length} topics`);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 function key(subject: string, mode: string) {
@@ -81,6 +102,7 @@ export interface HistoryEntry {
   durationMin: number;
   totalQuestions: number;
   score: AttemptScore | null;
+  label?: string | null;
 }
 
 function historyKey(subject: string, mode: string) {
@@ -118,6 +140,7 @@ export function attemptToHistory(a: Attempt): HistoryEntry | null {
     durationMin: a.durationMin,
     totalQuestions: a.questions.length,
     score: computeScore(a),
+    label: attemptLabel(a.config),
   };
 }
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ListChecks } from 'lucide-react';
 import type { GradedResult, RunnerQuestion, ScoringRules, SubjectConfig } from '@/types/exam';
-import { type Attempt, isFinished, remainingSeconds } from '@/lib/exam/attempt';
+import { type Attempt, attemptLabel, isFinished, remainingSeconds } from '@/lib/exam/attempt';
 import { MathText } from './MathText';
 
 const CHEMISTRY_INFOS = [
@@ -17,9 +17,13 @@ interface Props {
   attempt: Attempt;
   onUpdate: (updater: (a: Attempt) => Attempt) => void;
   onDiscard: () => void;
+  onRetrySelected?: (questionIds: string[]) => void;
 }
 
-export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
+export function McqRunner({ subject, attempt, onUpdate, onDiscard, onRetrySelected }: Props) {
+  const [retrySelection, setRetrySelection] = useState<Set<string>>(new Set());
+  const examLabel = attemptLabel(attempt.config);
+  const fullTitle = examLabel ? `${subject.name} — ${examLabel}` : `${subject.name} Mock Exam`;
   const finished = isFinished(attempt);
   const isChemistry = subject.slug.toLowerCase() === 'chemistry';
   const infoCount = isChemistry ? 3 : 0;
@@ -85,14 +89,14 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
         <div className="quiz-breadcrumb">
           <Link href="/mock">2026_06KWRXQ_3</Link> <span>/</span>{' '}
           <Link href={`/mock/${subject.slug}`}>General</Link> <span>/</span>{' '}
-          <span>{subject.name} Mock Exam</span>
+          <span>{fullTitle}</span>
         </div>
       </div>
 
       <div className="quiz-title-row">
         <h1 className="quiz-title">
           <ListChecks size={32} strokeWidth={2} style={{ color: '#f7941d' }} />
-          <span>{subject.name} Mock Exam</span>
+          <span>{fullTitle}</span>
         </h1>
         {!finished && secondsLeft !== Infinity && (
           <div className={`moodle-timer-box title-timer ${secondsLeft < 60 ? 'timer-danger' : ''}`} style={{ visibility: isTimerHidden ? 'hidden' : 'visible' }}>
@@ -163,20 +167,41 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                   </div>
                 </div>
               ))}
-              {attempt.questions.map((q, idx) => (
-                <QuestionBlock
-                  key={`${idx}-${q.id}`}
-                  q={q}
-                  index={idx}
-                  selected={attempt.answers[q.id]}
-                  flagged={!!attempt.flagged[q.id]}
-                  finished={finished}
-                  scoring={attempt.scoring}
-                  grade={graded?.[q.id]}
-                  onSelect={(label) => selectAnswer(q.id, label)}
-                  onFlag={() => toggleFlag(q.id)}
-                />
-              ))}
+              {attempt.questions.map((q, idx) => {
+                const isSelected = retrySelection.has(q.id);
+                return (
+                  <div key={`${idx}-${q.id}`} className={`review-question-wrap ${isSelected ? 'is-selected' : ''}`}>
+                    {onRetrySelected && (
+                      <label className="review-pick" title="Select for retry">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            setRetrySelection((s) => {
+                              const next = new Set(s);
+                              if (e.target.checked) next.add(q.id);
+                              else next.delete(q.id);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span>Retry</span>
+                      </label>
+                    )}
+                    <QuestionBlock
+                      q={q}
+                      index={idx}
+                      selected={attempt.answers[q.id]}
+                      flagged={!!attempt.flagged[q.id]}
+                      finished={finished}
+                      scoring={attempt.scoring}
+                      grade={graded?.[q.id]}
+                      onSelect={(label) => selectAnswer(q.id, label)}
+                      onFlag={() => toggleFlag(q.id)}
+                    />
+                  </div>
+                );
+              })}
             </>
           ) : currentIdx < 0 ? (
             (() => {
@@ -256,13 +281,69 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
             </div>
           )}
           {finished && (
-            <div className="submit-row">
+            <div className="submit-row" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-secondary" onClick={onDiscard}>
                 Start new attempt
               </button>
+              {onRetrySelected && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      const wrong = attempt.questions
+                        .filter((q) => graded?.[q.id]?.status === 'wrong')
+                        .map((q) => q.id);
+                      setRetrySelection(new Set(wrong));
+                    }}
+                  >
+                    Select wrong
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      const blank = attempt.questions
+                        .filter((q) => !attempt.answers[q.id])
+                        .map((q) => q.id);
+                      setRetrySelection(new Set(blank));
+                    }}
+                  >
+                    Select unanswered
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setRetrySelection(new Set())}
+                    disabled={retrySelection.size === 0}
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
             </div>
           )}
         </main>
+
+        {finished && onRetrySelected && retrySelection.size > 0 && (
+          <div className="retry-bar">
+            <span className="retry-bar-count">
+              <strong>{retrySelection.size}</strong> question{retrySelection.size === 1 ? '' : 's'} selected
+            </span>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                const ids = Array.from(retrySelection);
+                if (confirm(`Start a new attempt with ${ids.length} selected question${ids.length === 1 ? '' : 's'}?`)) {
+                  onRetrySelected(ids);
+                }
+              }}
+            >
+              Retry selected
+            </button>
+          </div>
+        )}
 
         <aside className="quiz-nav-side" aria-hidden={!isDrawerOpen}>
           <div className="card-block">
