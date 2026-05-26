@@ -120,7 +120,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard, onRetrySelect
       </div>
 
       {finished && score && (
-        <table className="generaltable generalbox quizreviewsummary mb-0">
+        <table className="generaltable generalbox quizreviewsummary mb-4">
           <caption className="sr-only">Attempt summary</caption>
           <tbody>
             <tr><th className="cell" scope="row">Status</th><td className="cell">Completed</td></tr>
