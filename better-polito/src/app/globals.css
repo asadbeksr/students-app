@@ -270,12 +270,13 @@ body {
   --topic-more-fg: #dee2e6;
   --topic-more-bd: #495057;
   --highlight-bg: rgba(247, 148, 29, 0.1);
+  --card-bg: #fff;
+  --input-bg: #fff;
+  --border-light: #f1f3f5;
 }
 
 .dark {
   --card-bg: #1a1d22;
   --input-bg: #1a1d22;
-  --foreground: #e6e8eb;
-  --border: #3a3d42;
   --border-light: #2a2d33;
 }
