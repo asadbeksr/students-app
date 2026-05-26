@@ -91,3 +91,14 @@ export interface CatalogEntry {
 export interface FacetsResponse extends QuestionFacets {
   catalog: CatalogEntry[];
 }
+
+export interface BankQuestion {
+  id: string;
+  question_text: string;
+  difficulty: Difficulty;
+  language: QuestionLanguage;
+  topics: string[];
+  year: number | string;
+  has_formula: boolean;
+  has_diagram: boolean;
+}

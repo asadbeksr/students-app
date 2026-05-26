@@ -15,5 +15,16 @@ export default async function QuestionBankPage({
   const questions = await loadSubjectQuestions(subject);
   const facets = computeFacets(questions);
 
-  return <QuestionBank subject={subject} questions={questions} facets={facets} />;
+  const bankQuestions = questions.map((q) => ({
+    id: q.id,
+    question_text: q.question_text,
+    difficulty: q.difficulty,
+    language: q.language,
+    topics: q.topics,
+    year: q.year,
+    has_formula: q.has_formula,
+    has_diagram: q.has_diagram,
+  }));
+
+  return <QuestionBank subject={subject} questions={bankQuestions} facets={facets} />;
 }

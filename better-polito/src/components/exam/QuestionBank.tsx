@@ -22,10 +22,10 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type {
+  BankQuestion,
   Difficulty,
   ExamMode,
   LanguageFilter,
-  Question,
   QuestionFacets,
   SubjectConfig,
 } from '@/types/exam';
@@ -34,7 +34,7 @@ import { MathText } from './MathText';
 
 interface Props {
   subject: SubjectConfig;
-  questions: Question[];
+  questions: BankQuestion[];
   facets: QuestionFacets;
 }
 
@@ -96,7 +96,7 @@ export function QuestionBank({ subject, questions, facets }: Props) {
     return out;
   }, [questions, topicFilter, diffFilter, langFilter]);
 
-  const columns = useMemo<ColumnDef<Question>[]>(
+  const columns = useMemo<ColumnDef<BankQuestion>[]>(
     () => [
       {
         id: 'id',
