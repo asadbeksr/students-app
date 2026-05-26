@@ -273,7 +273,23 @@ class StudyBuddyDB extends Dexie {
   }
 }
 
-export const db = new StudyBuddyDB();
+let _db: StudyBuddyDB | null = null;
 
-// Initialize settings on first load
-db.initializeSettings().catch(console.error);
+function getDB(): StudyBuddyDB {
+  if (!_db) {
+    if (typeof window === 'undefined') {
+      throw new Error('Dexie (IndexedDB) is not available on the server.');
+    }
+    _db = new StudyBuddyDB();
+    _db.initializeSettings().catch(console.error);
+  }
+  return _db;
+}
+
+export const db: StudyBuddyDB = new Proxy({} as StudyBuddyDB, {
+  get(_target, prop, receiver) {
+    const instance = getDB();
+    const value = Reflect.get(instance, prop, receiver);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+});

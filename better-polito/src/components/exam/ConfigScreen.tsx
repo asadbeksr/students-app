@@ -48,6 +48,7 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
   const [facets, setFacets] = useState<FacetsResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAllTopics, setShowAllTopics] = useState(false);
+  const [showAllSources, setShowAllSources] = useState(false);
 
   useEffect(() => {
     const saved = loadSavedConfig(subject.slug, mode);
@@ -88,6 +89,27 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
     });
   }
 
+  function toggleSourceFile(name: string) {
+    setConfig((c) => {
+      const has = c.sourceFiles.includes(name);
+      return {
+        ...c,
+        sourceFiles: has ? c.sourceFiles.filter((t) => t !== name) : [...c.sourceFiles, name],
+      };
+    });
+  }
+
+  function resetSourceFiles() {
+    update('sourceFiles', []);
+  }
+  function selectAllSourceFiles() {
+    if (facets) update('sourceFiles', facets.sourceFiles.map((s) => s.source_file));
+  }
+
+  function prettySourceName(name: string): string {
+    return name.replace(/\.(pdf|png|jpe?g)$/i, '').replace(/_/g, ' ').trim();
+  }
+
   function toggleDifficulty(d: Difficulty) {
     setConfig((c) => {
       const has = c.difficulties.includes(d);
@@ -114,6 +136,20 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
       : facets.topics.slice(0, 12)
     : [];
   const hiddenTopicCount = facets ? facets.topics.length - visibleTopics.length : 0;
+  // Hide "noise" source files (loose photos like 1.jpg, photo_91@..., 120.JPG)
+  // from the default view — they have 1-3 questions each and clutter the list.
+  // Still reachable via "Show more".
+  const isNoiseSource = (name: string) =>
+    /^(photo[_@].*|\d+)\.(jpe?g|png)$/i.test(name);
+  const meaningfulSources = facets
+    ? facets.sourceFiles.filter((s) => !isNoiseSource(s.source_file))
+    : [];
+  const visibleSources = facets
+    ? showAllSources
+      ? facets.sourceFiles
+      : meaningfulSources.slice(0, 12)
+    : [];
+  const hiddenSourceCount = facets ? facets.sourceFiles.length - visibleSources.length : 0;
 
   return (
     <div className="moodle-quiz">
@@ -131,6 +167,73 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
 
       <div className="start-card config-card">
         <h2>Configure attempt</h2>
+
+        <div className="config-section">
+          <div className="config-section-head">
+            <h3>Source file</h3>
+            <div className="config-section-actions">
+              <button type="button" className="link-btn" onClick={resetSourceFiles}>
+                All
+              </button>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={selectAllSourceFiles}
+                disabled={!facets}
+              >
+                Select all
+              </button>
+            </div>
+          </div>
+          {!facets && !loadError && <div className="config-hint">Loading source files…</div>}
+          {facets && facets.sourceFiles.length === 0 && (
+            <div className="config-hint">No source files tagged.</div>
+          )}
+          {facets && facets.sourceFiles.length > 0 && (
+            <>
+              <div className="chip-group">
+                {visibleSources.map((s) => {
+                  const active = config.sourceFiles.includes(s.source_file);
+                  return (
+                    <button
+                      type="button"
+                      key={s.source_file}
+                      className={`chip ${active ? 'chip-active' : ''}`}
+                      onClick={() => toggleSourceFile(s.source_file)}
+                      title={s.source_file}
+                    >
+                      <span className="chip-label">{prettySourceName(s.source_file)}</span>
+                      <span className="chip-count">{s.total}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {hiddenSourceCount > 0 && !showAllSources && (
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => setShowAllSources(true)}
+                >
+                  Show more {hiddenSourceCount}
+                </button>
+              )}
+              {showAllSources && facets.sourceFiles.length > 12 && (
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => setShowAllSources(false)}
+                >
+                  Show less
+                </button>
+              )}
+              <div className="config-hint">
+                {config.sourceFiles.length === 0
+                  ? 'No filter: includes all source files.'
+                  : `${config.sourceFiles.length} source files selected`}
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="config-section">
           <h3>Difficulty</h3>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { AttemptConfig, ExamMode, ModeConfig, SubjectConfig } from '@/types/exam';
 import {
   type Attempt,
+  type AttemptScore,
   type HistoryEntry,
   appendHistory,
   attemptToHistory,
@@ -33,12 +34,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
     const loaded = loadAttempt(subject.slug, mode);
     if (loaded && isFinished(loaded)) {
       const finishedA = loaded.submittedAt ? loaded : { ...loaded, submittedAt: loaded.startedAt + loaded.durationMin * 60_000 };
-      const entry = attemptToHistory(finishedA);
-      if (entry) {
-        appendHistory(entry);
-        saveHistoricalAttempt(finishedA);
-      }
-      clearAttempt(subject.slug, mode);
+      void gradeAndPersist(finishedA);
       setAttempt(null);
       return;
     }
@@ -50,17 +46,39 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
       if (!prev) return prev;
       const next = updater(prev);
       if (!prev.submittedAt && next.submittedAt) {
-        const entry = attemptToHistory(next);
-        if (entry) {
-          appendHistory(entry);
-          saveHistoricalAttempt(next);
-        }
-        clearAttempt(next.subject, next.mode);
-      } else {
-        saveAttempt(next);
+        void gradeAndPersist(next);
+        return next;
       }
+      saveAttempt(next);
       return next;
     });
+  }
+
+  async function gradeAndPersist(a: Attempt) {
+    let graded: Record<string, import('@/types/exam').GradedResult> | undefined;
+    let gradeScore: AttemptScore | null | undefined;
+    if (a.attemptToken) {
+      try {
+        const res = await fetch('/api/exam/grade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ attemptToken: a.attemptToken, answers: a.answers }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { results: import('@/types/exam').GradedResult[]; score: AttemptScore | null };
+          graded = Object.fromEntries(data.results.map((r) => [r.id, r]));
+          gradeScore = data.score;
+        }
+      } catch {}
+    }
+    const finalA: Attempt = { ...a, graded, gradeScore };
+    const entry = attemptToHistory(finalA);
+    if (entry) {
+      appendHistory(entry);
+      saveHistoricalAttempt(finalA);
+    }
+    clearAttempt(finalA.subject, finalA.mode);
+    setAttempt(finalA);
   }
 
   function reviewPastAttempt(id: string) {
@@ -86,7 +104,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
       const a: Attempt = {
         subject: subject.slug,
         mode,
-        startedAt: Date.now(),
+        startedAt: data.startedAt ?? Date.now(),
         durationMin: data.durationMin,
         questions: data.questions,
         answers: {},
@@ -94,6 +112,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
         submittedAt: null,
         scoring: data.scoring,
         passScore: data.passScore,
+        attemptToken: data.attemptToken,
       };
       saveAttempt(a);
       setAttempt(a);

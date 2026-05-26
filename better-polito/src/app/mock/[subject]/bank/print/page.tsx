@@ -9,15 +9,14 @@ export default async function PrintView({
   searchParams,
 }: {
   params: Promise<{ subject: string }>;
-  searchParams: Promise<{ ids?: string; mode?: string }>;
+  searchParams: Promise<{ ids?: string }>;
 }) {
   const { subject: subjectSlug } = await params;
-  const { ids, mode } = await searchParams;
+  const { ids } = await searchParams;
 
   const subject = getSubject(subjectSlug);
   if (!subject || !ids) notFound();
 
-  const isAnswerKey = mode === 'answer_key';
   const idArray = ids.split(',').map((id) => id.trim());
   const allQuestions = await loadSubjectQuestions(subject);
   
@@ -63,7 +62,7 @@ export default async function PrintView({
 
       <div className="print-header">
         <h1>{subject.name} - Question Bank Export</h1>
-        <p>{isAnswerKey ? 'Answer Key' : 'Practice Sheet'} • {questions.length} Questions</p>
+        <p>Practice Sheet • {questions.length} Questions</p>
       </div>
 
       {questions.map((q, index) => (
@@ -84,28 +83,13 @@ export default async function PrintView({
             
             {q.options && q.options.length > 0 && (
               <ul className="q-options">
-                {q.options.map((opt) => {
-                  const isCorrect = isAnswerKey && opt.label === q.correct_answer;
-                  return (
-                    <li key={opt.label} style={isCorrect ? { background: '#d4edda', padding: '4px 8px', borderRadius: '4px', margin: '-4px -8px 4px -8px' } : {}}>
-                      <span className="q-label">{opt.label}.</span>
-                      <MathText text={opt.text} />
-                    </li>
-                  );
-                })}
+                {q.options.map((opt) => (
+                  <li key={opt.label}>
+                    <span className="q-label">{opt.label}.</span>
+                    <MathText text={opt.text} />
+                  </li>
+                ))}
               </ul>
-            )}
-
-            {isAnswerKey && (
-              <div className="answer-key-box">
-                {q.correct_answer && <h4>Correct answer: {q.correct_answer}</h4>}
-                {q.solution && (
-                  <div>
-                    <h4 style={{ color: '#383d41', marginTop: 12 }}>Solution:</h4>
-                    <MathText text={q.solution} />
-                  </div>
-                )}
-              </div>
             )}
           </div>
         </div>

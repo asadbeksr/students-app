@@ -23,6 +23,7 @@ export async function GET(req: Request) {
   const catalog = pool.map((q) => ({
     id: q.id,
     topics: q.topics ?? [],
+    source_file: q.source_file,
     difficulty: q.difficulty,
     language: q.language,
   }));

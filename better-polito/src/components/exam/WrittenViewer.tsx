@@ -16,8 +16,22 @@ interface Props {
 export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) {
   const finished = isFinished(attempt);
   const [secondsLeft, setSecondsLeft] = useState(() => remainingSeconds(attempt));
-  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
   const tickRef = useRef<number | null>(null);
+
+  async function revealSolution(qId: string) {
+    if (revealed[qId] || !attempt.attemptToken) return;
+    try {
+      const res = await fetch('/api/exam/reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attemptToken: attempt.attemptToken, questionId: qId }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { solution: string | null };
+      if (data.solution) setRevealed((r) => ({ ...r, [qId]: data.solution as string }));
+    } catch {}
+  }
 
   useEffect(() => {
     if (finished) { setSecondsLeft(0); return; }
@@ -65,7 +79,7 @@ export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) 
       <div className="quiz-layout">
         <main className="quiz-main">
           {attempt.questions.map((q, idx) => {
-            const showSolution = revealed[q.id] || finished;
+            const solution = revealed[q.id];
             return (
               <div key={q.id} id={`question-${q.id}`} className="que essay">
                 <div className="info">
@@ -80,26 +94,24 @@ export function WrittenViewer({ subject, attempt, onUpdate, onDiscard }: Props) 
                       <img src={q.question_image} alt="" className="img-responsive" style={{ maxWidth: '100%', marginTop: 12 }} />
                     )}
                   </div>
-                  {q.solution && (
-                    <div className={`outcome clearfix ${showSolution ? '' : 'solution-hidden'}`}>
-                      {!showSolution ? (
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => setRevealed((r) => ({ ...r, [q.id]: true }))}
-                        >
-                          Show solution
-                        </button>
-                      ) : (
-                        <div className="feedback">
-                          <div className="rightanswer">Solution</div>
-                          <div className="generalfeedback" style={{ marginTop: 8 }}>
-                            <MathText text={q.solution} />
-                          </div>
+                  <div className={`outcome clearfix ${solution ? '' : 'solution-hidden'}`}>
+                    {!solution ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => void revealSolution(q.id)}
+                      >
+                        Show solution
+                      </button>
+                    ) : (
+                      <div className="feedback">
+                        <div className="rightanswer">Solution</div>
+                        <div className="generalfeedback" style={{ marginTop: 8 }}>
+                          <MathText text={solution} />
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

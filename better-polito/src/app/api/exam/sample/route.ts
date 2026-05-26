@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSubject } from '@/config/subjects';
-import { sampleExam } from '@/lib/exam/questions';
+import { sampleExam, toRunnerQuestion } from '@/lib/exam/questions';
+import { signAttempt } from '@/lib/exam/token';
 import type { AttemptConfig, Difficulty, ExamMode, LanguageFilter } from '@/types/exam';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,9 @@ function sanitizeConfig(
 ): AttemptConfig {
   if (!raw) return fallback;
   const topics = Array.isArray(raw.topics) ? raw.topics.filter((t) => typeof t === 'string') : fallback.topics;
+  const sourceFiles = Array.isArray(raw.sourceFiles)
+    ? raw.sourceFiles.filter((t) => typeof t === 'string')
+    : fallback.sourceFiles;
   const difficulties = Array.isArray(raw.difficulties)
     ? (raw.difficulties.filter((d) => DIFFICULTIES.includes(d as Difficulty)) as Difficulty[])
     : fallback.difficulties;
@@ -29,6 +33,7 @@ function sanitizeConfig(
   const passScore = Number.isFinite(raw.passScore) ? (raw.passScore as number) : fallback.passScore;
   return {
     topics,
+    sourceFiles,
     difficulties,
     language,
     count,
@@ -58,6 +63,7 @@ export async function POST(req: Request) {
 
   const fallback: AttemptConfig = {
     topics: [],
+    sourceFiles: [],
     difficulties: [],
     language: 'any',
     count: modeCfg.questionCount,
@@ -71,8 +77,21 @@ export async function POST(req: Request) {
   const resolved = sanitizeConfig(config, fallback);
   const questions = await sampleExam(cfg, mode as ExamMode, resolved);
 
-  return NextResponse.json({
+  const startedAt = Date.now();
+  const attemptToken = signAttempt({
+    subject: cfg.slug,
+    mode: mode as ExamMode,
+    startedAt,
+    durationMin: resolved.durationMin,
+    scoring: resolved.scoring,
+    passScore: resolved.passScore,
     questions,
+  });
+
+  return NextResponse.json({
+    questions: questions.map(toRunnerQuestion),
+    attemptToken,
+    startedAt,
     durationMin: resolved.durationMin,
     scoring: resolved.scoring,
     passScore: resolved.passScore,

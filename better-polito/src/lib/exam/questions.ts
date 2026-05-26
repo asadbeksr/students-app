@@ -7,9 +7,30 @@ import type {
   Question,
   QuestionFacets,
   QuestionLanguage,
+  RunnerQuestion,
+  SourceFileFacet,
   SubjectConfig,
   TopicFacet,
 } from '@/types/exam';
+
+export function toRunnerQuestion(q: Question): RunnerQuestion {
+  return {
+    id: q.id,
+    exam_type: q.exam_type,
+    question_number: q.question_number,
+    question_text: q.question_text,
+    options: q.options?.map((o) => ({ label: o.label, text: o.text })) ?? null,
+    difficulty: q.difficulty,
+    topics: q.topics,
+    has_formula: q.has_formula,
+    has_diagram: q.has_diagram,
+    language: q.language,
+    year: q.year,
+    subject: q.subject,
+    original_question_image: q.original_question_image,
+    question_image: q.question_image,
+  };
+}
 
 const QUESTIONS_ROOT = path.join(process.cwd(), 'src', 'questions');
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
@@ -56,11 +77,14 @@ export function filterPool(
   questions: Question[],
   filters: {
     topics?: string[];
+    sourceFiles?: string[];
     difficulties?: Difficulty[];
     language?: QuestionLanguage | 'any';
   },
 ): Question[] {
   const topicSet = filters.topics && filters.topics.length > 0 ? new Set(filters.topics) : null;
+  const sourceSet =
+    filters.sourceFiles && filters.sourceFiles.length > 0 ? new Set(filters.sourceFiles) : null;
   const diffSet =
     filters.difficulties && filters.difficulties.length > 0 ? new Set(filters.difficulties) : null;
   const lang = filters.language && filters.language !== 'any' ? filters.language : null;
@@ -68,6 +92,7 @@ export function filterPool(
   return questions.filter((q) => {
     if (diffSet && !diffSet.has(q.difficulty)) return false;
     if (lang && q.language !== lang) return false;
+    if (sourceSet && !sourceSet.has(q.source_file)) return false;
     if (topicSet) {
       const qTopics = q.topics ?? [];
       if (!qTopics.some((t) => topicSet.has(t))) return false;
@@ -78,12 +103,21 @@ export function filterPool(
 
 export function computeFacets(questions: Question[]): QuestionFacets {
   const topicMap = new Map<string, TopicFacet>();
+  const sourceMap = new Map<string, SourceFileFacet>();
   const difficulties: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
   const languages: Record<QuestionLanguage, number> = { en: 0, it: 0 };
 
   for (const q of questions) {
     if (DIFFICULTIES.includes(q.difficulty)) difficulties[q.difficulty]++;
     if (LANGUAGES.includes(q.language)) languages[q.language]++;
+    if (q.source_file) {
+      let s = sourceMap.get(q.source_file);
+      if (!s) {
+        s = { source_file: q.source_file, total: 0 };
+        sourceMap.set(q.source_file, s);
+      }
+      s.total++;
+    }
     for (const t of q.topics ?? []) {
       let facet = topicMap.get(t);
       if (!facet) {
@@ -96,7 +130,10 @@ export function computeFacets(questions: Question[]): QuestionFacets {
   }
 
   const topics = [...topicMap.values()].sort((a, b) => b.total - a.total || a.topic.localeCompare(b.topic));
-  return { total: questions.length, topics, difficulties, languages };
+  const sourceFiles = [...sourceMap.values()].sort(
+    (a, b) => b.total - a.total || a.source_file.localeCompare(b.source_file),
+  );
+  return { total: questions.length, topics, sourceFiles, difficulties, languages };
 }
 
 export async function loadPool(subject: SubjectConfig, mode: ExamMode): Promise<Question[]> {
@@ -129,7 +166,7 @@ export async function sampleExam(
   mode: ExamMode,
   config: Pick<
     AttemptConfig,
-    'topics' | 'difficulties' | 'language' | 'count' | 'shuffleQuestions' | 'shuffleOptions'
+    'topics' | 'sourceFiles' | 'difficulties' | 'language' | 'count' | 'shuffleQuestions' | 'shuffleOptions'
   > & { questionIds?: string[] },
 ): Promise<Question[]> {
   const pool = await loadPool(subject, mode);
@@ -140,6 +177,7 @@ export async function sampleExam(
   } else {
     candidates = filterPool(pool, {
       topics: config.topics,
+      sourceFiles: config.sourceFiles,
       difficulties: config.difficulties,
       language: config.language,
     });

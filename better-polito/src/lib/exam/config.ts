@@ -9,6 +9,7 @@ export function configStorageKey(subject: string, mode: ExamMode): string {
 export function defaultConfig(modeCfg: ModeConfig): AttemptConfig {
   return {
     topics: [],
+    sourceFiles: [],
     difficulties: [],
     language: 'any',
     count: modeCfg.questionCount,
@@ -46,6 +47,7 @@ export function mergeConfig(base: AttemptConfig, override: Partial<AttemptConfig
     ...override,
     scoring: { ...base.scoring, ...(override.scoring ?? {}) },
     topics: Array.isArray(override.topics) ? override.topics : base.topics,
+    sourceFiles: Array.isArray(override.sourceFiles) ? override.sourceFiles : base.sourceFiles,
     difficulties: Array.isArray(override.difficulties)
       ? (override.difficulties as Difficulty[])
       : base.difficulties,
@@ -54,9 +56,10 @@ export function mergeConfig(base: AttemptConfig, override: Partial<AttemptConfig
 
 export function countMatching(
   catalog: CatalogEntry[],
-  filters: Pick<AttemptConfig, 'topics' | 'difficulties' | 'language'>,
+  filters: Pick<AttemptConfig, 'topics' | 'sourceFiles' | 'difficulties' | 'language'>,
 ): number {
   const topicSet = filters.topics.length > 0 ? new Set(filters.topics) : null;
+  const sourceSet = filters.sourceFiles.length > 0 ? new Set(filters.sourceFiles) : null;
   const diffSet = filters.difficulties.length > 0 ? new Set(filters.difficulties) : null;
   const lang = filters.language !== 'any' ? filters.language : null;
 
@@ -64,6 +67,7 @@ export function countMatching(
   for (const e of catalog) {
     if (diffSet && !diffSet.has(e.difficulty)) continue;
     if (lang && e.language !== lang) continue;
+    if (sourceSet && !sourceSet.has(e.source_file)) continue;
     if (topicSet && !e.topics.some((t) => topicSet.has(t))) continue;
     n++;
   }

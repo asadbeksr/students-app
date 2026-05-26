@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ListChecks } from 'lucide-react';
-import type { Question, ScoringRules, SubjectConfig } from '@/types/exam';
+import type { GradedResult, RunnerQuestion, ScoringRules, SubjectConfig } from '@/types/exam';
 import { type Attempt, isFinished, remainingSeconds } from '@/lib/exam/attempt';
 import { MathText } from './MathText';
 
@@ -66,22 +66,8 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
     onUpdate((a) => ({ ...a, flagged: { ...a.flagged, [qId]: !a.flagged[qId] } }));
   }
 
-  const score = useMemo(() => {
-    if (!finished) return null;
-    const { questions, answers, scoring, passScore } = attempt;
-    let correct = 0, wrong = 0, blank = 0, scoreable = 0, marks = 0;
-    for (const item of questions) {
-      if (!item.correct_answer) continue;
-      scoreable++;
-      const ans = answers[item.id];
-      if (!ans) { blank++; marks += scoring.blank; }
-      else if (ans === item.correct_answer) { correct++; marks += scoring.correct; }
-      else { wrong++; marks += scoring.wrong; }
-    }
-    const maxMarks = scoreable * scoring.correct;
-    const pct = maxMarks === 0 ? 0 : Math.max(0, (marks / maxMarks) * 100);
-    return { correct, wrong, blank, scoreable, marks, maxMarks, pct, passed: pct >= passScore };
-  }, [finished, attempt]);
+  const score = useMemo(() => (finished ? attempt.gradeScore ?? null : null), [finished, attempt]);
+  const graded = attempt.graded;
 
   const modeLabel = 'Multiple choice';
   const startedAt = new Date(attempt.startedAt);
@@ -186,6 +172,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                   flagged={!!attempt.flagged[q.id]}
                   finished={finished}
                   scoring={attempt.scoring}
+                  grade={graded?.[q.id]}
                   onSelect={(label) => selectAnswer(q.id, label)}
                   onFlag={() => toggleFlag(q.id)}
                 />
@@ -229,6 +216,7 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
                   flagged={!!attempt.flagged[q.id]}
                   finished={finished}
                   scoring={attempt.scoring}
+                  grade={graded?.[q.id]}
                   onSelect={(label) => selectAnswer(q.id, label)}
                   onFlag={() => toggleFlag(q.id)}
                 />
@@ -319,9 +307,10 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
               )}
               {attempt.questions.map((q, idx) => {
                 const ans = attempt.answers[q.id];
-                const isCorrect = finished && q.correct_answer && ans === q.correct_answer;
-                const isWrong = finished && q.correct_answer && ans && ans !== q.correct_answer;
-                const isBlank = finished && q.correct_answer && !ans;
+                const g = graded?.[q.id];
+                const isCorrect = finished && g?.status === 'correct';
+                const isWrong = finished && g?.status === 'wrong';
+                const isBlank = finished && g?.status === 'blank';
                 const state = isCorrect
                   ? 'correct'
                   : isWrong
@@ -386,24 +375,26 @@ export function McqRunner({ subject, attempt, onUpdate, onDiscard }: Props) {
 }
 
 function QuestionBlock({
-  q, index, selected, flagged, finished, scoring, onSelect, onFlag,
+  q, index, selected, flagged, finished, scoring, grade, onSelect, onFlag,
 }: {
-  q: Question;
+  q: RunnerQuestion;
   index: number;
   selected?: string;
   flagged: boolean;
   finished: boolean;
   scoring: ScoringRules;
+  grade?: GradedResult;
   onSelect: (label: string) => void;
   onFlag: () => void;
 }) {
   const [showOriginalImg, setShowOriginalImg] = useState(false);
-  const isCorrect = finished && q.correct_answer && selected === q.correct_answer;
-  const isWrong = finished && q.correct_answer && selected && selected !== q.correct_answer;
-  const isBlank = finished && q.correct_answer && !selected;
+  const correctAnswer = grade?.correct_answer ?? null;
+  const solution = grade?.solution ?? null;
+  const isCorrect = finished && grade?.status === 'correct';
+  const isWrong = finished && grade?.status === 'wrong';
+  const isBlank = finished && grade?.status === 'blank';
   const stateClass = isCorrect ? 'correct' : isWrong ? 'incorrect' : isBlank ? 'notanswered' : '';
   const stateText = isCorrect ? 'Correct' : isWrong ? 'Incorrect' : isBlank ? 'Not answered' : '';
-  const earned = isCorrect ? scoring.correct : isWrong ? scoring.wrong : 0;
 
   return (
     <div id={`question-${index}`} className={`que multichoice deferredfeedback ${stateClass}`}>
@@ -412,11 +403,7 @@ function QuestionBlock({
         <div className="state-text">
           {finished ? stateText : (selected ? 'Answer saved' : 'Not yet answered')}
         </div>
-        {finished && q.correct_answer ? (
-          <div className="grade">Marked out of {formatGrade(scoring.correct)}</div>
-        ) : (
-          <div className="grade">Marked out of {formatGrade(scoring.correct)}</div>
-        )}
+        <div className="grade">Marked out of {formatGrade(scoring.correct)}</div>
         <div className="questionflag editable">
           <a
             role="button"
@@ -480,7 +467,7 @@ function QuestionBlock({
             <div className="answer">
               {q.options?.map((opt, i) => {
                 const isThisSelected = selected === opt.label;
-                const isThisCorrect = finished && q.correct_answer === opt.label;
+                const isThisCorrect = finished && correctAnswer === opt.label;
                 const isThisWrong = finished && isThisSelected && !isThisCorrect;
                 const cls = [
                   i % 2 === 0 ? 'r0' : 'r1',
@@ -522,17 +509,17 @@ function QuestionBlock({
             )}
           </fieldset>
         </div>
-        {finished && q.correct_answer && (
+        {finished && correctAnswer && (
           <div className="outcome clearfix">
             <h4 className="accesshide">Feedback</h4>
             <div className="feedback">
               <div className="rightanswer">
                 The correct answer is:{' '}
-                <MathText text={q.options?.find((o) => o.label === q.correct_answer)?.text ?? q.correct_answer} />
+                <MathText text={q.options?.find((o) => o.label === correctAnswer)?.text ?? correctAnswer} />
               </div>
-              {q.solution && (
+              {solution && (
                 <div className="generalfeedback" style={{ marginTop: 8 }}>
-                  <MathText text={q.solution} />
+                  <MathText text={solution} />
                 </div>
               )}
             </div>

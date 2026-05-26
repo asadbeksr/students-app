@@ -1,16 +1,19 @@
-import type { Question, ScoringRules } from '@/types/exam';
+import type { GradedResult, RunnerQuestion, ScoringRules } from '@/types/exam';
 
 export interface Attempt {
   subject: string;
   mode: string;
   startedAt: number;
   durationMin: number;
-  questions: Question[];
+  questions: RunnerQuestion[];
   answers: Record<string, string>;
   flagged: Record<string, boolean>;
   submittedAt: number | null;
   scoring: ScoringRules;
   passScore: number;
+  attemptToken?: string;
+  graded?: Record<string, GradedResult>;
+  gradeScore?: AttemptScore | null;
 }
 
 function key(subject: string, mode: string) {
@@ -66,20 +69,7 @@ export interface AttemptScore {
 }
 
 export function computeScore(a: Attempt): AttemptScore | null {
-  const { questions, answers, scoring, passScore } = a;
-  let correct = 0, wrong = 0, blank = 0, scoreable = 0, marks = 0;
-  for (const q of questions) {
-    if (!q.correct_answer) continue;
-    scoreable++;
-    const ans = answers[q.id];
-    if (!ans) { blank++; marks += scoring.blank; }
-    else if (ans === q.correct_answer) { correct++; marks += scoring.correct; }
-    else { wrong++; marks += scoring.wrong; }
-  }
-  if (scoreable === 0) return null;
-  const maxMarks = scoreable * scoring.correct;
-  const pct = maxMarks === 0 ? 0 : Math.max(0, (marks / maxMarks) * 100);
-  return { correct, wrong, blank, scoreable, marks, maxMarks, pct, passed: pct >= passScore };
+  return a.gradeScore ?? null;
 }
 
 export interface HistoryEntry {

@@ -57,6 +57,7 @@ export type LanguageFilter = QuestionLanguage | 'any';
 
 export interface AttemptConfig {
   topics: string[];
+  sourceFiles: string[];
   difficulties: Difficulty[];
   language: LanguageFilter;
   count: number;
@@ -74,9 +75,15 @@ export interface TopicFacet {
   byDifficulty: Record<Difficulty, number>;
 }
 
+export interface SourceFileFacet {
+  source_file: string;
+  total: number;
+}
+
 export interface QuestionFacets {
   total: number;
   topics: TopicFacet[];
+  sourceFiles: SourceFileFacet[];
   difficulties: Record<Difficulty, number>;
   languages: Record<QuestionLanguage, number>;
 }
@@ -84,12 +91,39 @@ export interface QuestionFacets {
 export interface CatalogEntry {
   id: string;
   topics: string[];
+  source_file: string;
   difficulty: Difficulty;
   language: QuestionLanguage;
 }
 
 export interface FacetsResponse extends QuestionFacets {
   catalog: CatalogEntry[];
+}
+
+export interface RunnerQuestion {
+  id: string;
+  exam_type: ExamType;
+  question_number: number;
+  question_text: string;
+  options?: QuestionOption[] | null;
+  difficulty: Difficulty;
+  topics: string[];
+  has_formula: boolean;
+  has_diagram: boolean;
+  language: QuestionLanguage;
+  year: number | string;
+  subject: string;
+  original_question_image: string | null;
+  question_image: string | null;
+}
+
+export interface GradedResult {
+  id: string;
+  given: string | null;
+  correct_answer: string | null;
+  solution: string | null;
+  status: 'correct' | 'wrong' | 'blank' | 'unscored';
+  marks: number;
 }
 
 export interface BankQuestion {

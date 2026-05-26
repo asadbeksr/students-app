@@ -318,7 +318,6 @@ export function QuestionBank({ subject, questions, facets }: Props) {
 
   const rows = table.getRowModel().rows;
   const visibleIds = useMemo(() => rows.map((r) => r.original.id), [rows]);
-  const visibleIdSet = useMemo(() => new Set(visibleIds), [visibleIds]);
 
   // Virtualizer
   const parentRef = useRef<HTMLDivElement>(null);
@@ -441,7 +440,7 @@ export function QuestionBank({ subject, questions, facets }: Props) {
       const a: Attempt = {
         subject: subject.slug,
         mode,
-        startedAt: Date.now(),
+        startedAt: data.startedAt ?? Date.now(),
         durationMin: data.durationMin,
         questions: data.questions,
         answers: {},
@@ -449,6 +448,7 @@ export function QuestionBank({ subject, questions, facets }: Props) {
         submittedAt: null,
         scoring: data.scoring,
         passScore: data.passScore,
+        attemptToken: data.attemptToken,
       };
       saveAttempt(a);
       router.push(`/mock/${subject.slug}/${mode}`);
@@ -458,7 +458,7 @@ export function QuestionBank({ subject, questions, facets }: Props) {
     }
   }
 
-  function handleExportPrint(mode: 'practice' | 'answer_key') {
+  function handleExportPrint(mode: 'practice') {
     if (selected.size === 0) return;
     const ids = Array.from(selected).join(',');
     const url = `/mock/${subject.slug}/bank/print?ids=${encodeURIComponent(ids)}&mode=${mode}`;
@@ -667,13 +667,6 @@ export function QuestionBank({ subject, questions, facets }: Props) {
                   onClick={() => handleExportPrint('practice')}
                 >
                   Print Practice
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => handleExportPrint('answer_key')}
-                >
-                  Print Key
                 </button>
               </div>
             </div>
