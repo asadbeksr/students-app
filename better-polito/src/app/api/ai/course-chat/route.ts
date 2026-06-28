@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { getGeminiClient } from '@/lib/gemini';
 import { formatAttachmentsForGeminiFromSerialized } from '@/lib/geminiVision';
-import type { Part, Tool } from '@google/genai';
+import { Type } from '@google/genai';
+import type { FunctionCall, Part, Tool } from '@google/genai';
 
 async function fetchDocumentNative(
   documentUrl: string,
@@ -43,11 +44,11 @@ const READ_PDF_PAGES_TOOL: Tool = {
     name: 'read_pdf_pages',
     description: 'Read the exact text content of specific pages from the currently open PDF document. Use this whenever you need to see a page that is not already in context.',
     parameters: {
-      type: 'OBJECT' as any,
+      type: Type.OBJECT,
       properties: {
         pages: {
-          type: 'ARRAY' as any,
-          items: { type: 'INTEGER' as any },
+          type: Type.ARRAY,
+          items: { type: Type.INTEGER },
           description: 'Page numbers to read (1-indexed)',
         },
       },
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
 
     const lastUserMessage = messages?.[messages.length - 1];
     const userText = lastUserMessage?.content || '';
-    let userParts: Part[] = attachments?.length
+    const userParts: Part[] = attachments?.length
       ? formatAttachmentsForGeminiFromSerialized(userText, attachments)
       : [{ text: userText }];
 
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
     }
 
     if (!successfullyUsedNativePdf) {
-      let docTextToUse = openDocumentText || '';
+      const docTextToUse = openDocumentText || '';
       if (docTextToUse) {
         const pageMatch = docTextToUse.match(/has exactly (\d+)\s+page|(\d+)\s+page/i);
         const countStr = pageMatch ? (pageMatch[1] || pageMatch[2]) : null;
@@ -138,24 +139,25 @@ ${docTextToUse}`;
               model: selectedModel,
               contents,
               config: { ...genConfig, tools: [READ_PDF_PAGES_TOOL] },
-            } as any);
+            });
 
             let hasFunctionCall = false;
-            let fcs: any[] = [];
-            let modelParts: Part[] = [];
+            const fcs: FunctionCall[] = [];
+            const modelParts: Part[] = [];
 
             for await (const chunk of toolStream) {
-               if ((chunk as any).functionCalls && (chunk as any).functionCalls.length > 0) {
+               if (chunk.functionCalls && chunk.functionCalls.length > 0) {
                   hasFunctionCall = true;
-                  fcs.push(...(chunk as any).functionCalls);
+                  fcs.push(...chunk.functionCalls);
                }
-               if (!hasFunctionCall && (chunk as any).text) {
+               if (!hasFunctionCall && chunk.text) {
                   // We didn't call a function, stream text immediately!
-                  controller.enqueue(encoder.encode((chunk as any).text));
+                  controller.enqueue(encoder.encode(chunk.text));
                }
-               
-               if ((chunk as any).candidates?.[0]?.content?.parts) {
-                   modelParts.push(...(chunk as any).candidates[0].content.parts);
+
+               const chunkParts = chunk.candidates?.[0]?.content?.parts;
+               if (chunkParts) {
+                   modelParts.push(...chunkParts);
                }
             }
 
@@ -189,10 +191,10 @@ ${docTextToUse}`;
             model: selectedModel,
             contents: finalContents,
             config: genConfig,
-          } as any);
+          });
 
           for await (const chunk of finalStream) {
-            const text = (chunk as any).text;
+            const text = chunk.text;
             if (text) controller.enqueue(encoder.encode(text));
           }
           controller.close();

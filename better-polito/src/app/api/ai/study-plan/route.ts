@@ -17,7 +17,7 @@ Upcoming Exams/Deadlines:
 ${JSON.stringify((exams ?? []).slice(0, 10))}
 
 Current Enrolled Courses:
-${JSON.stringify((courses ?? []).map((c: any) => ({ name: c.name || c.description, code: c.code })).slice(0, 10))}
+${JSON.stringify((courses ?? []).map((c: { name?: string; description?: string; code?: string }) => ({ name: c.name || c.description, code: c.code })).slice(0, 10))}
 
 Recent Grades:
 ${JSON.stringify((grades ?? []).slice(0, 10))}

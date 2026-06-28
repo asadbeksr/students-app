@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
 
   // Use server-side session auth to fetch from Polito
   const session = await getServerSession(authOptions);
-  const accessToken = (session as any)?.accessToken;
+  const accessToken = (session as { accessToken?: string } | null)?.accessToken;
 
   const headers: Record<string, string> = {};
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
         'Access-Control-Allow-Origin': '*',
       },
     });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch file' }, { status: 500 });
   }
 }

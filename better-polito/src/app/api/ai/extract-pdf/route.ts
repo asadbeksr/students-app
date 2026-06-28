@@ -51,7 +51,7 @@ export async function POST(req: Request) {
     }
 
     const session = await getServerSession(authOptions);
-    const token = (session as any)?.accessToken;
+    const token = (session as { accessToken?: string } | null)?.accessToken;
 
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
