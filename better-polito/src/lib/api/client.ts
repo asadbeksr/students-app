@@ -226,9 +226,16 @@ class ApiClient {
   async escGet() { return this.request<{ data: unknown }>('/esc'); }
   async escRequest() { return this.request('/esc/request', { method: 'POST' }); }
 
+  // ─── Places ──────────────────────────────────────────────────────────────
+  // GET /places — campus locations for the map view (consumed by /places page)
+  async getPlaces(params?: Record<string, string>) {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return this.request<{ data: unknown[] }>(`/places${qs}`);
+  }
+
   // ─── NOT IN SPEC (removed) ───────────────────────────────────────────────
   // ✗ /student, /student/grades, /student/messages, /student/notifications, etc.
-  // ✗ /places, /places/sites, /places/buildings, /places/free-rooms
+  // ✗ /places/sites, /places/buildings, /places/free-rooms (not served by mock)
   // ✗ /announcements
   // ✗ /bookings/topics/{id}/slots
 }
