@@ -1,7 +1,6 @@
 # Project Goals: `better-polito`
 
-> **Status:** No active goal. The stabilization mandate is complete (see
-> _Archive_ below). Fill in the _Active Goal_ section to start the next one.
+> **Status:** No active goal. Fill in the _Active Goal_ section to start one.
 
 ---
 
@@ -48,34 +47,3 @@ next build      # succeeds
 next lint       # passes (warnings tolerated, errors not)
 tsc --noEmit    # zero errors
 ```
-
----
-
-## Archive
-
-### ✅ Harden & structure `better-polito` — completed 2026-06-29
-
-**Mission was:** Make the dashboard reliable, internally consistent, and easy
-to extend by fixing real bugs and cleaning up finished work — without changing
-any working feature or any pixel. A stabilization mandate, not a redesign.
-
-**Outcome — all done criteria met:**
-
-- Health gates green: `next build`, `next lint` (warnings only), and
-  `tsc --noEmit` all pass with zero errors.
-- Cleanup complete: ad-hoc root `test*.js` scripts, stray `plans/*.html`,
-  committed `.DS_Store`, and the duplicate `package-lock.json` are all gone
-  (confirmed against `git ls-files`); `plans/` holds only real planning docs;
-  `pnpm-lock.yaml` is the sole lockfile.
-- Types hardened across the portal, components, and data/API layers; phantom
-  `as any` query hooks for unbuilt features removed.
-- Last suspected bug diagnosed and closed: `GET /places` 404s on the Prism mock
-  (verified — in-spec endpoints 401 instead), but the page degrades gracefully
-  to an empty map, so it is a documented limitation, not a defect. Production
-  behavior stays unverifiable without a real PoliTO token.
-
-**Known residual (non-blocking, candidates for a future goal):**
-
-- Lint warnings remain (unused `_latex`/`_messageId` params in visual blocks,
-  a couple of `react-hooks/exhaustive-deps`). Cosmetic; lint still passes.
-- `GET /places` unverified against a real production token.
