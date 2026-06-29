@@ -1,18 +1,50 @@
 # Project Goals: `better-polito`
 
-> **Status:** No active goal. Fill in the _Active Goal_ section to start one.
+> **Status:** Active — steps 1–2 shipped (Dexie consolidation + exam-history
+> quota fix). Steps 3–4 (repository seam, file-blob storage abstraction) are
+> paused awaiting an explicit go-ahead.
 
 ---
 
 ## Active Goal
 
-_None yet._ When starting a new goal, fill in:
+- **Mission** — Consolidate the app's persistence onto Dexie/IndexedDB as the
+  single local store, kill dead storage code, and introduce a seam that makes a
+  future move to a real DB (e.g. Supabase) a contained change rather than a
+  rewrite.
+- **Definition of done** — Steps 1–2 below shipped with health gates green; the
+  localStorage quota bug for exam history closed; no orphaned exam code left.
+  Steps 3–4 scoped and started only with explicit go-ahead.
+- **In scope** — `src/lib/db.ts`, the stores (`src/stores/*`,
+  `src/lib/stores/*`), and `src/lib/exam/*`.
+- **Out of scope** — UI/visual changes, the AI/chat behavior, and the
+  api-query layer — except where a step unavoidably touches them.
+- **Latitude** — **Moderate** for steps 1–2 (dead-code removal + bug fixes).
+  **Conservative** for steps 3–4 (architectural seam): plan and confirm before
+  rewriting.
 
-- **Mission** — one or two sentences: what outcome, and why it matters.
-- **Definition of done** — concrete, checkable conditions (commands that must
-  pass, behaviors that must hold, bugs that must be closed).
-- **In scope / Out of scope** — what to touch and what to leave alone.
-- **Latitude** — how much to do without asking (see levels below).
+### Suggested order (each step independently shippable)
+
+1. **[done]** Delete the dead Dexie exam path — removed `examStore`, `ExamList`,
+   `CreateExamDialog`, `examAnalytics`, the `MockExam`/`ExamAttempt`/`MCQQuestion`
+   types, and the `deleteCourse` cleanup. The `mockExams`/`examAttempts` legacy
+   stores are dropped via Dexie `version(10)` (`null`).
+2. **[done]** Port `lib/exam/*` from localStorage → Dexie — new async
+   `examAttempts` (active) / `examHistory` (archived) / `examConfigs` stores in
+   `version(11)`. Closes the localStorage quota bug; exam history is now durable
+   per-browser. (Also deduped the settings init: dropped the stale
+   `db.initializeSettings()` in favour of the store's `put`-based init.)
+3. **Introduce the repository seam** — one domain at a time
+   (`courseRepo`, `examRepo`, `settingsRepo`, `materialRepo`), starting wherever
+   you'll touch first. Stores/components depend on the repo, never on `db` or
+   `localStorage` directly.
+4. **Behind the seam: file blobs → storage abstraction, then Supabase** —
+   isolate binary file I/O (`Material.fileData`, `ChatAttachment.fileData`)
+   behind `saveFile()` so the cloud impl can upload to a bucket without
+   call-site changes.
+
+Steps 1–2 are bug/dead-code fixes within the db/storage/state mandate; steps
+3–4 are the larger refactor — get a go-ahead before starting them.
 
 ---
 
