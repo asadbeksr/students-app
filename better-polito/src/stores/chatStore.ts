@@ -1,36 +1,13 @@
 import { create } from 'zustand';
 import { db } from '@/lib/db';
-
-// Extract a window of pages around `centerPage` from extracted PDF text
-function extractPageWindow(fullText: string, centerPage: number, radius: number): string {
-  const startPage = Math.max(1, centerPage - radius);
-  const endPage = centerPage + radius;
-  const pageRegex = /--- Page (\d+) ---/g;
-
-  // Split into sections by page marker
-  const sections: { page: number; start: number }[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = pageRegex.exec(fullText)) !== null) {
-    sections.push({ page: parseInt(match[1], 10), start: match.index });
-  }
-
-  const inWindow = sections.filter(s => s.page >= startPage && s.page <= endPage);
-  if (!inWindow.length) return fullText;
-
-  const first = inWindow[0].start;
-  const lastSection = inWindow[inWindow.length - 1];
-  const nextIdx = sections.findIndex(s => s.page > lastSection.page);
-  const end = nextIdx >= 0 ? sections[nextIdx].start : fullText.length;
-
-  return `[Showing pages ${startPage}–${Math.min(endPage, lastSection.page)} of the document]\n\n` + fullText.slice(first, end).trim();
-}
 import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation, GeneratedImage, GeneratedVideoData, Course } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getSystemPrompt } from '@/lib/prompts';
 import { generateImageThumbnail } from '@/lib/fileProcessing';
 import { arrayBufferToBase64 } from '@/lib/fileProcessing';
 import { useMaterialStore } from './materialStore';
-import { useCoursePortalStore, useDocumentContentStore } from '@/lib/stores/coursePortalStore';
+import { useCoursePortalStore } from '@/lib/stores/coursePortalStore';
+import { waitForDocument, type OpenDocumentPayload } from '@/lib/openDocument';
 import { extractPdfText } from '@/lib/pdfTextExtraction';
 import { giphyService } from '@/lib/giphyService';
 import { detectMoodFromContext } from '@/lib/moodDetection';
@@ -306,44 +283,27 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       // Build system prompt
       const hasAttachments = attachments.length > 0;
 
-      // Get the currently open document from coursePortalStore
+      // Get the currently open document from coursePortalStore. Extraction is
+      // triggered + awaited here (bounded), so the AI is never sent a request
+      // blind to a document that is open on screen.
       let openDocumentName: string | null = null;
-      let openDocumentUrl: string | null = null;
-      let openDocumentText: string | null = null;
-      let openDocumentFullText: string | null = null;
       let openDocumentPage: number | null = null;
+      let openDocument: OpenDocumentPayload | undefined;
       try {
         const portalState = useCoursePortalStore.getState().getCourseState(courseId);
         openDocumentPage = portalState.previewPage ?? null;
         if (portalState.preview) {
           openDocumentName = portalState.preview.name;
-          openDocumentUrl = portalState.preview.url;
-
-          let cachedDoc = useDocumentContentStore.getState().getContent(portalState.preview.id);
-
-          // If extraction is still running, wait up to 15s for it to complete
-          if (cachedDoc?.extracting) {
-            for (let i = 0; i < 30; i++) {
-              await new Promise(r => setTimeout(r, 500));
-              cachedDoc = useDocumentContentStore.getState().getContent(portalState.preview.id);
-              if (!cachedDoc?.extracting) break;
-            }
-          }
-
-          if (cachedDoc && cachedDoc.text) {
-            const fullText = cachedDoc.text;
-            openDocumentFullText = fullText;
-            const currentPage = portalState.previewPage;
-
-            if (currentPage) {
-              openDocumentText = extractPageWindow(fullText, currentPage, 2);
-            } else {
-              // Show first 12k chars in system prompt; AI can read more via tool
-              openDocumentText = fullText.length > 12000
-                ? fullText.slice(0, 12000) + '\n\n[... more pages available — use read_pdf_pages tool to read specific pages ...]'
-                : fullText;
-            }
-          }
+          const content = await waitForDocument(portalState.preview, 20000);
+          openDocument = {
+            name: portalState.preview.name,
+            url: portalState.preview.url,
+            pageCount: content.pageCount,
+            currentPage: openDocumentPage,
+            isScanned: content.isScanned,
+            status: content.status,
+            fullText: content.status === 'ready' ? content.text : undefined,
+          };
         }
       } catch {}
 
@@ -625,9 +585,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           systemPrompt,
           model: aiModel,
           attachments: serializedAttachments,
-          openDocumentUrl,
-          openDocumentText,
-          openDocumentFullText,
+          openDocument,
         }),
       });
 

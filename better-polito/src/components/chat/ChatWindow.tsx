@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 import { useChatStore } from '@/stores/chatStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useCoursePortalStore, useDocumentContentStore } from '@/lib/stores/coursePortalStore';
+import { useCoursePortalStore, useDocumentContentStore, type PreviewFile } from '@/lib/stores/coursePortalStore';
+import { ensureDocumentExtracted } from '@/lib/openDocument';
 import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -72,10 +73,9 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
 
     // Track the open document and extract its text content
   const [docExtracting, setDocExtracting] = useState(false);
-  const docContentStore = useDocumentContentStore();
 
   useEffect(() => {
-    const extractDocText = async (preview: { id: string; name: string; url: string } | null) => {
+    const extractDocText = async (preview: PreviewFile | null) => {
       if (!preview) {
         setOpenDocName('');
         setDocExtracting(false);
@@ -84,61 +84,17 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
 
       setOpenDocName(preview.name);
 
-      // Check cache first
-      const cached = docContentStore.getContent(preview.id);
-      if (cached) {
-        setDocExtracting(cached.extracting);
+      // Already extracted (or permanently failed) — no spinner needed.
+      const cached = useDocumentContentStore.getState().getContent(preview.id);
+      if (cached && cached.status !== 'extracting') {
+        setDocExtracting(false);
         return;
       }
 
-      // Start extraction
+      // Trigger + await the shared extractor (de-duped with the send flow).
       setDocExtracting(true);
-      docContentStore.setExtracting(preview.id);
-
-      try {
-        if (!preview.url) {
-          docContentStore.setContent(preview.id, '');
-          setDocExtracting(false);
-          return;
-        }
-
-        const name = preview.name.toLowerCase();
-        const isPdf = name.endsWith('.pdf');
-
-        let text = '';
-        if (isPdf) {
-          const res = await fetch('/api/ai/extract-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: preview.url }),
-          });
-
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || `Extraction API error: ${res.status}`);
-          }
-          const data = await res.json();
-          if (data.error) throw new Error(data.error);
-
-          text = data.text || '';
-          if (data.isLikelyScanned) {
-            text = `[This PDF appears to be scanned/image-based. ${data.pageCount} pages. Text extraction may be incomplete.]\n\n${text}`;
-          } else {
-            text = `[This PDF has exactly ${data.pageCount} pages.]\n\n${text}`;
-          }
-        } else {
-          const response = await fetch(preview.url);
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          text = await response.text();
-        }
-
-        docContentStore.setContent(preview.id, text);
-        setDocExtracting(false);
-      } catch (error) {
-        console.error('Failed to extract document text:', error);
-        docContentStore.setContent(preview.id, '');
-        setDocExtracting(false);
-      }
+      await ensureDocumentExtracted(preview);
+      setDocExtracting(false);
     };
 
     // Subscribe to preview changes
@@ -152,7 +108,7 @@ export default function ChatWindow({ courseId }: ChatWindowProps) {
     extractDocText(preview || null);
 
     return unsubscribe;
-  }, [courseId, docContentStore]);
+  }, [courseId]);
 
   // Generate dynamic suggestion chips based on course name and open document
   const suggestions = useMemo(() => {

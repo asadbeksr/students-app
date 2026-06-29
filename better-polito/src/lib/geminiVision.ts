@@ -9,7 +9,7 @@ async function getPdfjs() {
   return pdfjs;
 }
 
-interface SerializedAttachment {
+export interface SerializedAttachment {
   fileName: string;
   fileType: string;
   fileSize: number;

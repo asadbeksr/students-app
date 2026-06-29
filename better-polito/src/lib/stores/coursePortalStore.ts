@@ -31,25 +31,35 @@ const defaultState: CoursePortalState = {
   previewPage: null,
 };
 
-// Separate non-persisted store for document content cache
+// Structured metadata for an extracted open document. Replaces the old
+// stringly-typed `{ text, extracting }` shape so callers (chat route, send
+// flow) can reason about real states instead of regexing English prose.
+export interface DocumentContent {
+  text: string;        // full extracted text (with `--- Page N ---` markers when available)
+  pageCount: number;
+  isScanned: boolean;
+  status: 'extracting' | 'ready' | 'failed';
+}
+
+// Separate non-persisted, in-memory read cache for document content.
 interface DocumentContentCache {
-  // fileId -> { text, extracting }
-  cache: Record<string, { text: string; extracting: boolean }>;
-  setExtracting: (fileId: string) => void;
-  setContent: (fileId: string, text: string) => void;
-  getContent: (fileId: string) => { text: string; extracting: boolean } | null;
+  cache: Record<string, DocumentContent>;
+  setStatus: (fileId: string, status: DocumentContent['status']) => void;
+  setContent: (fileId: string, content: DocumentContent) => void;
+  getContent: (fileId: string) => DocumentContent | null;
 }
 
 export const useDocumentContentStore = create<DocumentContentCache>((set, get) => ({
   cache: {},
-  setExtracting: (fileId) => {
-    set(state => ({
-      cache: { ...state.cache, [fileId]: { text: '', extracting: true } },
-    }));
+  setStatus: (fileId, status) => {
+    set(state => {
+      const prev = state.cache[fileId] ?? { text: '', pageCount: 0, isScanned: false, status };
+      return { cache: { ...state.cache, [fileId]: { ...prev, status } } };
+    });
   },
-  setContent: (fileId, text) => {
+  setContent: (fileId, content) => {
     set(state => ({
-      cache: { ...state.cache, [fileId]: { text, extracting: false } },
+      cache: { ...state.cache, [fileId]: content },
     }));
   },
   getContent: (fileId) => {

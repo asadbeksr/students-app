@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { getGeminiClient } from '@/lib/gemini';
-import { formatAttachmentsForGeminiFromSerialized } from '@/lib/geminiVision';
+import { formatAttachmentsForGeminiFromSerialized, type SerializedAttachment } from '@/lib/geminiVision';
 import { Type } from '@google/genai';
 import type { FunctionCall, Part, Tool } from '@google/genai';
 
@@ -25,6 +25,40 @@ async function fetchDocumentNative(
   } catch {
     return null;
   }
+}
+
+/** Structured open-document metadata sent by the client (see lib/openDocument.ts). */
+interface OpenDocument {
+  name: string;
+  url: string;
+  pageCount: number;
+  currentPage: number | null;
+  isScanned: boolean;
+  status: 'ready' | 'extracting' | 'failed';
+  fullText?: string;
+}
+
+/** Extract a window of pages around `centerPage` from extracted PDF text. */
+function extractPageWindow(fullText: string, centerPage: number, radius: number): string {
+  const startPage = Math.max(1, centerPage - radius);
+  const endPage = centerPage + radius;
+  const pageRegex = /--- Page (\d+) ---/g;
+
+  const sections: { page: number; start: number }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pageRegex.exec(fullText)) !== null) {
+    sections.push({ page: parseInt(match[1], 10), start: match.index });
+  }
+
+  const inWindow = sections.filter(s => s.page >= startPage && s.page <= endPage);
+  if (!inWindow.length) return fullText;
+
+  const first = inWindow[0].start;
+  const lastSection = inWindow[inWindow.length - 1];
+  const nextIdx = sections.findIndex(s => s.page > lastSection.page);
+  const end = nextIdx >= 0 ? sections[nextIdx].start : fullText.length;
+
+  return `[Showing pages ${startPage}–${Math.min(endPage, lastSection.page)} of the document]\n\n` + fullText.slice(first, end).trim();
 }
 
 /** Parse "--- Page N ---\ntext" format into a page map */
@@ -62,15 +96,25 @@ export async function POST(req: Request) {
     const ai = getGeminiClient();
     const {
       messages, systemPrompt, model, attachments,
-      openDocumentUrl, openDocumentText, openDocumentFullText,
-    } = await req.json();
+      openDocument,
+    } = await req.json() as {
+      messages?: Array<{ role: string; content: string }>;
+      systemPrompt?: string;
+      model?: string;
+      attachments?: SerializedAttachment[];
+      openDocument?: OpenDocument;
+    };
 
     const selectedModel = model || 'gemini-flash-latest';
     let enrichedSystemPrompt = systemPrompt || '';
 
-    // Build page map from the full extracted text (for the tool)
-    const pageMap = openDocumentFullText ? buildPageMap(openDocumentFullText) : {};
-    const hasTool = openDocumentFullText && Object.keys(pageMap).length > 0;
+    // The full extracted text (with page markers) is only present when the
+    // document finished extracting successfully.
+    const docFullText = openDocument?.status === 'ready' ? (openDocument.fullText ?? '') : '';
+
+    // Build page map from the full extracted text (for the read_pdf_pages tool)
+    const pageMap = docFullText ? buildPageMap(docFullText) : {};
+    const hasTool = docFullText.length > 0 && Object.keys(pageMap).length > 0;
 
     // Build conversation contents
     const contents: Array<{ role: string; parts: Part[] }> = [];
@@ -86,26 +130,33 @@ export async function POST(req: Request) {
       ? formatAttachmentsForGeminiFromSerialized(userText, attachments)
       : [{ text: userText }];
 
-    // Native PDF for scanned docs
+    // Build the "Currently Open Document Content" section from structured
+    // fields and explicit status — no prose string-matching.
     let successfullyUsedNativePdf = false;
-    if (openDocumentText?.includes('scanned/image-based') && openDocumentUrl) {
-      const reqHeaders = await headers();
-      const nativePdfPart = await fetchDocumentNative(openDocumentUrl, reqHeaders);
-      if (nativePdfPart) {
-        userParts.push(nativePdfPart);
-        successfullyUsedNativePdf = true;
-        const pageMatch = openDocumentText.match(/has exactly (\d+)\s+page|(\d+)\s+page/i);
-        const countStr = pageMatch ? (pageMatch[1] || pageMatch[2]) : null;
-        enrichedSystemPrompt += `\n\n## Currently Open Document Content\nThe student has a scanned document open.${countStr ? `\nThis document has EXACTLY ${countStr} pages.` : ''} The RAW native PDF file has been attached directly to this context for you to read via your native vision/OCR capabilities! NEVER guess or hallucinate.`;
-      }
-    }
+    if (openDocument) {
+      const pageCountLine = openDocument.pageCount > 0
+        ? `\nThis document has EXACTLY ${openDocument.pageCount} pages.`
+        : '';
 
-    if (!successfullyUsedNativePdf) {
-      const docTextToUse = openDocumentText || '';
-      if (docTextToUse) {
-        const pageMatch = docTextToUse.match(/has exactly (\d+)\s+page|(\d+)\s+page/i);
-        const countStr = pageMatch ? (pageMatch[1] || pageMatch[2]) : null;
-        enrichedSystemPrompt += `\n\n## Currently Open Document Content\nThe student has this document open.${countStr ? `\nThis document has EXACTLY ${countStr} pages.` : ''}
+      // Scanned/image-based PDFs: attach the raw file for native vision/OCR.
+      if (openDocument.status === 'ready' && openDocument.isScanned && openDocument.url) {
+        const reqHeaders = await headers();
+        const nativePdfPart = await fetchDocumentNative(openDocument.url, reqHeaders);
+        if (nativePdfPart) {
+          userParts.push(nativePdfPart);
+          successfullyUsedNativePdf = true;
+          enrichedSystemPrompt += `\n\n## Currently Open Document Content\nThe student has a scanned document open.${pageCountLine} The RAW native PDF file has been attached directly to this context for you to read via your native vision/OCR capabilities! NEVER guess or hallucinate.`;
+        }
+      }
+
+      if (!successfullyUsedNativePdf) {
+        if (openDocument.status === 'ready' && docFullText) {
+          const partial = openDocument.currentPage
+            ? extractPageWindow(docFullText, openDocument.currentPage, 2)
+            : (docFullText.length > 12000
+                ? docFullText.slice(0, 12000) + '\n\n[... more pages available — use read_pdf_pages tool to read specific pages ...]'
+                : docFullText);
+          enrichedSystemPrompt += `\n\n## Currently Open Document Content\nThe student has this document open.${pageCountLine}
 ${hasTool ? 'You have access to a `read_pdf_pages` tool — use it to read any page not already shown below.' : ''}
 CRITICAL RULES:
 1. Text is divided by "--- Page N ---" markers. Only summarize the exact text under the requested marker.
@@ -113,9 +164,12 @@ CRITICAL RULES:
 3. NEVER guess page content based on filename or topic.
 
 DOCUMENT TEXT (partial):
-${docTextToUse}`;
-      } else if (openDocumentUrl) {
-        enrichedSystemPrompt += `\n\n## Currently Open Document Content\n[SYSTEM ERROR: Failed to extract text. Inform the student you cannot read the document.]`;
+${partial}`;
+        } else if (openDocument.status === 'extracting') {
+          enrichedSystemPrompt += `\n\n## Currently Open Document Content\nThe student has a document open, but it is still being processed and its text is not available yet. Tell the student the document is still loading and ask them to send their question again in a moment. Do NOT claim you are unable to read the document.`;
+        } else {
+          enrichedSystemPrompt += `\n\n## Currently Open Document Content\nThe student has a document open, but its text could not be extracted (it may be an unsupported or corrupted file). Honestly tell the student you cannot read this document, and offer to help if they paste the relevant text or ask a general question.`;
+        }
       }
     }
 
