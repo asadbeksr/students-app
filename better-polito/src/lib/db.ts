@@ -6,18 +6,40 @@ import type {
   ChatMessage,
   ChatAttachment,
   Conversation,
-  MockExam,
-  ExamAttempt,
   AppSettings,
   PageCache,
   GifCacheEntry,
 } from '@/types';
+import type { AttemptConfig } from '@/types/exam';
+import type { Attempt } from './exam/attempt';
 
 export interface CourseProgress {
   courseId: string;
   completedFileIds: string[];
   folderTags: Record<string, string>; // folderId -> tag name
   tagDefs?: Record<string, string>;   // tag name -> hex color
+}
+
+// Active (in-progress) mock-exam attempt, one row per subject+mode.
+export interface ActiveExamAttempt {
+  id: string; // `${subject}:${mode}`
+  attempt: Attempt;
+}
+
+// A submitted mock-exam attempt, archived for review. The full attempt is
+// stored so a past attempt can be replayed; list summaries are derived on read.
+export interface ArchivedExamAttempt {
+  id: string;      // String(attempt.startedAt)
+  subject: string;
+  mode: string;
+  startedAt: number;
+  attempt: Attempt;
+}
+
+// Saved mock-exam config (filters/scoring) per subject+mode.
+export interface SavedExamConfig {
+  id: string; // `${subject}:${mode}`
+  config: Partial<AttemptConfig>;
 }
 
 class StudyBuddyDB extends Dexie {
@@ -27,12 +49,13 @@ class StudyBuddyDB extends Dexie {
   chatMessages!: Table<ChatMessage>;
   chatAttachments!: Table<ChatAttachment>;
   conversations!: Table<Conversation>;
-  mockExams!: Table<MockExam>;
-  examAttempts!: Table<ExamAttempt>;
   settings!: Table<AppSettings>;
   pageCache!: Table<PageCache>;
   gifCache!: Table<GifCacheEntry>;
   courseProgress!: Table<CourseProgress>;
+  examAttempts!: Table<ActiveExamAttempt>;
+  examHistory!: Table<ArchivedExamAttempt>;
+  examConfigs!: Table<SavedExamConfig>;
 
   constructor() {
     super('StudyBuddyDB');
@@ -245,32 +268,27 @@ class StudyBuddyDB extends Dexie {
         }
       } catch { /* ignore migration errors */ }
     });
+
+    // Version 10: Drop the legacy AI mock-exam tables (different feature, now
+    // removed). Setting them to null deletes the old object stores and their
+    // data, clearing the way for the new exam-practice stores in version 11.
+    this.version(10).stores({
+      mockExams: null,
+      examAttempts: null,
+    });
+
+    // Version 11: Persist the exam-practice flow (lib/exam/*) in IndexedDB
+    // instead of localStorage, which was hitting quota on large attempts.
+    //   examAttempts — active in-progress attempt, keyed `${subject}:${mode}`
+    //   examHistory  — archived submitted attempts, queried by [subject+mode]
+    //   examConfigs  — saved filter/scoring config, keyed `${subject}:${mode}`
+    this.version(11).stores({
+      examAttempts: 'id',
+      examHistory: 'id, [subject+mode], startedAt',
+      examConfigs: 'id',
+    });
   }
 
-  async initializeSettings() {
-    const existing = await this.settings.get('settings');
-    if (!existing) {
-      await this.settings.add({
-        id: 'settings',
-        aiModel: 'gemini-flash-latest',
-        customSystemPrompt: null,
-        language: 'en',
-        lastBackupAt: null,
-        aiPersonality: 'broski',
-        personalityIntensity: 'c',
-        theme: 'light',
-        gifsEnabled: true,
-        giphyApiKey: null,
-        visualMode: {
-          enabled: true,
-          animationsEnabled: true,
-          autoExpandBlocks: true,
-          preferredBlockSize: 'normal',
-        },
-      });
-    }
-
-  }
 }
 
 let _db: StudyBuddyDB | null = null;
@@ -281,7 +299,6 @@ function getDB(): StudyBuddyDB {
       throw new Error('Dexie (IndexedDB) is not available on the server.');
     }
     _db = new StudyBuddyDB();
-    _db.initializeSettings().catch(console.error);
   }
   return _db;
 }
