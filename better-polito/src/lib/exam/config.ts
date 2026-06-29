@@ -1,9 +1,8 @@
+import { db } from '@/lib/db';
 import type { AttemptConfig, CatalogEntry, Difficulty, ExamMode, ModeConfig } from '@/types/exam';
 
-const STORAGE_PREFIX = 'mock-config:';
-
-export function configStorageKey(subject: string, mode: ExamMode): string {
-  return `${STORAGE_PREFIX}${subject}:${mode}`;
+function configKey(subject: string, mode: ExamMode): string {
+  return `${subject}:${mode}`;
 }
 
 export function defaultConfig(modeCfg: ModeConfig): AttemptConfig {
@@ -21,22 +20,22 @@ export function defaultConfig(modeCfg: ModeConfig): AttemptConfig {
   };
 }
 
-export function loadSavedConfig(subject: string, mode: ExamMode): Partial<AttemptConfig> | null {
+export async function loadSavedConfig(subject: string, mode: ExamMode): Promise<Partial<AttemptConfig> | null> {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(configStorageKey(subject, mode));
-    return raw ? (JSON.parse(raw) as Partial<AttemptConfig>) : null;
+    const row = await db.examConfigs.get(configKey(subject, mode));
+    return row?.config ?? null;
   } catch {
     return null;
   }
 }
 
-export function saveConfig(subject: string, mode: ExamMode, config: AttemptConfig): void {
+export async function saveConfig(subject: string, mode: ExamMode, config: AttemptConfig): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(configStorageKey(subject, mode), JSON.stringify(config));
+    await db.examConfigs.put({ id: configKey(subject, mode), config });
   } catch {
-    /* ignore quota errors */
+    /* ignore write errors */
   }
 }
 

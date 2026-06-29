@@ -23,7 +23,10 @@ const BATCH_SIZE = 5;
  * Extracts text from a single page using geometric sorting (top-to-bottom, left-to-right)
  * to preserve natural reading order and paragraphs.
  */
-async function extractPageTextGeometrically(pdf: any, pageNum: number): Promise<string> {
+type PdfTextItem = { str: string; transform: number[]; height?: number; hasEOL?: boolean };
+type PdfDocumentLike = { getPage: (pageNum: number) => Promise<{ getTextContent: () => Promise<{ items: unknown[] }> }> };
+
+async function extractPageTextGeometrically(pdf: PdfDocumentLike, pageNum: number): Promise<string> {
   try {
     const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
@@ -32,9 +35,9 @@ async function extractPageTextGeometrically(pdf: any, pageNum: number): Promise<
 
     // Filter valid text items and attach their Y/X coordinates from the transform matrix
     // transform matrix: [scaleX, skewY, skewX, scaleY, translateX (X), translateY (Y)]
-    const textItems = content.items
-      .filter((item: any) => 'str' in item && item.str.trim() !== '')
-      .map((item: any) => ({
+    const textItems = (content.items as PdfTextItem[])
+      .filter((item) => 'str' in item && item.str.trim() !== '')
+      .map((item) => ({
         str: item.str,
         x: item.transform[4],
         y: item.transform[5],
@@ -44,7 +47,7 @@ async function extractPageTextGeometrically(pdf: any, pageNum: number): Promise<
 
     // Sort top-to-bottom (highest Y to lowest Y in PDF coordinate system)
     // If Y is roughly the same (within half a line height), sort left-to-right
-    textItems.sort((a: any, b: any) => {
+    textItems.sort((a, b) => {
       const yDiff = b.y - a.y;
       if (Math.abs(yDiff) > a.height * 0.5) {
         return yDiff; // Sort by Y
@@ -203,8 +206,8 @@ export async function getPdfInfo(pdfData: ArrayBuffer): Promise<{
 
     return {
       pageCount: pdf.numPages,
-      title: (metadata.info as any)?.Title,
-      author: (metadata.info as any)?.Author,
+      title: (metadata.info as { Title?: string; Author?: string } | undefined)?.Title,
+      author: (metadata.info as { Title?: string; Author?: string } | undefined)?.Author,
     };
   } catch (error) {
     throw new Error(`Failed to get PDF info: ${(error as Error).message}`);

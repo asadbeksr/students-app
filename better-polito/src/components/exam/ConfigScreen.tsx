@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ListChecks } from 'lucide-react';
 import Link from 'next/link';
 import type {
@@ -53,8 +52,15 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
   const [showAllSources, setShowAllSources] = useState(false);
 
   useEffect(() => {
-    const saved = loadSavedConfig(subject.slug, mode);
-    setConfig(mergeConfig(initialConfig, saved));
+    let cancelled = false;
+    void (async () => {
+      const saved = await loadSavedConfig(subject.slug, mode);
+      if (cancelled) return;
+      setConfig(mergeConfig(initialConfig, saved));
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [subject.slug, mode, initialConfig]);
 
   useEffect(() => {
@@ -128,7 +134,7 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
 
   function handleStart() {
     const finalConfig = { ...config, count: effectiveCount };
-    saveConfig(subject.slug, mode, finalConfig);
+    void saveConfig(subject.slug, mode, finalConfig);
     void onStart(finalConfig);
   }
 
@@ -528,7 +534,7 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
             </button>
 
             <p className="summary-note">
-              Once started, the timer runs. You can't regenerate questions until the attempt
+              Once started, the timer runs. You can&apos;t regenerate questions until the attempt
               finishes or time expires.
             </p>
           </div>

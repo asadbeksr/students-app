@@ -6,13 +6,15 @@ export const SURVEYS_QUERY_KEY = ['surveys'];
 
 export const useGetSurveys = () => useQuery({
   queryKey: SURVEYS_QUERY_KEY,
-  queryFn: () => (getApiClient() as any).getSurveys().then((r: any) => r.data ?? []),
+  queryFn: () => getApiClient().getSurveys().then((r) => r.data ?? []),
 });
+
+type CpdSurvey = { isMandatory?: boolean; isCompiled?: boolean };
 
 export const useGetCpdSurveys = () => {
   const query = useGetSurveys();
   return {
     ...query,
-    data: (query.data as any[])?.filter((s: any) => s.isMandatory && !s.isCompiled) ?? [],
+    data: (query.data as CpdSurvey[])?.filter((s) => s.isMandatory && !s.isCompiled) ?? [],
   };
 };

@@ -5,8 +5,6 @@ import {
   type Attempt,
   type AttemptScore,
   type HistoryEntry,
-  appendHistory,
-  attemptToHistory,
   clearAttempt,
   isFinished,
   loadAttempt,
@@ -31,14 +29,21 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loaded = loadAttempt(subject.slug, mode);
-    if (loaded && isFinished(loaded)) {
-      const finishedA = loaded.submittedAt ? loaded : { ...loaded, submittedAt: loaded.startedAt + loaded.durationMin * 60_000 };
-      void gradeAndPersist(finishedA);
-      setAttempt(null);
-      return;
-    }
-    setAttempt(loaded);
+    let cancelled = false;
+    void (async () => {
+      const loaded = await loadAttempt(subject.slug, mode);
+      if (cancelled) return;
+      if (loaded && isFinished(loaded)) {
+        const finishedA = loaded.submittedAt ? loaded : { ...loaded, submittedAt: loaded.startedAt + loaded.durationMin * 60_000 };
+        void gradeAndPersist(finishedA);
+        setAttempt(null);
+        return;
+      }
+      setAttempt(loaded);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [subject.slug, mode]);
 
   function update(updater: (a: Attempt) => Attempt) {
@@ -49,7 +54,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
         void gradeAndPersist(next);
         return next;
       }
-      saveAttempt(next);
+      void saveAttempt(next);
       return next;
     });
   }
@@ -72,17 +77,15 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
       } catch {}
     }
     const finalA: Attempt = { ...a, graded, gradeScore };
-    const entry = attemptToHistory(finalA);
-    if (entry) {
-      appendHistory(entry);
-      saveHistoricalAttempt(finalA);
-    }
-    clearAttempt(finalA.subject, finalA.mode);
+    // saveHistoricalAttempt no-ops unless the attempt is submitted, so the
+    // history table only ever holds finished attempts.
+    await saveHistoricalAttempt(finalA);
+    await clearAttempt(finalA.subject, finalA.mode);
     setAttempt(finalA);
   }
 
-  function reviewPastAttempt(id: string) {
-    const loaded = loadHistoricalAttempt(id);
+  async function reviewPastAttempt(id: string) {
+    const loaded = await loadHistoricalAttempt(id);
     if (loaded) {
       setAttempt(loaded);
     } else {
@@ -119,7 +122,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
           language: config.language,
         },
       };
-      saveAttempt(a);
+      await saveAttempt(a);
       setAttempt(a);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start');
@@ -131,7 +134,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
   async function retrySelected(questionIds: string[]) {
     if (questionIds.length === 0) return;
     const prev = attempt;
-    clearAttempt(subject.slug, mode);
+    await clearAttempt(subject.slug, mode);
     setAttempt(null);
     const cfg: AttemptConfig = {
       topics: [],
@@ -153,7 +156,7 @@ export function ExamGate({ subject, mode, modeCfg }: Props) {
     if (attempt && !isFinished(attempt)) {
       if (!confirm('Delete current attempt? This action cannot be undone.')) return;
     }
-    clearAttempt(subject.slug, mode);
+    void clearAttempt(subject.slug, mode);
     setAttempt(null);
   }
 
@@ -205,8 +208,16 @@ function PastAttempts({ subject, mode, onReview }: { subject: string; mode: Exam
   const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
 
   useEffect(() => {
-    const list = loadHistory(subject, mode).sort((a, b) => b.startedAt - a.startedAt);
-    setEntries(list);
+    let cancelled = false;
+    void (async () => {
+      const list = await loadHistory(subject, mode);
+      if (cancelled) return;
+      list.sort((a, b) => b.startedAt - a.startedAt);
+      setEntries(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [subject, mode]);
 
   if (!entries || entries.length === 0) return null;

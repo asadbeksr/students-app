@@ -450,7 +450,7 @@ export function QuestionBank({ subject, questions, facets }: Props) {
         passScore: data.passScore,
         attemptToken: data.attemptToken,
       };
-      saveAttempt(a);
+      await saveAttempt(a);
       router.push(`/mock/${subject.slug}/${mode}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error starting attempt');

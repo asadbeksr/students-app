@@ -27,7 +27,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       let settings = await db.settings.get('settings');
 
-      // Initialize if not exists
+      // Initialize if not exists. Use `put` (not `add`) so two concurrent
+      // first-load calls can't collide on a ConstraintError — both simply
+      // write the same complete default record.
       if (!settings) {
         settings = {
           id: 'settings',
@@ -47,8 +49,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             preferredBlockSize: 'normal',
           },
           manimMode: true,
+          imageGeneration: false,
+          videoGeneration: false,
         };
-        await db.settings.add(settings);
+        await db.settings.put(settings);
       }
 
       // Migrate existing settings without personality fields

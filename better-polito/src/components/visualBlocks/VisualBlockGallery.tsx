@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-// @ts-ignore - katex types may not be perfect for ESM
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { IdealGasLaw } from "./blocks/IdealGasLaw";
@@ -22,7 +21,7 @@ interface VisualExample {
   type: MathBlockType;
   title: string;
   latex: string;
-  component: React.ComponentType<any>;
+  component: React.ComponentType<{ latex: string; fallback: React.ReactNode; initialVariables?: Record<string, number> }>;
   category: Category;
   description: string;
 }

@@ -11,7 +11,7 @@ type PolitoRouteContext = {
 async function handler(req: NextRequest, context: PolitoRouteContext) {
   const { path } = await context.params;
   const session = await getServerSession(authOptions);
-  const token = (session as any)?.accessToken;
+  const token = (session as { accessToken?: string } | null)?.accessToken;
 
   const apiPath = path.join('/');
   const search = req.nextUrl.search ?? '';

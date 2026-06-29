@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       { text: SYSTEM_PROMPT },
     ];
 
-    const result = await (ai.models as any).generateContent({
+    const result = await ai.models.generateContent({
       model: 'gemini-flash-latest',
       contents: [{ role: 'user', parts }],
       config: { maxOutputTokens: 65536 },

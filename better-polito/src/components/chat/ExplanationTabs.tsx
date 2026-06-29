@@ -9,7 +9,8 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { Lightbulb, CheckCircle2, XCircle, ArrowRight, HelpCircle } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import { visit } from 'unist-util-visit';
-import type { Root } from 'hast';
+import type { Root, Element, Text } from 'hast';
+import type { Components } from 'react-markdown';
 
 interface ExplanationTabsProps {
   message: ChatMessage;
@@ -22,22 +23,58 @@ import { parseStreamingSegments, hasVisualizations } from '@/lib/parseMessageCon
 import { VisualizationFrame, VisualizationSkeleton } from '@/components/chat/VisualizationFrame';
 import { ManimFrame, ManimSkeleton } from '@/components/chat/ManimFrame';
 
+// Loose hast node shape for the traversal helpers below.
+type HastNode = {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+};
+
+type LatexBlock = { original: string; latex: string };
+
+interface ExplanationStep { stepNumber?: number; title?: string; content?: string; example?: string }
+interface PracticeOption { id: string; text: string }
+interface PracticeQuestion { question?: string; options: PracticeOption[]; correctAnswer?: string; explanation?: string }
+interface ExplanationMode {
+  plainExplanation?: string;
+  analogy?: string;
+  visualDescription?: string;
+  scientificTerm?: string;
+  steps?: ExplanationStep[];
+  commonMistakes?: string[];
+  examRelevance?: string;
+  definition?: string;
+  notation?: string;
+  conditions?: string[];
+  relatedConcepts?: string[];
+}
+interface ExplanationData {
+  keyTakeaway?: string;
+  practiceQuestion?: PracticeQuestion;
+  suggestedFollowUp?: string[];
+  intuitive: ExplanationMode;
+  structured: ExplanationMode;
+  formal: ExplanationMode;
+}
+
 // Custom rehype plugin to preserve original LaTeX in data attributes
-function rehypePreserveLatex(): any {
-  return (tree: any) => {
-    visit(tree, 'element', (node: any) => {
+function rehypePreserveLatex() {
+  return (tree: Root) => {
+    visit(tree, 'element', (node: Element) => {
       if (node.tagName === 'span' || node.tagName === 'div') {
         const className = (node.properties?.className as string[]) || [];
         if (className.includes('math') || className.includes('math-display') || className.includes('katex-display')) {
-          const annotation = node.children?.find(
-            (child: any) => child.type === 'element' && child.tagName === 'annotation'
-          ) as any;
+          const annotation = node.children.find(
+            (child): child is Element => child.type === 'element' && child.tagName === 'annotation'
+          );
 
           if (annotation) {
-            const latex = annotation.children?.find((c: any) => c.type === 'text')?.value;
+            const textChild = annotation.children.find((c): c is Text => c.type === 'text');
+            const latex = textChild?.value;
             if (latex) {
-              if (!node.properties) node.properties = {};
-              (node.properties as any)['data-latex'] = latex;
+              node.properties['data-latex'] = latex;
             }
           }
         }
@@ -47,16 +84,15 @@ function rehypePreserveLatex(): any {
 }
 
 // Custom rehype plugin to replace math display divs with custom component markers
-function rehypeReplaceMathBlocks(): any {
-  return (tree: any) => {
-    visit(tree, 'element', (node: any) => {
+function rehypeReplaceMathBlocks() {
+  return (tree: Root) => {
+    visit(tree, 'element', (node: Element) => {
       if (node.tagName === 'div') {
         const className = (node.properties?.className as string[]) || [];
         const classNameStr = Array.isArray(className) ? className.join(' ') : (className || '');
 
         if (classNameStr && (classNameStr.includes('math-display') || classNameStr.includes('katex-display'))) {
-          if (!node.properties) node.properties = {};
-          (node.properties as any)['data-math-block'] = 'true';
+          node.properties['data-math-block'] = 'true';
         }
       }
     });
@@ -65,12 +101,11 @@ function rehypeReplaceMathBlocks(): any {
 
 // Component to render text with LaTeX math support
 function MathText({ children, isStreaming = false, usedLatexTracker }: {
-  children: string;
+  children?: string | null;
   isStreaming?: boolean;
   messageId?: string;
   usedLatexTracker?: Set<string>;
 }) {
-  if (!children) return null;
   const { settings } = useSettingsStore();
   const visualModeEnabled = settings?.visualMode?.enabled ?? true;
 
@@ -80,7 +115,7 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
   // Extract LaTeX from $$...$$ blocks before processing for fallback matching
   const latexBlocks = useMemo(() => {
     const blocks: Array<{ original: string; latex: string }> = [];
-    if (shouldRenderVisualBlocks) {
+    if (shouldRenderVisualBlocks && children) {
       const matches = Array.from(children.matchAll(/\$\$([^$]+)\$\$/g));
       for (let i = 0; i < matches.length; i++) {
         const match = matches[i];
@@ -93,11 +128,14 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
   const localTrackerRef = useRef<Set<string>>(new Set());
   const tracker = usedLatexTracker || localTrackerRef.current;
 
-  const markdownProps: any = {
+  // Hooks must run unconditionally — guard after them, not before.
+  if (!children) return null;
+
+  const markdownProps = {
     remarkPlugins: [remarkMath, remarkGfm],
     rehypePlugins: [rehypeKatex, rehypePreserveLatex, rehypeReplaceMathBlocks],
     components: {
-        div: ({ node, className, children: divChildren, ...props }: any) => {
+        div: ({ node, className, children: divChildren, ...props }) => {
           const classNameStr = Array.isArray(className) ? className.join(' ') : (className || '');
 
           const isDisplayMathDiv = classNameStr && (
@@ -106,16 +144,16 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
             (classNameStr.includes('katex') && !classNameStr.includes('katex-html'))
           );
 
-          const hasMathChildren = node?.children?.some((child: any) => {
-            const childClassName = child.properties?.className;
-            const childClassNameStr = Array.isArray(childClassName) ? childClassName.join(' ') : (childClassName || '');
+          const hasMathChildren = node?.children?.some((child) => {
+            const childClassName = (child as Element).properties?.className;
+            const childClassNameStr = Array.isArray(childClassName) ? childClassName.join(' ') : String(childClassName || '');
             return childClassNameStr && (childClassNameStr.includes('katex') || childClassNameStr.includes('math'));
           });
 
-          const hasMathBlockMarker = (node?.properties as any)?.['data-math-block'] === 'true';
+          const hasMathBlockMarker = node?.properties?.['data-math-block'] === 'true';
 
           if ((hasMathBlockMarker || isDisplayMathDiv || hasMathChildren) && shouldRenderVisualBlocks) {
-            let latex = extractLatexFromNode(node, latexBlocks);
+            const latex = extractLatexFromNode(node, latexBlocks);
 
             let latexToUse: string | null = null;
 
@@ -150,14 +188,14 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
           }
           return <div className={className} {...props}>{divChildren}</div>;
         },
-        span: ({ className, children: spanChildren, ...props }: any) => {
+        span: ({ className, children: spanChildren, ...props }) => {
           return <span className={className} {...props}>{spanChildren}</span>;
         },
-        p: ({ node, children, ...props }: any) => {
+        p: ({ node, children }) => {
           if (shouldRenderVisualBlocks && latexBlocks.length > 0) {
-            const hasMathDisplay = node?.children?.some((child: any) => {
-              const className = child.properties?.className;
-              const classNameStr = Array.isArray(className) ? className.join(' ') : (className || '');
+            const hasMathDisplay = node?.children?.some((child) => {
+              const className = (child as Element).properties?.className;
+              const classNameStr = Array.isArray(className) ? className.join(' ') : String(className || '');
               return classNameStr && (
                 classNameStr.includes('katex-display') ||
                 classNameStr.includes('math-display') ||
@@ -166,9 +204,9 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
             });
 
             if (hasMathDisplay) {
-              const mathChild = node?.children?.find((child: any) => {
-                const className = child.properties?.className;
-                const classNameStr = Array.isArray(className) ? className.join(' ') : (className || '');
+              const mathChild = node?.children?.find((child) => {
+                const className = (child as Element).properties?.className;
+                const classNameStr = Array.isArray(className) ? className.join(' ') : String(className || '');
                 return classNameStr && (
                   classNameStr.includes('katex-display') ||
                   classNameStr.includes('math-display') ||
@@ -194,7 +232,7 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
           }
           return <span className="block mb-4 leading-[1.7]">{children}</span>;
         },
-        code: ({ children, className }: any) => {
+        code: ({ children, className }) => {
           const isInline = !className;
           return isInline ? (
             <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground">{children}</code>
@@ -202,10 +240,10 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
             <code className="block bg-muted p-4 rounded text-sm font-mono overflow-x-auto leading-relaxed">{children}</code>
           );
         },
-        ul: ({ children }: any) => <ul className="space-y-2 mb-4">{children}</ul>,
-        ol: ({ children }: any) => <ol className="space-y-2 mb-4">{children}</ol>,
-        li: ({ children }: any) => <li className="leading-[1.7]">{children}</li>,
-        a: ({ node, href, children, ...props }: any) => {
+        ul: ({ children }) => <ul className="space-y-2 mb-4">{children}</ul>,
+        ol: ({ children }) => <ol className="space-y-2 mb-4">{children}</ol>,
+        li: ({ children }) => <li className="leading-[1.7]">{children}</li>,
+        a: ({ href, children, ...props }) => {
           if (href?.startsWith('#pdf-')) {
             return (
               <button
@@ -221,7 +259,7 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
           }
           return <a href={href} {...props} className="text-primary hover:underline" target={href?.startsWith('http') ? '_blank' : undefined}>{children}</a>
         }
-    }
+    } satisfies Components,
   };
 
   if (hasVisualizations(children)) {
@@ -230,7 +268,7 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
         {parseStreamingSegments(children).map((seg, i) => {
           if (seg.type === 'text') {
             return (
-              <ReactMarkdown key={i} {...markdownProps as any}>
+              <ReactMarkdown key={i} {...markdownProps}>
                 {seg.content}
               </ReactMarkdown>
             );
@@ -250,31 +288,30 @@ function MathText({ children, isStreaming = false, usedLatexTracker }: {
   }
 
   return (
-    <ReactMarkdown {...markdownProps as any}>
+    <ReactMarkdown {...markdownProps}>
       {children}
     </ReactMarkdown>
   );
 }
 
 // Helper to extract LaTeX from rendered KaTeX node
-function extractLatexFromNode(node: any, latexBlocks?: Array<{ original: string; latex: string }>): string | null {
+function extractLatexFromNode(node: HastNode | null | undefined, latexBlocks?: LatexBlock[]): string | null {
   try {
     if (node?.properties) {
-      const dataLatex = (node.properties as any)?.['data-latex'] ||
-                       (node.properties as any)?.['data-original-latex'];
+      const dataLatex = node.properties['data-latex'] || node.properties['data-original-latex'];
       if (dataLatex) {
-        const latex = typeof dataLatex === 'string' ? dataLatex : dataLatex.value;
+        const latex = typeof dataLatex === 'string' ? dataLatex : (dataLatex as { value?: string }).value;
         if (latex) return latex;
       }
     }
 
-    const queue = [node];
+    const queue: HastNode[] = node ? [node] : [];
     while (queue.length > 0) {
       const current = queue.shift();
 
       if (current?.tagName === 'annotation') {
         if (current.children && Array.isArray(current.children)) {
-          const textNode = current.children.find((c: any) => c.type === 'text');
+          const textNode = current.children.find((c) => c.type === 'text');
           if (textNode?.value) {
             return textNode.value;
           }
@@ -282,8 +319,8 @@ function extractLatexFromNode(node: any, latexBlocks?: Array<{ original: string;
             return current.children[0].value;
           }
         }
-        if (current.properties && (current.properties as any).encoding === 'application/x-tex') {
-          const textNode = current.children?.find((c: any) => c.type === 'text');
+        if (current.properties && current.properties.encoding === 'application/x-tex') {
+          const textNode = current.children?.find((c) => c.type === 'text');
           if (textNode?.value) {
             return textNode.value;
           }
@@ -322,7 +359,7 @@ function extractLatexFromNode(node: any, latexBlocks?: Array<{ original: string;
 }
 
 // Helper to extract text content from a node
-function extractTextFromNode(node: any): string {
+function extractTextFromNode(node: HastNode | null | undefined): string {
   if (!node) return '';
   if (node.type === 'text' && node.value) {
     return node.value;
@@ -334,13 +371,18 @@ function extractTextFromNode(node: any): string {
 }
 
 // Try to extract explanation modes from message
-function getExplanationData(message: ChatMessage) {
+function getExplanationData(message: ChatMessage): ExplanationData | null {
   if (message.explanationModes?.intuitive) {
     try {
+      const modes = message.explanationModes as {
+        keyTakeaway?: string;
+        practiceQuestion?: PracticeQuestion;
+        suggestedFollowUp?: string[];
+      };
       return {
-        keyTakeaway: (message.explanationModes as any).keyTakeaway,
-        practiceQuestion: (message.explanationModes as any).practiceQuestion,
-        suggestedFollowUp: (message.explanationModes as any).suggestedFollowUp,
+        keyTakeaway: modes.keyTakeaway,
+        practiceQuestion: modes.practiceQuestion,
+        suggestedFollowUp: modes.suggestedFollowUp,
         intuitive: JSON.parse(message.explanationModes.intuitive),
         structured: JSON.parse(message.explanationModes.structured),
         formal: JSON.parse(message.explanationModes.formal),
@@ -381,7 +423,7 @@ function getExplanationData(message: ChatMessage) {
 }
 
 function PracticeQuestionCard({ question, isStreaming, messageId, usedLatexTracker }: {
-  question: any;
+  question: PracticeQuestion;
   isStreaming?: boolean;
   messageId?: string;
   usedLatexTracker?: Set<string>;
@@ -416,7 +458,7 @@ function PracticeQuestionCard({ question, isStreaming, messageId, usedLatexTrack
         </div>
 
         <div className="space-y-2">
-          {question.options.map((opt: any) => {
+          {question.options.map((opt) => {
             let itemClass = "w-full text-left p-3 rounded border transition-colors flex items-start gap-3 ";
 
             if (issubmitted) {
@@ -596,7 +638,7 @@ export default function ExplanationTabs({ message, isStreaming = false }: Explan
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-4 uppercase tracking-wider">Steps</h4>
               <div className="space-y-5">
-                {structured.steps.map((step: any, i: number) => (
+                {structured.steps.map((step, i: number) => (
                   <div key={i} className="pl-4 border-l border-border">
                     <h5 className="font-medium text-foreground mb-2">
                       {step.stepNumber}. {step.title}

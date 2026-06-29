@@ -1,11 +1,14 @@
 'use client';
 import { useGetNews } from '@/lib/queries/newsHooks';
 import { useGetJobOffers } from '@/lib/queries/jobOfferHooks';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@radix-ui/react-tabs';
 import { Newspaper, Briefcase } from 'lucide-react';
+
+type NewsItem = { id?: number | string; title?: string; content?: string; description?: string; publishedAt?: string; category?: string };
+type JobOffer = { id?: number | string; title?: string; company?: string; expiresAt?: string; type?: string };
 
 export default function ServicesPage() {
   const { data: news = [], isLoading: newsLoading } = useGetNews();
@@ -37,11 +40,11 @@ export default function ServicesPage() {
         <TabsContent value="news">
           {newsLoading ? (
             <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}</div>
-          ) : (news as any[]).length === 0 ? (
+          ) : (news as NewsItem[]).length === 0 ? (
             <div className="py-12"><p className="text-muted-foreground">No news available.</p></div>
           ) : (
             <div className="space-y-3">
-              {(news as any[]).slice(0, 20).map((item: any) => (
+              {(news as NewsItem[]).slice(0, 20).map((item: NewsItem) => (
                 <Card key={item.id} className="hover:shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(78,50,23,0.06)_0px_8px_24px] transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -64,11 +67,11 @@ export default function ServicesPage() {
         <TabsContent value="jobs">
           {jobsLoading ? (
             <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}</div>
-          ) : (jobs as any[]).length === 0 ? (
+          ) : (jobs as JobOffer[]).length === 0 ? (
             <div className="py-12"><p className="text-muted-foreground">No job offers available.</p></div>
           ) : (
             <div className="space-y-3">
-              {(jobs as any[]).slice(0, 20).map((job: any) => (
+              {(jobs as JobOffer[]).slice(0, 20).map((job: JobOffer) => (
                 <Card key={job.id} className="hover:shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(78,50,23,0.06)_0px_8px_24px] transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">

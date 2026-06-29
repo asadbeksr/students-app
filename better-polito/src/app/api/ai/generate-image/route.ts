@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getGeminiClient } from '@/lib/gemini';
 
+type GenPart = { text: string } | { inlineData: { data: string; mimeType: string } };
+
 export async function POST(req: Request) {
   try {
     const ai = getGeminiClient();
@@ -11,7 +13,7 @@ export async function POST(req: Request) {
     }
 
     // Build contents from conversation history + current prompt
-    const contents: Array<{ role: string; parts: any[] }> = [];
+    const contents: Array<{ role: string; parts: GenPart[] }> = [];
 
     if (conversationHistory && conversationHistory.length > 0) {
       // Only include the last few exchanges for context
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     // Build user parts: text prompt + any attached images
-    const userParts: any[] = [{ text: prompt }];
+    const userParts: GenPart[] = [{ text: prompt }];
 
     if (attachments && Array.isArray(attachments)) {
       for (const att of attachments) {
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
-    } as any);
+    });
 
     // Extract text and images from the response
     const result: { text: string; images: Array<{ data: string; mimeType: string }> } = {
@@ -59,12 +61,12 @@ export async function POST(req: Request) {
       images: [],
     };
 
-    const candidates = (response as any).candidates;
+    const candidates = response.candidates;
     if (candidates && candidates[0]?.content?.parts) {
       for (const part of candidates[0].content.parts) {
         if (part.text) {
           result.text += part.text;
-        } else if (part.inlineData) {
+        } else if (part.inlineData?.data) {
           result.images.push({
             data: part.inlineData.data,
             mimeType: part.inlineData.mimeType || 'image/png',

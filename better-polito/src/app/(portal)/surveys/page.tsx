@@ -6,10 +6,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ClipboardCheck, Clock, ExternalLink, BookOpen } from 'lucide-react';
 
+type Survey = {
+  id?: number | string; isCompiled?: boolean; isMandatory?: boolean;
+  deadline?: string; expiresAt?: string; dueDate?: string;
+  url?: string; surveyLink?: string; link?: string;
+  courseName?: string; name?: string; title?: string;
+  courseId?: number | string; courseShortcode?: string;
+};
+
 export default function SurveysPage() {
   const { data: surveys = [], isLoading } = useGetSurveys();
-  const pending = (surveys as any[]).filter(s => !s.isCompiled);
-  const done = (surveys as any[]).filter(s => s.isCompiled);
+  const pending = (surveys as Survey[]).filter(s => !s.isCompiled);
+  const done = (surveys as Survey[]).filter(s => s.isCompiled);
 
   return (
     <div className="space-y-6 w-full">
@@ -23,7 +31,7 @@ export default function SurveysPage() {
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2].map(i => <Skeleton key={i} className="h-20" />)}</div>
-      ) : (surveys as any[]).length === 0 ? (
+      ) : (surveys as Survey[]).length === 0 ? (
         <Card>
           <CardContent className="py-16">
             <ClipboardCheck className="w-10 h-10 text-border mb-3" />
@@ -36,7 +44,7 @@ export default function SurveysPage() {
             <div>
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pending</h2>
               <div className="space-y-3">
-                {pending.map((s: any, i: number) => <SurveyCard key={s.id ?? i} survey={s} />)}
+                {pending.map((s: Survey, i: number) => <SurveyCard key={s.id ?? i} survey={s} />)}
               </div>
             </div>
           )}
@@ -44,7 +52,7 @@ export default function SurveysPage() {
             <div>
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Completed</h2>
               <div className="space-y-3">
-                {done.map((s: any, i: number) => <SurveyCard key={s.id ?? i} survey={s} />)}
+                {done.map((s: Survey, i: number) => <SurveyCard key={s.id ?? i} survey={s} />)}
               </div>
             </div>
           )}
@@ -54,7 +62,7 @@ export default function SurveysPage() {
   );
 }
 
-function SurveyCard({ survey: s }: { survey: any }) {
+function SurveyCard({ survey: s }: { survey: Survey }) {
   const deadline = s.deadline ?? s.expiresAt ?? s.dueDate;
   const isOverdue = deadline && new Date(deadline) < new Date();
   const surveyUrl = s.url ?? s.surveyLink ?? s.link;

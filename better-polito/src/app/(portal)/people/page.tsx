@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Users, Search } from 'lucide-react';
 
+type Person = { id?: number | string; firstName?: string; lastName?: string; role?: string; email?: string };
+
 export default function PeoplePage() {
   const [search, setSearch] = useState('');
   const { data: people = [], isLoading } = useGetPeople(search, search.length >= 2);
@@ -36,13 +38,13 @@ export default function PeoplePage() {
         </div>
       ) : isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16" />)}</div>
-      ) : (people as any[]).length === 0 ? (
+      ) : (people as Person[]).length === 0 ? (
         <div className="py-12">
           <p className="text-muted-foreground">No results for &ldquo;{search}&rdquo;</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {(people as any[]).map((person: any) => (
+          {(people as Person[]).map((person: Person) => (
             <Card key={person.id} className="hover:shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(78,50,23,0.06)_0px_8px_24px] transition-shadow">
               <CardContent className="p-4 flex items-center gap-4">
                 <Avatar>

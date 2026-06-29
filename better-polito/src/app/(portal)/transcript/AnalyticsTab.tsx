@@ -1,26 +1,27 @@
 'use client';
 import { useGetGrades } from '@/lib/queries/studentHooks';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { BarChart3, TrendingUp } from 'lucide-react';
 
+type GradeStat = { grade?: number | string; courseName?: string; name?: string; credits?: number };
+
 export function AnalyticsTab() {
   const { data: grades = [], isLoading } = useGetGrades();
 
-  const numericGrades = (grades as any[]).filter((g: any) => !isNaN(parseFloat(g.grade)));
-  const chartData = numericGrades.slice(0, 10).map((g: any) => ({
+  const numericGrades = (grades as GradeStat[]).filter((g) => !isNaN(parseFloat(String(g.grade ?? ''))));
+  const chartData = numericGrades.slice(0, 10).map((g) => ({
     name: (g.courseName || g.name || '').slice(0, 12),
-    grade: parseFloat(g.grade),
+    grade: parseFloat(String(g.grade ?? '')),
   }));
 
   const avg = numericGrades.length
-    ? (numericGrades.reduce((a: number, g: any) => a + parseFloat(g.grade), 0) / numericGrades.length).toFixed(2)
+    ? (numericGrades.reduce((a: number, g) => a + parseFloat(String(g.grade ?? '')), 0) / numericGrades.length).toFixed(2)
     : null;
 
   const distribution: Record<string, number> = { '18-21': 0, '22-24': 0, '25-27': 0, '28-30': 0, '30L': 0 };
-  numericGrades.forEach((g: any) => {
-    const v = parseFloat(g.grade);
+  numericGrades.forEach((g) => {
+    const v = parseFloat(String(g.grade ?? ''));
     if (v >= 30) distribution['30L']++;
     else if (v >= 28) distribution['28-30']++;
     else if (v >= 25) distribution['25-27']++;
@@ -60,13 +61,13 @@ export function AnalyticsTab() {
             <div className="glass rounded-3xl p-5 sm:p-6 flex flex-col justify-center items-start">
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Best Grade</p>
               <p className="text-2xl sm:text-3xl font-light text-foreground">
-                {numericGrades.length ? Math.max(...numericGrades.map((g: any) => parseFloat(g.grade))) : '—'}
+                {numericGrades.length ? Math.max(...numericGrades.map((g) => parseFloat(String(g.grade ?? '')))) : '—'}
               </p>
             </div>
             <div className="glass rounded-3xl p-5 sm:p-6 flex flex-col justify-center items-start">
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Credits</p>
               <p className="text-2xl sm:text-3xl font-light text-foreground">
-                {numericGrades.reduce((a: number, g: any) => a + (g.credits ?? 0), 0)}
+                {numericGrades.reduce((a: number, g) => a + (g.credits ?? 0), 0)}
               </p>
             </div>
           </>

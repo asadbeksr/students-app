@@ -50,8 +50,8 @@ export function ChatBot() {
       const data = await res.json();
       const assistantContent = data.content || data.text || data.message || 'I received your message.';
       setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant', content: assistantContent }]);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send message');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setIsLoading(false);
     }

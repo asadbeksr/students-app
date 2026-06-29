@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+import Dexie, { Table, Transaction } from 'dexie';
 import type {
   Course,
   Folder,
@@ -6,18 +6,40 @@ import type {
   ChatMessage,
   ChatAttachment,
   Conversation,
-  MockExam,
-  ExamAttempt,
   AppSettings,
   PageCache,
   GifCacheEntry,
 } from '@/types';
+import type { AttemptConfig } from '@/types/exam';
+import type { Attempt } from './exam/attempt';
 
 export interface CourseProgress {
   courseId: string;
   completedFileIds: string[];
   folderTags: Record<string, string>; // folderId -> tag name
   tagDefs?: Record<string, string>;   // tag name -> hex color
+}
+
+// Active (in-progress) mock-exam attempt, one row per subject+mode.
+export interface ActiveExamAttempt {
+  id: string; // `${subject}:${mode}`
+  attempt: Attempt;
+}
+
+// A submitted mock-exam attempt, archived for review. The full attempt is
+// stored so a past attempt can be replayed; list summaries are derived on read.
+export interface ArchivedExamAttempt {
+  id: string;      // String(attempt.startedAt)
+  subject: string;
+  mode: string;
+  startedAt: number;
+  attempt: Attempt;
+}
+
+// Saved mock-exam config (filters/scoring) per subject+mode.
+export interface SavedExamConfig {
+  id: string; // `${subject}:${mode}`
+  config: Partial<AttemptConfig>;
 }
 
 class StudyBuddyDB extends Dexie {
@@ -27,12 +49,13 @@ class StudyBuddyDB extends Dexie {
   chatMessages!: Table<ChatMessage>;
   chatAttachments!: Table<ChatAttachment>;
   conversations!: Table<Conversation>;
-  mockExams!: Table<MockExam>;
-  examAttempts!: Table<ExamAttempt>;
   settings!: Table<AppSettings>;
   pageCache!: Table<PageCache>;
   gifCache!: Table<GifCacheEntry>;
   courseProgress!: Table<CourseProgress>;
+  examAttempts!: Table<ActiveExamAttempt>;
+  examHistory!: Table<ArchivedExamAttempt>;
+  examConfigs!: Table<SavedExamConfig>;
 
   constructor() {
     super('StudyBuddyDB');
@@ -156,13 +179,13 @@ class StudyBuddyDB extends Dexie {
     }).upgrade(async tx => {
       const settings = await tx.table('settings').get('settings');
       if (settings) {
-        const update: any = {
+        const update: Record<string, unknown> = {
           aiModel: 'gemini-flash-latest',
           customSystemPrompt: null,
         };
         // Remove old Claude key
         if ('claudeApiKey' in settings) {
-          delete (settings as any).claudeApiKey;
+          delete (settings as Record<string, unknown>).claudeApiKey;
           update.claudeApiKey = undefined;
         }
         await tx.table('settings').update('settings', update);
@@ -186,11 +209,11 @@ class StudyBuddyDB extends Dexie {
       // Migrate existing messages: create a default conversation per course
       // and assign all existing messages to it
       const messages = await tx.table('chatMessages').toArray();
-      const courseIds = [...new Set(messages.map((m: any) => m.courseId))];
+      const courseIds = [...new Set(messages.map((m: { courseId?: string | number }) => m.courseId))];
 
       for (const cid of courseIds) {
         const convId = `legacy-${cid}`;
-        const courseMessages = messages.filter((m: any) => m.courseId === cid);
+        const courseMessages = messages.filter((m: { courseId?: string | number }) => m.courseId === cid);
         const firstMsg = courseMessages[0];
         const lastMsg = courseMessages[courseMessages.length - 1];
 
@@ -245,32 +268,88 @@ class StudyBuddyDB extends Dexie {
         }
       } catch { /* ignore migration errors */ }
     });
+
+    // Version 10: Drop the legacy AI mock-exam tables (different feature, now
+    // removed). Setting them to null deletes the old object stores and their
+    // data, clearing the way for the new exam-practice stores in version 11.
+    this.version(10).stores({
+      mockExams: null,
+      examAttempts: null,
+    });
+
+    // Version 11: Persist the exam-practice flow (lib/exam/*) in IndexedDB
+    // instead of localStorage, which was hitting quota on large attempts.
+    //   examAttempts — active in-progress attempt, keyed `${subject}:${mode}`
+    //   examHistory  — archived submitted attempts, queried by [subject+mode]
+    //   examConfigs  — saved filter/scoring config, keyed `${subject}:${mode}`
+    this.version(11).stores({
+      examAttempts: 'id',
+      examHistory: 'id, [subject+mode], startedAt',
+      examConfigs: 'id',
+    }).upgrade((tx) => migrateExamLocalStorageToDexie(tx));
   }
 
-  async initializeSettings() {
-    const existing = await this.settings.get('settings');
-    if (!existing) {
-      await this.settings.add({
-        id: 'settings',
-        aiModel: 'gemini-flash-latest',
-        customSystemPrompt: null,
-        language: 'en',
-        lastBackupAt: null,
-        aiPersonality: 'broski',
-        personalityIntensity: 'c',
-        theme: 'light',
-        gifsEnabled: true,
-        giphyApiKey: null,
-        visualMode: {
-          enabled: true,
-          animationsEnabled: true,
-          autoExpandBlocks: true,
-          preferredBlockSize: 'normal',
-        },
-      });
+}
+
+/**
+ * One-time port of the exam-practice data written by the pre-Dexie code into
+ * the version-11 tables. Reads the legacy `mock-attempt:`, `mock-config:` and
+ * `mock-attempt-history-data:` localStorage keys, writes them through the
+ * upgrade transaction, then removes each key it consumed. Stale `mock-history:`
+ * summary blobs are dropped — history summaries are now derived from the full
+ * archived attempts. Returns the consumed keys (handy for tests/logging).
+ */
+export async function migrateExamLocalStorageToDexie(tx: Transaction): Promise<string[]> {
+  if (typeof localStorage === 'undefined') return [];
+
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k) keys.push(k);
+  }
+
+  const consumed: string[] = [];
+  for (const key of keys) {
+    try {
+      if (key.startsWith('mock-attempt-history-data:')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const attempt = JSON.parse(raw);
+          if (attempt?.submittedAt) {
+            await tx.table('examHistory').put({
+              id: String(attempt.startedAt),
+              subject: attempt.subject,
+              mode: attempt.mode,
+              startedAt: attempt.startedAt,
+              attempt,
+            });
+          }
+        }
+        consumed.push(key);
+      } else if (key.startsWith('mock-attempt:')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const attempt = JSON.parse(raw);
+          await tx.table('examAttempts').put({ id: key.slice('mock-attempt:'.length), attempt });
+        }
+        consumed.push(key);
+      } else if (key.startsWith('mock-config:')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const config = JSON.parse(raw);
+          await tx.table('examConfigs').put({ id: key.slice('mock-config:'.length), config });
+        }
+        consumed.push(key);
+      } else if (key.startsWith('mock-history:')) {
+        consumed.push(key);
+      }
+    } catch {
+      /* skip malformed entry */
     }
-
   }
+
+  for (const key of consumed) localStorage.removeItem(key);
+  return consumed;
 }
 
 let _db: StudyBuddyDB | null = null;
@@ -281,7 +360,6 @@ function getDB(): StudyBuddyDB {
       throw new Error('Dexie (IndexedDB) is not available on the server.');
     }
     _db = new StudyBuddyDB();
-    _db.initializeSettings().catch(console.error);
   }
   return _db;
 }

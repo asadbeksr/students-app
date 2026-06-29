@@ -117,13 +117,11 @@ export const useCourseStore = create<CourseStore>((set, get) => ({
 
   deleteCourse: async (id) => {
     // Delete all related data
-    await db.transaction('rw', [db.courses, db.folders, db.materials, db.chatMessages, db.mockExams, db.examAttempts], async () => {
+    await db.transaction('rw', [db.courses, db.folders, db.materials, db.chatMessages], async () => {
       await db.courses.delete(id);
       await db.folders.where('courseId').equals(id).delete();
       await db.materials.where('courseId').equals(id).delete();
       await db.chatMessages.where('courseId').equals(id).delete();
-      await db.mockExams.where('courseId').equals(id).delete();
-      await db.examAttempts.where('courseId').equals(id).delete();
     });
 
     if (get().selectedCourse?.id === id) {

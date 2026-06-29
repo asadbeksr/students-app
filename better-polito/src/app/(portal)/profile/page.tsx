@@ -8,21 +8,35 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSession, signOut } from 'next-auth/react';
 import { LogOut, User, GraduationCap, BookOpen, TrendingUp, Mail } from 'lucide-react';
 
+type ProfileGrade = { passed?: boolean; grade?: number | string; credits?: number };
+type StudentInfo = {
+  firstName?: string; lastName?: string; email?: string; phoneNumber?: string;
+  photoUrl?: string; studentId?: string; regId?: string; registrationNumber?: string;
+  degreeName?: string; degreeCode?: string; degreeLevel?: string;
+  department?: string; departmentName?: string; status?: string;
+  courseName?: string; courseCode?: string; courseType?: string;
+  weightedAverage?: number | string; mean?: number | string;
+  acquiredCredits?: number; totalCredits?: number;
+  academicYear?: number | string; courseYear?: number | string; currentYear?: number | string;
+  year?: number | string; enrollmentYear?: number | string;
+  expectedGraduationYear?: number | string; firstEnrollmentYear?: number | string;
+};
+
 export default function ProfilePage() {
   const { data: session } = useSession();
   const { data: student, isLoading } = useGetStudent();
   const { data: grades = [] } = useGetGrades();
-  const s = student as any;
+  const s = student as StudentInfo | undefined;
   const username = session?.user?.name ?? '';
   const initials = [s?.firstName?.[0], s?.lastName?.[0]].filter(Boolean).join('').toUpperCase() || username.slice(0, 2).toUpperCase();
 
-  const passedGrades = (grades as any[]).filter((g: any) => g.passed !== false && !isNaN(parseFloat(g.grade)));
+  const passedGrades = (grades as ProfileGrade[]).filter((g) => g.passed !== false && !isNaN(parseFloat(String(g.grade ?? ''))));
   const weightedAvg = s?.weightedAverage ?? s?.mean ?? (
     passedGrades.length > 0
-      ? (passedGrades.reduce((acc: number, g: any) => acc + parseFloat(g.grade), 0) / passedGrades.length).toFixed(2)
+      ? (passedGrades.reduce((acc: number, g) => acc + parseFloat(String(g.grade ?? '')), 0) / passedGrades.length).toFixed(2)
       : null
   );
-  const acquiredCredits = s?.acquiredCredits ?? passedGrades.reduce((acc: number, g: any) => acc + (g.credits ?? 0), 0);
+  const acquiredCredits = s?.acquiredCredits ?? passedGrades.reduce((acc: number, g) => acc + (g.credits ?? 0), 0);
   const totalCredits = s?.totalCredits ?? null;
 
   return (
@@ -151,7 +165,7 @@ export default function ProfilePage() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: string | null }) {
+function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | null }) {
   return (
     <Card>
       <CardContent className="p-5 flex flex-col gap-1">

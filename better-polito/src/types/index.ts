@@ -108,59 +108,6 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-export interface MockExam {
-  id: string;
-  courseId: string;
-  name: string;
-  duration: number; // minutes
-  questions: MCQQuestion[];
-  createdAt: string;
-}
-
-export interface MCQQuestion {
-  id: string;
-  questionText: string;
-  options: { id: 'A' | 'B' | 'C' | 'D'; text: string }[];
-  correctAnswer: 'A' | 'B' | 'C' | 'D';
-  explanation: string;
-  topic: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  sourceMaterialId?: string;
-}
-
-export interface ExamAttempt {
-  id: string;
-  examId: string;
-  courseId: string;
-  startedAt: string;
-  completedAt: string | null;
-  timeSpentSeconds: number;
-  answers: {
-    questionId: string;
-    selectedAnswer: 'A' | 'B' | 'C' | 'D' | null;
-    isCorrect: boolean;
-    timeTakenSeconds: number;
-  }[];
-  score: number;
-  totalQuestions: number;
-  analytics: {
-    scorePercentage: number;
-    topicBreakdown: {
-      topic: string;
-      correct: number;
-      total: number;
-      strength: 'strong' | 'moderate' | 'weak';
-    }[];
-    weakAreas: {
-      topic: string;
-      recommendedMaterials: {
-        materialId: string;
-        materialName: string;
-      }[];
-    }[];
-  };
-}
-
 export interface StudyPlan {
   id: string;
   courseId: string;
@@ -219,8 +166,6 @@ export interface BackupData {
     folders: Folder[];
     materials: Material[]; // fileData as base64
     chatMessages: ChatMessage[];
-    mockExams: MockExam[];
-    examAttempts: ExamAttempt[];
     settings: AppSettings;
   };
 }

@@ -12,7 +12,7 @@ Note: Polito Community Portal Portalis NOT affiliated with Politecnico di Torino
 If you don't know something specific about PoliTO, say so honestly.`;
 
     // Build contents from messages
-    const contents = (messages || []).map((msg: any) => ({
+    const contents = (messages || []).map((msg: { role?: string; content?: string }) => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }],
     }));

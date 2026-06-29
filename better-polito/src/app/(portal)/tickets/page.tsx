@@ -8,6 +8,8 @@ import { Ticket, Plus, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+type Ticket = { id?: number | string; subject?: string; title?: string; createdAt?: string; status?: string };
+
 export default function TicketsPage() {
   const { data: tickets = [], isLoading } = useGetTickets();
 
@@ -25,7 +27,7 @@ export default function TicketsPage() {
 
       {isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>
-      ) : (tickets as any[]).length === 0 ? (
+      ) : (tickets as Ticket[]).length === 0 ? (
         <Card>
           <CardContent className="py-16">
             <Ticket className="w-10 h-10 text-border mb-3" />
@@ -34,7 +36,7 @@ export default function TicketsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {(tickets as any[]).map((t: any) => (
+          {(tickets as Ticket[]).map((t: Ticket) => (
             <Link key={t.id} href={`/tickets/${t.id}`}>
               <Card className="hover:shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(78,50,23,0.06)_0px_8px_24px] transition-shadow cursor-pointer">
                 <CardContent className="p-4 flex items-center justify-between gap-4">

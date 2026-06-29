@@ -1,3 +1,4 @@
+import { db } from '@/lib/db';
 import type { GradedResult, RunnerQuestion, ScoringRules } from '@/types/exam';
 
 export interface AttemptConfigSummary {
@@ -37,29 +38,28 @@ export function attemptLabel(cfg: AttemptConfigSummary | undefined): string | nu
   return parts.length ? parts.join(' · ') : null;
 }
 
-function key(subject: string, mode: string) {
-  return `mock-attempt:${subject}:${mode}`;
+function activeKey(subject: string, mode: string) {
+  return `${subject}:${mode}`;
 }
 
-export function loadAttempt(subject: string, mode: string): Attempt | null {
+export async function loadAttempt(subject: string, mode: string): Promise<Attempt | null> {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(key(subject, mode));
-    if (!raw) return null;
-    return JSON.parse(raw) as Attempt;
+    const row = await db.examAttempts.get(activeKey(subject, mode));
+    return row?.attempt ?? null;
   } catch {
     return null;
   }
 }
 
-export function saveAttempt(attempt: Attempt) {
+export async function saveAttempt(attempt: Attempt): Promise<void> {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(key(attempt.subject, attempt.mode), JSON.stringify(attempt));
+  await db.examAttempts.put({ id: activeKey(attempt.subject, attempt.mode), attempt });
 }
 
-export function clearAttempt(subject: string, mode: string) {
+export async function clearAttempt(subject: string, mode: string): Promise<void> {
   if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(key(subject, mode));
+  await db.examAttempts.delete(activeKey(subject, mode));
 }
 
 export function isExpired(a: Attempt): boolean {
@@ -105,28 +105,16 @@ export interface HistoryEntry {
   label?: string | null;
 }
 
-function historyKey(subject: string, mode: string) {
-  return `mock-history:${subject}:${mode}`;
-}
-
-export function loadHistory(subject: string, mode: string): HistoryEntry[] {
+export async function loadHistory(subject: string, mode: string): Promise<HistoryEntry[]> {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = window.localStorage.getItem(historyKey(subject, mode));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as HistoryEntry[]) : [];
+    const rows = await db.examHistory.where('[subject+mode]').equals([subject, mode]).toArray();
+    return rows
+      .map((r) => attemptToHistory(r.attempt))
+      .filter((e): e is HistoryEntry => e != null);
   } catch {
     return [];
   }
-}
-
-export function appendHistory(entry: HistoryEntry) {
-  if (typeof window === 'undefined') return;
-  const list = loadHistory(entry.subject, entry.mode);
-  if (list.some((e) => e.id === entry.id)) return;
-  list.push(entry);
-  window.localStorage.setItem(historyKey(entry.subject, entry.mode), JSON.stringify(list));
 }
 
 export function attemptToHistory(a: Attempt): HistoryEntry | null {
@@ -144,17 +132,23 @@ export function attemptToHistory(a: Attempt): HistoryEntry | null {
   };
 }
 
-export function saveHistoricalAttempt(a: Attempt) {
+export async function saveHistoricalAttempt(a: Attempt): Promise<void> {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(`mock-attempt-history-data:${a.startedAt}`, JSON.stringify(a));
+  if (!a.submittedAt) return;
+  await db.examHistory.put({
+    id: String(a.startedAt),
+    subject: a.subject,
+    mode: a.mode,
+    startedAt: a.startedAt,
+    attempt: a,
+  });
 }
 
-export function loadHistoricalAttempt(id: string): Attempt | null {
+export async function loadHistoricalAttempt(id: string): Promise<Attempt | null> {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(`mock-attempt-history-data:${id}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as Attempt;
+    const row = await db.examHistory.get(id);
+    return row?.attempt ?? null;
   } catch {
     return null;
   }

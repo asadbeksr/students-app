@@ -1,7 +1,7 @@
 'use client';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { useGetPlaceCategories, useGetPlaces } from '@/lib/queries/placesHooks';
+import { useGetPlaces } from '@/lib/queries/placesHooks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,7 @@ export default function PlacesPage() {
   const { data: places = [], isLoading } = useGetPlaces();
   const [search, setSearch] = useState('');
 
-  const filtered = (places as any[]).filter((p: any) =>
+  const filtered = places.filter((p) =>
     !search || p.name?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -55,8 +55,8 @@ export default function PlacesPage() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {filtered.filter((p: any) => p.latitude && p.longitude).map((p: any) => (
-                  <Marker key={p.id} position={[p.latitude, p.longitude]}>
+                {filtered.filter((p) => p.latitude && p.longitude).map((p) => (
+                  <Marker key={p.id} position={[p.latitude as number, p.longitude as number]}>
                     <Popup>{p.name}</Popup>
                   </Marker>
                 ))}
@@ -82,7 +82,7 @@ export default function PlacesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.slice(0, 24).map((place: any) => (
+          {filtered.slice(0, 24).map((place) => (
             <Card key={place.id} className="hover:shadow-[rgba(0,0,0,0.4)_0px_0px_1px,rgba(78,50,23,0.06)_0px_8px_24px] transition-shadow">
               <CardContent className="p-4 flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-surface-warm flex items-center justify-center shrink-0 mt-0.5">

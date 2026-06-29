@@ -19,6 +19,7 @@ import AskAIButton from '@/components/chat/AskAIButton';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { usePanelRef } from 'react-resizable-panels';
 import { useCoursePortalStore } from '@/lib/stores/coursePortalStore';
+import type { CoursePortalState } from '@/lib/stores/coursePortalStore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -84,6 +85,40 @@ type GuideSectionItem = {
 type UsefulLinkItem = {
   label: string;
   url: string;
+};
+
+// Loosely-typed shapes for the dynamic PoliTO course/notice/notification payloads.
+type AnyRecord = Record<string, unknown>;
+
+type CourseEdition = { id?: number | string; year?: number | string };
+type CourseStaffEntry = { id?: number | string; personId?: number | string; role?: string; name?: string; email?: string };
+type CourseData = {
+  id?: number | string;
+  courseId?: number | string;
+  shortcode?: string;
+  code?: string;
+  name?: string;
+  title?: string;
+  cfu?: number | string;
+  credits?: number | string;
+  year?: number | string;
+  academicYear?: number | string;
+  courseType?: string;
+  teachingPeriod?: number | string;
+  period?: number | string;
+  modules?: unknown[];
+  previousEditions?: CourseEdition[];
+  staff?: CourseStaffEntry[];
+};
+type PersonData = {
+  id?: number | string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+  email?: string;
+  picture?: string;
+  facilityShortName?: string;
+  phoneNumbers?: Array<{ full?: string }>;
 };
 
 function formatAcademicYearLabel(year: number): string {
@@ -169,7 +204,7 @@ function toValidDate(input: unknown): Date | undefined {
   return undefined;
 }
 
-function extractNoticeDate(notice: any): Date | undefined {
+function extractNoticeDate(notice: AnyRecord | null | undefined): Date | undefined {
   const dateCandidates = [
     notice?.publishedAt,
     notice?.publishDate,
@@ -252,9 +287,9 @@ function parseNotificationScope(scope: unknown): string[] {
   return [];
 }
 
-function parseNotificationPayload(payload: unknown): any {
+function parseNotificationPayload(payload: unknown): AnyRecord | undefined {
   if (!payload) return undefined;
-  if (typeof payload === 'object') return payload;
+  if (typeof payload === 'object') return payload as AnyRecord;
   if (typeof payload !== 'string') return undefined;
 
   try {
@@ -264,7 +299,7 @@ function parseNotificationPayload(payload: unknown): any {
   }
 }
 
-function extractNoticeNotificationTarget(notification: any): { noticeId?: string; courseId?: string } {
+function extractNoticeNotificationTarget(notification: AnyRecord | null | undefined): { noticeId?: string; courseId?: string } {
   const scope = parseNotificationScope(notification?.scope);
   const noticesIndex = scope.lastIndexOf('notices');
   const coursesIndex = scope.lastIndexOf('courses');
@@ -416,7 +451,7 @@ function isUsefulLabel(label: string): boolean {
   return true;
 }
 
-function getUsefulLinksFromCourseData(course: any, guide: any[]): UsefulLinkItem[] {
+function getUsefulLinksFromCourseData(course: unknown, guide: unknown): UsefulLinkItem[] {
   const labeled = new Map<string, { label?: string; priority: number; index: number }>();
   let sequence = 0;
 
@@ -452,11 +487,11 @@ function getUsefulLinksFromCourseData(course: any, guide: any[]): UsefulLinkItem
 
   const guideSections = Array.isArray(guide)
     ? guide
-    : Array.isArray((guide as any)?.sections)
-      ? (guide as any).sections
+    : Array.isArray((guide as { sections?: unknown[] })?.sections)
+      ? (guide as { sections?: unknown[] }).sections ?? []
       : [];
 
-  guideSections.forEach((section: any) => {
+  guideSections.forEach((section: AnyRecord) => {
     const sectionTitle = typeof section?.title === 'string' && isUsefulLabel(section.title)
       ? stripHtmlTags(section.title)
       : undefined;
@@ -535,11 +570,11 @@ function getUsefulLinksFromCourseData(course: any, guide: any[]): UsefulLinkItem
     }));
 }
 
-function normalizeGuideSections(guide: any[]): GuideSectionItem[] {
+function normalizeGuideSections(guide: unknown): GuideSectionItem[] {
   const rawSections = Array.isArray(guide) ? guide : [];
 
   return rawSections
-    .map((section: any, index: number) => {
+    .map((section: AnyRecord, index: number) => {
       const title = typeof section?.title === 'string' && section.title.trim()
         ? section.title.trim()
         : `Section ${index + 1}`;
@@ -568,7 +603,7 @@ function toApiYear(academicYear: string): string | undefined {
   return String(endYear < startYear ? endYear + 100 : endYear);
 }
 
-function buildCourseSwitchLabel(course: any, fallbackId: number): string {
+function buildCourseSwitchLabel(course: CourseData | null | undefined, fallbackId: number): string {
   const code = typeof course?.shortcode === 'string' && course.shortcode.trim()
     ? course.shortcode.trim()
     : typeof course?.code === 'string' && course.code.trim()
@@ -583,7 +618,7 @@ function buildCourseSwitchLabel(course: any, fallbackId: number): string {
 
   const credits = course?.cfu ?? course?.credits;
   const base = [code ? `${code} -` : undefined, name].filter(Boolean).join(' ');
-  return credits ? `${base} (${credits} cfu)` : base;
+  return credits ? `${base} (${String(credits)} cfu)` : base;
 }
 
 function AcademicYearSelect({
@@ -643,9 +678,9 @@ function NoticesSheet({
   notifications,
   onMarkNotificationsAsRead,
 }: {
-  notices: any[];
+  notices: AnyRecord[];
   courseId: number;
-  notifications: any[];
+  notifications: AnyRecord[];
   onMarkNotificationsAsRead: (notificationIds: number[]) => void;
 }) {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -656,13 +691,13 @@ function NoticesSheet({
     const currentCourseId = String(courseId);
     const courseNoticeIds = new Set(
       (Array.isArray(notices) ? notices : [])
-        .map((notice: any) => notice?.id)
+        .map((notice: AnyRecord) => notice?.id)
         .filter((noticeId: unknown) => noticeId != null)
         .map((noticeId: unknown) => String(noticeId)),
     );
 
     const allNotifications = Array.isArray(notifications) ? notifications : [];
-    allNotifications.forEach((notification: any) => {
+    allNotifications.forEach((notification: AnyRecord) => {
       if (notification?.isRead) return;
 
       const target = extractNoticeNotificationTarget(notification);
@@ -864,7 +899,7 @@ function CourseInfoSheet({
   teachingPeriodLabel,
   usefulLinks,
 }: {
-  course: any;
+  course: CourseData | null | undefined;
   staff: StaffPerson[];
   guideSections: GuideSectionItem[];
   yearOptions: AcademicYearOption[];
@@ -878,7 +913,7 @@ function CourseInfoSheet({
 
   const detailRows: Array<{ label: string; value: string }> = [
     { label: 'Code', value: String(course?.shortcode ?? 'N/A') },
-    { label: 'Credits', value: course?.cfu ?? course?.credits ? `${course?.cfu ?? course?.credits} CFU` : 'N/A' },
+    { label: 'Credits', value: course?.cfu ?? course?.credits ? `${String(course?.cfu ?? course?.credits)} CFU` : 'N/A' },
     { label: 'Year', value: course?.year ?? course?.academicYear ? String(course?.year ?? course?.academicYear) : 'N/A' },
     { label: 'Teaching period', value: teachingPeriodLabel ?? 'N/A' },
     { label: 'Type', value: typeof course?.courseType === 'string' ? course.courseType : 'N/A' },
@@ -1108,11 +1143,11 @@ export default function CourseDetailPage() {
   }, [courseState.chat, toggleChat]);
 
   const onTabChange = useCallback((tab: string) => {
-    updateCourseState(courseId, { tab: tab as any });
+    updateCourseState(courseId, { tab: tab as CoursePortalState['tab'] });
   }, [courseId, updateCourseState]);
 
   const onViewModeChange = useCallback((mode: string) => {
-    updateCourseState(courseId, { view: mode as any });
+    updateCourseState(courseId, { view: mode as CoursePortalState['view'] });
   }, [courseId, updateCourseState]);
 
   const onSidebarChange = useCallback((collapsed: boolean) => {
@@ -1141,20 +1176,20 @@ export default function CourseDetailPage() {
     });
   }, [markNotificationAsRead]);
 
-  const c = course as any;
+  const c = course as CourseData | undefined;
   const usefulLinks = useMemo(() => getUsefulLinksFromCourseData(c, Array.isArray(courseGuide) ? courseGuide : []), [c, courseGuide]);
   const guideSections = useMemo(() => normalizeGuideSections(Array.isArray(courseGuide) ? courseGuide : []), [courseGuide]);
-  const coursesPool = useMemo(() => {
-    const list = Array.isArray(courses) ? (courses as any[]) : [];
-    const modules = list.flatMap((courseItem) => Array.isArray(courseItem?.modules) ? courseItem.modules : []);
+  const coursesPool = useMemo<CourseData[]>(() => {
+    const list = Array.isArray(courses) ? (courses as CourseData[]) : [];
+    const modules = list.flatMap((courseItem) => Array.isArray(courseItem?.modules) ? (courseItem.modules as CourseData[]) : []);
     return [...modules, ...list].filter(Boolean);
   }, [courses]);
 
   const linkedCourse = useMemo(() => {
-    return coursesPool.find((courseItem: any) => {
+    return coursesPool.find((courseItem: CourseData) => {
       if (Number(courseItem?.id) === id) return true;
       const previous = Array.isArray(courseItem?.previousEditions) ? courseItem.previousEditions : [];
-      return previous.some((edition: any) => Number(edition?.id) === id);
+      return previous.some((edition: CourseEdition) => Number(edition?.id) === id);
     });
   }, [coursesPool, id]);
 
@@ -1191,7 +1226,7 @@ export default function CourseDetailPage() {
       : Array.isArray(c?.previousEditions)
         ? c.previousEditions
         : [];
-    previous.forEach((edition: any) => pushOption(edition?.id, edition?.year));
+    previous.forEach((edition: CourseEdition) => pushOption(edition?.id, edition?.year));
 
     options.sort((a, b) => {
       const ay = Number(a.apiYear ?? 0);
@@ -1226,9 +1261,9 @@ export default function CourseDetailPage() {
 
   const courseSwitchOptions = useMemo<CourseSwitchOption[]>(() => {
     const options = new Map<number, CourseSwitchOption>();
-    const list = Array.isArray(courses) ? (courses as any[]) : [];
+    const list = Array.isArray(courses) ? (courses as CourseData[]) : [];
 
-    const pushOption = (courseItem: any) => {
+    const pushOption = (courseItem: CourseData) => {
       const rawCourseId = courseItem?.id ?? courseItem?.courseId;
       const numericCourseId = Number(rawCourseId);
       if (!Number.isFinite(numericCourseId) || numericCourseId <= 0) return;
@@ -1272,8 +1307,8 @@ export default function CourseDetailPage() {
   }, [id, router]);
 
   const staffBase = useMemo<StaffBaseEntry[]>(() => {
-    const raw = Array.isArray(c?.staff) ? (c.staff as any[]) : [];
-    return raw.map((item: any): StaffBaseEntry => {
+    const raw = Array.isArray(c?.staff) ? (c.staff as CourseStaffEntry[]) : [];
+    return raw.map((item: CourseStaffEntry): StaffBaseEntry => {
       const idRaw = item?.id ?? item?.personId;
       const idText = idRaw == null ? '' : String(idRaw).trim();
       const numericId = Number(idText);
@@ -1297,17 +1332,17 @@ export default function CourseDetailPage() {
   const staffPersonQueries = useQueries({
     queries: staffIds.map((personId) => ({
       queryKey: ['person', personId],
-      queryFn: () => (getApiClient() as any).getPerson(personId).then((r: any) => r.data),
+      queryFn: () => getApiClient().getPerson(personId).then((r) => r.data),
       enabled: !!personId,
       staleTime: 10 * 60 * 1000,
     })),
   });
 
   const staffPersonsById = useMemo(() => {
-    const map = new Map<number, any>();
+    const map = new Map<number, PersonData>();
     staffIds.forEach((personId, index) => {
       const personData = staffPersonQueries[index]?.data;
-      if (personData) map.set(personId, personData);
+      if (personData) map.set(personId, personData as PersonData);
     });
     return map;
   }, [staffIds, staffPersonQueries]);
@@ -1318,7 +1353,7 @@ export default function CourseDetailPage() {
       const personParam = toPolitoPersonParam(base.idRaw || person?.id);
       const profileHref = personParam ? `https://www.polito.it/personale?p=${encodeURIComponent(personParam)}` : undefined;
       const personPhone = Array.isArray(person?.phoneNumbers)
-        ? person.phoneNumbers.find((p: any) => p?.full)?.full
+        ? person.phoneNumbers.find((p) => p?.full)?.full
         : undefined;
       const firstName = typeof person?.firstName === 'string' ? person.firstName : undefined;
       const lastName = typeof person?.lastName === 'string' ? person.lastName : undefined;
@@ -1456,9 +1491,9 @@ export default function CourseDetailPage() {
                 usefulLinks={usefulLinks}
               />
               <NoticesSheet
-                notices={notices as any[]}
+                notices={notices as AnyRecord[]}
                 courseId={id}
-                notifications={notifications as any[]}
+                notifications={notifications as AnyRecord[]}
                 onMarkNotificationsAsRead={markNotificationsAsRead}
               />
               <Button

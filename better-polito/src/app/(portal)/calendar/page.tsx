@@ -51,14 +51,14 @@ export default function AgendaPage() {
 
   // Map events to days
   const eventsByDay = useMemo(() => {
-    const map: Record<string, { type: string; item: any }[]> = {};
+    const map: Record<string, { type: string; item: CalItem }[]> = {};
     weekDates.forEach(d => { map[toISO(d)] = []; });
 
-    (lectures as any[]).forEach(l => {
+    (lectures as CalItem[]).forEach(l => {
       const day = (l.startsAt ?? l.date ?? '').split('T')[0];
       if (map[day]) map[day].push({ type: 'lecture', item: l });
     });
-    (deadlines as any[]).forEach(d => {
+    (deadlines as CalItem[]).forEach(d => {
       const day = (d.startsAt ?? d.date ?? d.dueDate ?? '').split('T')[0];
       if (map[day]) map[day].push({ type: 'deadline', item: d });
     });
@@ -70,12 +70,12 @@ export default function AgendaPage() {
   const selectedEvents = eventsByDay[selectedISO] ?? [];
 
   // Upcoming deadlines (next 2 weeks)
-  const upcoming = (deadlines as any[])
+  const upcoming = (deadlines as CalItem[])
     .filter(d => {
       const t = new Date(d.startsAt ?? d.date ?? d.dueDate ?? '').getTime();
       return t >= today.getTime();
     })
-    .sort((a, b) => new Date(a.startsAt ?? a.date ?? a.dueDate).getTime() - new Date(b.startsAt ?? b.date ?? b.dueDate).getTime())
+    .sort((a, b) => new Date(a.startsAt ?? a.date ?? a.dueDate ?? '').getTime() - new Date(b.startsAt ?? b.date ?? b.dueDate ?? '').getTime())
     .slice(0, 10);
 
   return (
@@ -173,7 +173,7 @@ export default function AgendaPage() {
             </div>
           ) : (
             <div className="space-y-1">
-              {upcoming.map((d: any, i: number) => <DeadlineCard key={i} deadline={d} />)}
+              {upcoming.map((d: CalItem, i: number) => <DeadlineCard key={i} deadline={d} />)}
             </div>
           )}
         </CardContent>
@@ -182,7 +182,14 @@ export default function AgendaPage() {
   );
 }
 
-function LectureCard({ lecture }: { lecture: any }) {
+type CalItem = {
+  startsAt?: string; date?: string; dueDate?: string; endsAt?: string;
+  courseName?: string; course?: string; title?: string; name?: string;
+  room?: string; building?: string; isOnline?: boolean;
+  type?: string; category?: string;
+};
+
+function LectureCard({ lecture }: { lecture: CalItem }) {
   return (
     <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
       <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
@@ -214,7 +221,7 @@ function LectureCard({ lecture }: { lecture: any }) {
   );
 }
 
-function DeadlineCard({ deadline }: { deadline: any }) {
+function DeadlineCard({ deadline }: { deadline: CalItem }) {
   const dateStr = deadline.startsAt ?? deadline.date ?? deadline.dueDate;
   const type = deadline.type ?? deadline.category;
   return (
