@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { callGeminiStream, resolveModel } from '@/lib/gemini';
 import { formatAttachmentsForGeminiFromSerialized, type SerializedAttachment } from '@/lib/geminiVision';
+import { getCachedPdfPart, setCachedPdfPart } from '@/lib/nativePdfCache';
 import { Type } from '@google/genai';
 import type { FunctionCall, Part, Tool } from '@google/genai';
 
@@ -16,12 +17,19 @@ async function fetchDocumentNative(
       const protocol = requestHeaders.get('x-forwarded-proto') || 'http';
       absoluteUrl = `${protocol}://${host}${documentUrl.startsWith('/') ? '' : '/'}${documentUrl}`;
     }
+
+    // Reuse the encoded PDF across turns of the same conversation.
+    const cached = getCachedPdfPart(absoluteUrl);
+    if (cached) return cached;
+
     const cookie = requestHeaders.get('cookie') || '';
     const response = await fetch(absoluteUrl, { headers: { cookie }, signal: AbortSignal.timeout(15000) });
     if (!response.ok) return null;
     const buffer = await response.arrayBuffer();
     if (buffer.byteLength > 15 * 1024 * 1024) return null;
-    return { inlineData: { data: Buffer.from(buffer).toString('base64'), mimeType: 'application/pdf' } };
+    const part: Part = { inlineData: { data: Buffer.from(buffer).toString('base64'), mimeType: 'application/pdf' } };
+    setCachedPdfPart(absoluteUrl, part);
+    return part;
   } catch {
     return null;
   }
