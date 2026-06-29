@@ -13,6 +13,39 @@ import { giphyService } from '@/lib/giphyService';
 import { detectMoodFromContext } from '@/lib/moodDetection';
 import { shouldShowGif } from '@/lib/gifPersonalities';
 
+/**
+ * Generate a short conversation title from the first user message. Best-effort:
+ * returns the cleaned title, or null on any failure so callers keep "New Chat".
+ */
+async function generateTitleFromMessage(content: string): Promise<string | null> {
+  try {
+    const res = await fetch('/api/ai/course-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content }],
+        systemPrompt: 'Generate a very short title (max 5 words) for this chat conversation based on the user message. Reply with ONLY the title, nothing else. No quotes, no punctuation at the end.',
+        model: 'gemini-flash-latest',
+      }),
+    });
+    if (!res.ok) return null;
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let title = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      title += decoder.decode(value, { stream: true });
+    }
+    // Clean up AI output: strip quotes/bold markers, trim, cap length.
+    title = title.replace(/^["*]+|["*]+$/g, '').trim().slice(0, 50);
+    return title || null;
+  } catch {
+    return null;
+  }
+}
+
 interface ChatStore {
   messages: ChatMessage[];
   conversations: Conversation[];
@@ -407,29 +440,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           await db.conversations.update(conversationId, { updatedAt: now });
           const conv = await db.conversations.get(conversationId);
           if (conv && conv.title === 'New Chat') {
-            try {
-              const titleResponse = await fetch('/api/ai/course-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  messages: [{ role: 'user', content }],
-                  systemPrompt: 'Generate a very short title (max 5 words) for this chat conversation based on the user message. Reply with ONLY the title, nothing else. No quotes, no punctuation at the end.',
-                  model: 'gemini-flash-latest',
-                }),
-              });
-              if (titleResponse.ok) {
-                const titleReader = titleResponse.body!.getReader();
-                const titleDecoder = new TextDecoder();
-                let title = '';
-                while (true) {
-                  const { done, value } = await titleReader.read();
-                  if (done) break;
-                  title += titleDecoder.decode(value, { stream: true });
-                }
-                title = title.replace(/^["*]+|["*]+$/g, '').trim().slice(0, 50);
-                if (title) await get().renameConversation(conversationId, title);
-              }
-            } catch {}
+            const title = await generateTitleFromMessage(content);
+            if (title) await get().renameConversation(conversationId, title);
           }
 
           await get().fetchConversations(courseId);
@@ -517,29 +529,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
           const conv = await db.conversations.get(conversationId);
           if (conv && conv.title === 'New Chat') {
-            try {
-              const titleResponse = await fetch('/api/ai/course-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  messages: [{ role: 'user', content: content }],
-                  systemPrompt: 'Generate a very short title (max 5 words) for this chat conversation based on the user message. Reply with ONLY the title, nothing else. No quotes, no punctuation at the end.',
-                  model: 'gemini-flash-latest',
-                }),
-              });
-              if (titleResponse.ok) {
-                const titleReader = titleResponse.body!.getReader();
-                const titleDecoder = new TextDecoder();
-                let title = '';
-                while (true) {
-                  const { done, value } = await titleReader.read();
-                  if (done) break;
-                  title += titleDecoder.decode(value, { stream: true });
-                }
-                title = title.replace(/^["*]+|["*]+$/g, '').trim().slice(0, 50);
-                if (title) await get().renameConversation(conversationId, title);
-              }
-            } catch {}
+            const title = await generateTitleFromMessage(content);
+            if (title) await get().renameConversation(conversationId, title);
           }
 
           await get().fetchConversations(courseId);
@@ -683,34 +674,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       if (conv && conv.title === 'New Chat') {
         // Auto-name the conversation based on the first user message
-        try {
-          const titleResponse = await fetch('/api/ai/course-chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messages: [{ role: 'user', content: content }],
-              systemPrompt: 'Generate a very short title (max 5 words) for this chat conversation based on the user message. Reply with ONLY the title, nothing else. No quotes, no punctuation at the end.',
-              model: 'gemini-flash-latest',
-            }),
-          });
-          if (titleResponse.ok) {
-            const titleReader = titleResponse.body!.getReader();
-            const titleDecoder = new TextDecoder();
-            let title = '';
-            while (true) {
-              const { done, value } = await titleReader.read();
-              if (done) break;
-              title += titleDecoder.decode(value, { stream: true });
-            }
-            // Clean up AI output: remove quotes, bold tags, and trim
-            title = title.replace(/^["*]+|["*]+$/g, '').trim().slice(0, 50);
-            if (title) {
-              await get().renameConversation(conversationId, title);
-            }
-          }
-        } catch {
-          // Non-critical — keep "New Chat" as title
-        }
+        const title = await generateTitleFromMessage(content);
+        if (title) await get().renameConversation(conversationId, title);
       }
 
       await get().fetchConversations(courseId);
