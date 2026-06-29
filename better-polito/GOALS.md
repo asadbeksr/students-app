@@ -1,64 +1,28 @@
-# Project Goal: Harden & structure `better-polito`
+# Project Goals: `better-polito`
 
-**Mission:** Make the existing better-polito
- dashboard reliable, internally
-consistent, and easy to extend — by fixing real bugs and cleaning up what's
-already built, while leaving every working feature and every pixel exactly as
-it is.
+> **Status:** No active goal. The stabilization mandate is complete (see
+> _Archive_ below). Fill in the _Active Goal_ section to start the next one.
 
-This is a stabilization mandate, not a redesign. The app already works; the job
-is to make it *trustworthy* and *ready for new features*.
+---
 
-## Definition of done
+## Active Goal
 
-- The app builds clean: `next build` succeeds, `next lint` passes, and
-  `tsc --noEmit` reports zero errors.
-- No known reproducible bug remains open; each fix is verified against the
-  actual flow it affects.
-- Code is structured and predictable enough that adding a new feature means
-  following an existing pattern, not inventing one.
+_None yet._ When starting a new goal, fill in:
 
-## In scope
+- **Mission** — one or two sentences: what outcome, and why it matters.
+- **Definition of done** — concrete, checkable conditions (commands that must
+  pass, behaviors that must hold, bugs that must be closed).
+- **In scope / Out of scope** — what to touch and what to leave alone.
+- **Latitude** — how much to do without asking (see levels below).
 
-1. **Bug fixing** — Correctness only: broken data flows, unhandled
-   errors/edge cases, race conditions, stale-state and async bugs, incorrect
-   API handling, and type holes (`any`, unsafe casts, missing null checks).
-2. **Cleanup of finished work** — Dead code, unused exports/deps, duplicated
-   logic, and leftover scaffolding (`test*.js` at repo root, stray files in
-   `plans/`, committed `.DS_Store`, commented-out blocks).
-3. **Structure for extensibility** — Consistent file/folder conventions,
-   shared types in `lib/types`, reusable hooks/utilities, and clear separation
-   between the API layer, the data layer (Dexie / TanStack Query), and the UI.
-   Make the seams obvious.
+---
 
-## Out of scope — do not touch
+## Standing operating rules
 
-- **No visual changes.** No layout, styling, spacing, color, copy, or
-  component-markup changes that alter what the user sees. Refactors must be
-  visually identical.
-- **No new features**, and no dependency upgrades unless required to fix a
-  specific bug.
-- **No behavior changes** to anything that currently works as intended.
+These hold for every goal unless a goal overrides them.
 
-## Latitude: Moderate
-
-Allowed proactively (no need to ask first), as long as behavior and visuals
-stay identical:
-
-- Fix confirmed bugs and remove clearly-dead code.
-- Consolidate duplicated logic into shared helpers.
-- Reorganize files into consistent patterns and tighten types.
-
-Still requires asking first:
-
-- Anything that could change behavior, visuals, or public/API contracts.
-- Deleting a file/feature that looks abandoned but might be intentional.
-- Large sweeping rewrites of a module's architecture.
-
-## Operating rules
-
-- **Diagnose before changing.** Find root cause and confirm a real bug before
-  editing — don't "fix" things that are merely ugly.
+- **Diagnose before changing.** Find root cause and confirm a real problem
+  before editing — don't "fix" things that are merely ugly.
 - **Small, reviewable, reversible steps.** One concern per change; explain the
   *why*, not just the *what*.
 - **Prove nothing broke.** After each change, re-run build / lint / typecheck
@@ -67,15 +31,51 @@ Still requires asking first:
 - **Surface, don't silently delete.** If a file or feature looks abandoned or
   contradicts how it was described, flag it before removing.
 
-## Known starting cleanup targets
+### Latitude levels
 
-These are visible from a first pass and safe candidates under the rules above:
+- **Conservative** — ask before any change beyond the literal request.
+- **Moderate** — fix confirmed bugs, remove dead code, consolidate duplicated
+  logic, and tighten types proactively, as long as behavior and visuals stay
+  identical. Ask before anything that changes behavior, visuals, or API
+  contracts; before deleting something that might be intentional; and before
+  large architectural rewrites.
+- **Broad** — drive larger refactors and feature work with minimal check-ins.
 
-- `test-fetch.js`, `test-player.js`, `test-player2.js`, `test-user-code.js`,
-  `test_api.js`, `test_manim.js` — ad-hoc scripts at repo root.
-- `plans/` — mixes real planning docs (`v1.md`,
-  `official-api-inventory.md`) with stray generated HTML
-  (`*_graph.html`, `full_solution_zero_to_answer.html`).
-- `.DS_Store` committed to the repo.
-- Confirm `pnpm-lock.yaml` vs `package-lock.json` — only one package manager
-  should own the lockfile.
+### Health gates (the build must stay green)
+
+```
+next build      # succeeds
+next lint       # passes (warnings tolerated, errors not)
+tsc --noEmit    # zero errors
+```
+
+---
+
+## Archive
+
+### ✅ Harden & structure `better-polito` — completed 2026-06-29
+
+**Mission was:** Make the dashboard reliable, internally consistent, and easy
+to extend by fixing real bugs and cleaning up finished work — without changing
+any working feature or any pixel. A stabilization mandate, not a redesign.
+
+**Outcome — all done criteria met:**
+
+- Health gates green: `next build`, `next lint` (warnings only), and
+  `tsc --noEmit` all pass with zero errors.
+- Cleanup complete: ad-hoc root `test*.js` scripts, stray `plans/*.html`,
+  committed `.DS_Store`, and the duplicate `package-lock.json` are all gone
+  (confirmed against `git ls-files`); `plans/` holds only real planning docs;
+  `pnpm-lock.yaml` is the sole lockfile.
+- Types hardened across the portal, components, and data/API layers; phantom
+  `as any` query hooks for unbuilt features removed.
+- Last suspected bug diagnosed and closed: `GET /places` 404s on the Prism mock
+  (verified — in-spec endpoints 401 instead), but the page degrades gracefully
+  to an empty map, so it is a documented limitation, not a defect. Production
+  behavior stays unverifiable without a real PoliTO token.
+
+**Known residual (non-blocking, candidates for a future goal):**
+
+- Lint warnings remain (unused `_latex`/`_messageId` params in visual blocks,
+  a couple of `react-hooks/exhaustive-deps`). Cosmetic; lint still passes.
+- `GET /places` unverified against a real production token.

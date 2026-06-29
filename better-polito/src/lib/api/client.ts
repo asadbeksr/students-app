@@ -227,7 +227,10 @@ class ApiClient {
   async escRequest() { return this.request('/esc/request', { method: 'POST' }); }
 
   // ─── Places ──────────────────────────────────────────────────────────────
-  // GET /places — campus locations for the map view (consumed by /places page)
+  // GET /places — campus locations for the map view (consumed by /places page).
+  // NOTE: the Prism mock 404s this path (verified 2026-06-29; in-spec endpoints
+  // 401 instead). Expected to resolve against a real PoliTO token in production,
+  // but that remains unverified. On 404 the page degrades to an empty map.
   async getPlaces(params?: Record<string, string>) {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';
     return this.request<{ data: unknown[] }>(`/places${qs}`);
