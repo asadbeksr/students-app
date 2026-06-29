@@ -25,9 +25,9 @@ export function MobileNav({ open, onClose }: MobileNavProps) {
   }, [pathname]);
 
   const courseSubItems = useMemo(() => {
-    const list = Array.isArray(courses) ? (courses as any[]) : [];
+    const list = Array.isArray(courses) ? (courses as Array<{ id?: number | string; code?: string; courseId?: number | string; name?: string; shortcode?: string }>) : [];
     return list
-      .map((course: any, i: number) => {
+      .map((course, i: number) => {
         const courseId = course.id ?? course.code ?? course.courseId;
         if (!courseId) return null;
         return {

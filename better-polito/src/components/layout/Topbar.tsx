@@ -1,5 +1,4 @@
 'use client';
-import { useSession } from 'next-auth/react';
 import { Menu, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils/cn';
 import { useGetNotifications, useMarkNotificationAsRead } from '@/lib/queries/studentHooks';
 import { useMemo } from 'react';
@@ -18,7 +18,7 @@ import { PomodoroChip } from '@/components/toolkit/PomodoroTimer';
 function NotificationBell() {
   const { data: notifications = [] } = useGetNotifications();
   const markRead = useMarkNotificationAsRead();
-  const all = notifications as any[];
+  const all = notifications as Array<{ id?: number | string; isRead?: boolean; subject?: string; title?: string; body?: string; createdAt?: string }>;
   const unread = useMemo(() => all.filter(n => !n.isRead), [all]);
   const recent = all.slice(0, 6);
 
@@ -46,11 +46,11 @@ function NotificationBell() {
             <p className="text-sm text-muted-foreground">No notifications</p>
           </div>
         ) : (
-          recent.map((n: any, i: number) => (
+          recent.map((n, i: number) => (
             <DropdownMenuItem
               key={n.id ?? i}
               className={`flex flex-col items-start gap-0.5 px-3 py-2.5 cursor-pointer ${!n.isRead ? 'bg-muted/50' : ''}`}
-              onClick={() => n.id && !n.isRead && markRead.mutate(n.id)}
+              onClick={() => n.id && !n.isRead && markRead.mutate(Number(n.id))}
             >
               <div className="flex items-center gap-2 w-full">
                 {!n.isRead && <span className="w-1.5 h-1.5 rounded-full bg-black shrink-0" />}

@@ -18,7 +18,7 @@ const ApiContext = createContext<ApiContextProps>({
 
 export const ApiProvider = ({ children }: { children: React.ReactNode }) => {
   const { data: session, status } = useSession();
-  const token = (session as any)?.accessToken as string | undefined;
+  const token = (session as { accessToken?: string } | null)?.accessToken;
   const username = session?.user?.name ?? undefined;
 
   useEffect(() => {

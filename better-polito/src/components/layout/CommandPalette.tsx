@@ -6,13 +6,12 @@ import { useTheme } from 'next-themes';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Command } from 'cmdk';
 import {
-  BookOpen, User, Search, ArrowRight,
+  BookOpen, Search, ArrowRight,
   Timer, PenLine, Focus, Zap, Sun, Moon, ChevronLeft,
   Play, Pause, Square, SkipForward,
 } from 'lucide-react';
 import { useToolkitStore, formatTime, playBeep } from '@/lib/stores/toolkitStore';
 import { useGetCourses } from '@/lib/queries/courseHooks';
-import { cn } from '@/lib/utils/cn';
 import { NAV_GROUPS } from '@/config/navigation';
 
 type View = 'root' | 'pomodoro' | 'scratchpad';
@@ -21,7 +20,7 @@ type View = 'root' | 'pomodoro' | 'scratchpad';
 
 function useCourseItems() {
   const { data: courses = [] } = useGetCourses();
-  return (courses as any[]).map((c: any) => ({
+  return (courses as Array<{ id?: number | string; code?: string; courseId?: number | string; courseCode?: string; name?: string; shortName?: string; title?: string }>).map((c) => ({
     id: String(c.code ?? c.id ?? c.courseId),
     label: c.name ?? c.shortName ?? c.title ?? 'Course',
     code: c.code ?? c.courseCode ?? '',

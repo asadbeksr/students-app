@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { Timer, PenLine, Focus, Zap, Bot } from 'lucide-react';
 import { useToolkitStore, formatTime, DockCorner } from '@/lib/stores/toolkitStore';
 import { cn } from '@/lib/utils/cn';
@@ -74,7 +74,7 @@ export function ToolkitDock() {
     'bottom-right': 'bottom-6 right-6 flex-col items-end',
   };
 
-  const handleDragEnd = (event: any, info: any) => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const { x, y } = info.point;
     const w = window.innerWidth;
     const h = window.innerHeight;

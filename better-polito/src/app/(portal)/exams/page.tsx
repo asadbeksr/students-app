@@ -24,17 +24,25 @@ const STATUS = {
   UNAVAILABLE: 'unavailable',
 } as const;
 
-const ACTIVE_STATUSES = [STATUS.BOOKED, STATUS.REQUEST_ACCEPTED, STATUS.REQUESTED];
-const OPEN_STATUSES = [STATUS.AVAILABLE, STATUS.REQUESTABLE];
-const CLOSED_STATUSES = [STATUS.REQUEST_REJECTED, STATUS.UNAVAILABLE];
+const ACTIVE_STATUSES: string[] = [STATUS.BOOKED, STATUS.REQUEST_ACCEPTED, STATUS.REQUESTED];
+const OPEN_STATUSES: string[] = [STATUS.AVAILABLE, STATUS.REQUESTABLE];
+const CLOSED_STATUSES: string[] = [STATUS.REQUEST_REJECTED, STATUS.UNAVAILABLE];
 
 type FilterTab = 'all' | 'booked' | 'available' | 'unavailable';
 
+type ExamPlace = { name?: string };
+type Exam = {
+  id?: number | string; status?: string; courseName?: string; type?: string;
+  bookingStartsAt?: string; bookingEndsAt?: string; examStartsAt?: string; examEndsAt?: string;
+  places?: ExamPlace[]; classrooms?: string; feedback?: string; ics?: string;
+  availableCount?: number; bookedCount?: number;
+};
+
 function statusVariant(status: string): 'success' | 'secondary' | 'destructive' | 'outline' {
-  if ([STATUS.BOOKED, STATUS.REQUEST_ACCEPTED].includes(status as any)) return 'success';
+  if (([STATUS.BOOKED, STATUS.REQUEST_ACCEPTED] as string[]).includes(status)) return 'success';
   if (status === STATUS.REQUESTED) return 'secondary';
   if (status === STATUS.REQUEST_REJECTED) return 'destructive';
-  if ([STATUS.AVAILABLE, STATUS.REQUESTABLE].includes(status as any)) return 'outline';
+  if (([STATUS.AVAILABLE, STATUS.REQUESTABLE] as string[]).includes(status)) return 'outline';
   return 'secondary';
 }
 
@@ -64,13 +72,13 @@ function shortType(type: string): string {
   return EXAM_TYPE_SHORT[type] ?? type;
 }
 
-function bookingWindowLabel(exam: any): { label: string; color: string } | null {
+function bookingWindowLabel(exam: Exam): { label: string; color: string } | null {
   const now = Date.now();
   const opensAt = exam.bookingStartsAt ? new Date(exam.bookingStartsAt).getTime() : null;
   const closesAt = exam.bookingEndsAt ? new Date(exam.bookingEndsAt).getTime() : null;
 
   // 1970 sentinel = "not set"
-  if (opensAt && new Date(exam.bookingStartsAt).getFullYear() < 2000) return null;
+  if (opensAt && new Date(exam.bookingStartsAt ?? '').getFullYear() < 2000) return null;
 
   if (opensAt && opensAt > now) {
     const days = Math.ceil((opensAt - now) / 86400000);
@@ -78,16 +86,16 @@ function bookingWindowLabel(exam: any): { label: string; color: string } | null 
   }
   if (closesAt && closesAt > now) {
     const days = Math.ceil((closesAt - now) / 86400000);
-    return { label: `Book by ${new Date(exam.bookingEndsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} (${days}d left)`, color: 'text-amber-600' };
+    return { label: `Book by ${new Date(exam.bookingEndsAt ?? '').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} (${days}d left)`, color: 'text-amber-600' };
   }
   return null;
 }
 
-function addToCalendar(exam: any) {
-  const start = new Date(exam.examStartsAt);
+function addToCalendar(exam: Exam) {
+  const start = new Date(exam.examStartsAt ?? '');
   const end = exam.examEndsAt ? new Date(exam.examEndsAt) : new Date(start.getTime() + 2 * 3600000);
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const location = exam.places?.map((p: any) => p.name).join(', ') ?? exam.classrooms ?? '';
+  const location = exam.places?.map((p) => p.name).join(', ') ?? exam.classrooms ?? '';
   const ics = [
     'BEGIN:VCALENDAR', 'VERSION:2.0',
     'BEGIN:VEVENT',
@@ -109,7 +117,7 @@ function addToCalendar(exam: any) {
 
 export default function ExamsPage() {
   const { data: exams = [], isLoading } = useGetExams();
-  const all = exams as any[];
+  const all = exams as Exam[];
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterTab>('all');
@@ -121,22 +129,22 @@ export default function ExamsPage() {
       const matchesSearch = !q || (e.courseName ?? '').toLowerCase().includes(q);
       const matchesFilter =
         filter === 'all' ||
-        (filter === 'booked' && ACTIVE_STATUSES.includes(e.status)) ||
-        (filter === 'available' && OPEN_STATUSES.includes(e.status)) ||
-        (filter === 'unavailable' && CLOSED_STATUSES.includes(e.status));
+        (filter === 'booked' && ACTIVE_STATUSES.includes(e.status ?? '')) ||
+        (filter === 'available' && OPEN_STATUSES.includes(e.status ?? '')) ||
+        (filter === 'unavailable' && CLOSED_STATUSES.includes(e.status ?? ''));
       return matchesSearch && matchesFilter;
     });
   }, [all, search, filter]);
 
-  const booked = filtered.filter(e => ACTIVE_STATUSES.includes(e.status));
-  const available = filtered.filter(e => OPEN_STATUSES.includes(e.status));
-  const unavailable = filtered.filter(e => CLOSED_STATUSES.includes(e.status));
+  const booked = filtered.filter(e => ACTIVE_STATUSES.includes(e.status ?? ''));
+  const available = filtered.filter(e => OPEN_STATUSES.includes(e.status ?? ''));
+  const unavailable = filtered.filter(e => CLOSED_STATUSES.includes(e.status ?? ''));
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: 'All', count: all.length },
-    { key: 'booked', label: 'Booked', count: all.filter(e => ACTIVE_STATUSES.includes(e.status)).length },
-    { key: 'available', label: 'Available', count: all.filter(e => OPEN_STATUSES.includes(e.status)).length },
-    { key: 'unavailable', label: 'Unavailable', count: all.filter(e => CLOSED_STATUSES.includes(e.status)).length },
+    { key: 'booked', label: 'Booked', count: all.filter(e => ACTIVE_STATUSES.includes(e.status ?? '')).length },
+    { key: 'available', label: 'Available', count: all.filter(e => OPEN_STATUSES.includes(e.status ?? '')).length },
+    { key: 'unavailable', label: 'Unavailable', count: all.filter(e => CLOSED_STATUSES.includes(e.status ?? '')).length },
   ];
 
   return (
@@ -241,15 +249,15 @@ export default function ExamsPage() {
   );
 }
 
-function ExamCard({ exam }: { exam: any }) {
+function ExamCard({ exam }: { exam: Exam }) {
   const [showFeedback, setShowFeedback] = useState(true);
 
-  const canBook = [STATUS.AVAILABLE, STATUS.REQUESTABLE].includes(exam.status);
-  const canCancel = [STATUS.BOOKED, STATUS.REQUESTED, STATUS.REQUEST_ACCEPTED].includes(exam.status);
+  const canBook = ([STATUS.AVAILABLE, STATUS.REQUESTABLE] as string[]).includes(exam.status ?? '');
+  const canCancel = ([STATUS.BOOKED, STATUS.REQUESTED, STATUS.REQUEST_ACCEPTED] as string[]).includes(exam.status ?? '');
   const hasCalendar = !!exam.examStartsAt;
 
   const startsAt = exam.examStartsAt;
-  const location = exam.places?.map((p: any) => p.name).join(', ') ?? exam.classrooms;
+  const location = exam.places?.map((p) => p.name).join(', ') ?? exam.classrooms;
   const examType = exam.type;
   const bookingWindow = bookingWindowLabel(exam);
   const feedback = exam.feedback?.trim();
@@ -268,8 +276,8 @@ function ExamCard({ exam }: { exam: any }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <p className="font-medium text-foreground">{exam.courseName}</p>
-              <Badge variant={statusVariant(exam.status)} className="text-xs shrink-0">
-                {statusLabel(exam.status)}
+              <Badge variant={statusVariant(exam.status ?? '')} className="text-xs shrink-0">
+                {statusLabel(exam.status ?? '')}
               </Badge>
               {examType && (
                 <Badge variant="secondary" className="text-[10px] shrink-0">

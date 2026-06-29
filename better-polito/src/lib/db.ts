@@ -156,13 +156,13 @@ class StudyBuddyDB extends Dexie {
     }).upgrade(async tx => {
       const settings = await tx.table('settings').get('settings');
       if (settings) {
-        const update: any = {
+        const update: Record<string, unknown> = {
           aiModel: 'gemini-flash-latest',
           customSystemPrompt: null,
         };
         // Remove old Claude key
         if ('claudeApiKey' in settings) {
-          delete (settings as any).claudeApiKey;
+          delete (settings as Record<string, unknown>).claudeApiKey;
           update.claudeApiKey = undefined;
         }
         await tx.table('settings').update('settings', update);
@@ -186,11 +186,11 @@ class StudyBuddyDB extends Dexie {
       // Migrate existing messages: create a default conversation per course
       // and assign all existing messages to it
       const messages = await tx.table('chatMessages').toArray();
-      const courseIds = [...new Set(messages.map((m: any) => m.courseId))];
+      const courseIds = [...new Set(messages.map((m: { courseId?: string | number }) => m.courseId))];
 
       for (const cid of courseIds) {
         const convId = `legacy-${cid}`;
-        const courseMessages = messages.filter((m: any) => m.courseId === cid);
+        const courseMessages = messages.filter((m: { courseId?: string | number }) => m.courseId === cid);
         const firstMsg = courseMessages[0];
         const lastMsg = courseMessages[courseMessages.length - 1];
 

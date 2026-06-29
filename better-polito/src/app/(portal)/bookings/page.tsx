@@ -6,13 +6,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { CalendarCheck, Plus, MapPin, Clock, QrCode, Armchair } from 'lucide-react';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { getApiClient } from '@/lib/api/client';
 
 const BOOKINGS_QUERY_KEY = ['bookings'];
 
-function statusVariant(status: string): 'success' | 'secondary' | 'destructive' | 'outline' {
-  const s = status?.toLowerCase();
+type Booking = {
+  id?: number | string; status?: string;
+  room?: string; building?: string; address?: string;
+  startsAt?: string; startTime?: string; date?: string; endsAt?: string; endTime?: string;
+  seat?: string; seatCode?: string; seatNumber?: string;
+  topicName?: string; name?: string; serviceName?: string; qrCode?: string;
+};
+
+function statusVariant(status: string | undefined): 'success' | 'secondary' | 'destructive' | 'outline' {
+  const s = status?.toLowerCase() ?? '';
   if (['confirmed', 'active', 'approved'].includes(s)) return 'success';
   if (['cancelled', 'rejected', 'expired'].includes(s)) return 'destructive';
   return 'secondary';
@@ -21,10 +29,10 @@ function statusVariant(status: string): 'success' | 'secondary' | 'destructive' 
 export default function BookingsPage() {
   const { data: bookings = [], isLoading } = useGetBookings();
   const qc = useQueryClient();
-  const all = bookings as any[];
+  const all = bookings as Booking[];
 
-  const active = all.filter(b => !['cancelled','expired','rejected'].includes(b.status?.toLowerCase()));
-  const past = all.filter(b => ['cancelled','expired','rejected'].includes(b.status?.toLowerCase()));
+  const active = all.filter(b => !['cancelled','expired','rejected'].includes(b.status?.toLowerCase() ?? ''));
+  const past = all.filter(b => ['cancelled','expired','rejected'].includes(b.status?.toLowerCase() ?? ''));
 
   return (
     <div className="space-y-6 w-full">
@@ -51,7 +59,7 @@ export default function BookingsPage() {
         <>
           {active.length > 0 && (
             <div className="space-y-3">
-              {active.map((b: any, i: number) => (
+              {active.map((b: Booking, i: number) => (
                 <BookingCard key={b.id ?? i} booking={b} onCancel={() => {
                   getApiClient().deleteBooking(String(b.id))
                     .then(() => { qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY }); toast.success('Booking cancelled'); })
@@ -64,7 +72,7 @@ export default function BookingsPage() {
             <div>
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Past / Cancelled</h2>
               <div className="space-y-2 opacity-60">
-                {past.map((b: any, i: number) => <BookingCard key={b.id ?? i} booking={b} />)}
+                {past.map((b: Booking, i: number) => <BookingCard key={b.id ?? i} booking={b} />)}
               </div>
             </div>
           )}
@@ -74,12 +82,12 @@ export default function BookingsPage() {
   );
 }
 
-function BookingCard({ booking: b, onCancel }: { booking: any; onCancel?: () => void }) {
+function BookingCard({ booking: b, onCancel }: { booking: Booking; onCancel?: () => void }) {
   const location = [b.room, b.building, b.address].filter(Boolean).join(', ');
   const startsAt = b.startsAt ?? b.startTime ?? b.date;
   const endsAt = b.endsAt ?? b.endTime;
   const seat = b.seat ?? b.seatCode ?? b.seatNumber;
-  const canCancel = !['cancelled','expired','rejected'].includes(b.status?.toLowerCase());
+  const canCancel = !['cancelled','expired','rejected'].includes(b.status?.toLowerCase() ?? '');
 
   return (
     <Card>

@@ -38,7 +38,7 @@ export const authOptions: NextAuthOptions = {
           } else {
             return null;
           }
-          const data = (res as any).data;
+          const data = (res as { data?: { token: string; type?: string; username: string; clientId?: string } }).data;
           if (!data?.token) return null;
           if (data.type && data.type !== 'student') return null;
           getApiClient(data.token);
@@ -60,11 +60,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.accessToken = (user as any).token;
-        token.clientId = (user as any).clientId;
-        token.rememberMe = (user as any).rememberMe;
+        const u = user as { token?: string; clientId?: string; rememberMe?: boolean };
+        token.accessToken = u.token;
+        token.clientId = u.clientId;
+        token.rememberMe = u.rememberMe;
         // Set token expiry based on rememberMe preference
-        if ((user as any).rememberMe) {
+        if (u.rememberMe) {
           token.exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
         } else {
           token.exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours
@@ -73,8 +74,8 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      (session as any).accessToken = token.accessToken;
-      (session as any).clientId = token.clientId;
+      (session as { accessToken?: unknown }).accessToken = token.accessToken;
+      (session as { clientId?: unknown }).clientId = token.clientId;
       return session;
     },
   },

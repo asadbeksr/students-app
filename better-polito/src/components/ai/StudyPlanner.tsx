@@ -9,13 +9,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Sparkles, Calendar, CheckCircle2, Circle, RefreshCw, Clock } from 'lucide-react';
 
+type StudyTask = { description?: string; subject?: string };
+type StudyWeek = { label?: string; tasks?: StudyTask[] };
+type StudyPlan = { weeks?: StudyWeek[]; summary?: string; generatedAt?: string };
+
 export function StudyPlanner() {
   const { data: exams = [] } = useGetExams();
   const { data: grades = [] } = useGetGrades();
   const { data: student } = useGetStudent();
   const { data: courses = [] } = useGetCourses();
 
-  const [plan, setPlan] = useState<any>(null);
+  const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
@@ -53,8 +57,8 @@ export function StudyPlanner() {
       localStorage.setItem('ai_study_plan', JSON.stringify(data));
       setCompletedTasks({});
       localStorage.setItem('ai_study_completed_tasks', '{}');
-    } catch (e: any) {
-      setError(e.message || 'Failed to generate plan');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate plan');
     } finally {
       setLoading(false);
     }
@@ -62,7 +66,7 @@ export function StudyPlanner() {
 
   if (!isLoaded) return null;
 
-  const totalTasks = plan?.weeks?.reduce((acc: number, w: any) => acc + (w.tasks?.length ?? 0), 0) ?? 0;
+  const totalTasks = plan?.weeks?.reduce((acc: number, w: StudyWeek) => acc + (w.tasks?.length ?? 0), 0) ?? 0;
   const completedCount = Object.values(completedTasks).filter(Boolean).length;
   const progressPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
@@ -87,7 +91,7 @@ export function StudyPlanner() {
         <p className="font-medium text-foreground mb-1">No study plan yet</p>
         <p className="text-sm text-muted-foreground mb-6 max-w-sm">
           Generate a personalised week-by-week schedule based on your
-          {(courses as any[]).length ? ` ${(courses as any[]).length} courses` : ' courses'},
+          {(courses as unknown[]).length ? ` ${(courses as unknown[]).length} courses` : ' courses'},
           grades and upcoming exams.
         </p>
         {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
@@ -129,9 +133,9 @@ export function StudyPlanner() {
 
       {/* Week cards */}
       <div className="space-y-4">
-        {plan.weeks?.map((week: any, i: number) => {
+        {plan.weeks?.map((week: StudyWeek, i: number) => {
           const tasks = week.tasks ?? [];
-          const doneInWeek = tasks.filter((_: any, j: number) => completedTasks[`w${i}-t${j}`]).length;
+          const doneInWeek = tasks.filter((_, j: number) => completedTasks[`w${i}-t${j}`]).length;
           const allDone = tasks.length > 0 && doneInWeek === tasks.length;
 
           return (
@@ -146,7 +150,7 @@ export function StudyPlanner() {
                 </span>
               </CardHeader>
               <CardContent className="space-y-2">
-                {tasks.map((task: any, j: number) => {
+                {tasks.map((task: StudyTask, j: number) => {
                   const taskId = `w${i}-t${j}`;
                   const done = !!completedTasks[taskId];
                   return (

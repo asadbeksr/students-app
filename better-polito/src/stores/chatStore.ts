@@ -24,7 +24,7 @@ function extractPageWindow(fullText: string, centerPage: number, radius: number)
 
   return `[Showing pages ${startPage}–${Math.min(endPage, lastSection.page)} of the document]\n\n` + fullText.slice(first, end).trim();
 }
-import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation, GeneratedImage, GeneratedVideoData } from '@/types';
+import type { ChatMessage, ChatStreamingState, ChatAttachment, Conversation, GeneratedImage, GeneratedVideoData, Course } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { getSystemPrompt } from '@/lib/prompts';
 import { generateImageThumbnail } from '@/lib/fileProcessing';
@@ -264,9 +264,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const course = {
         id: courseId,
         name: courseName || `Course ${courseId}`,
-        subject: 'General' as any,
+        subject: 'General',
         examDate: new Date().toISOString(),
-        knowledgeLevel: 'intermediate' as any,
+        knowledgeLevel: 'intermediate',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         studyPlan: null,
@@ -348,7 +348,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       } catch {}
 
       const systemPrompt = getSystemPrompt(
-        course, materials,
+        course as unknown as Course, materials,
         hasAttachments, visualModeEnabled, manimModeEnabled, customSystemPrompt,
         openDocumentName, studentContext || null,
         openDocumentPage

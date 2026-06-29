@@ -25,8 +25,8 @@ export function CourseSummarizer() {
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setSummary(data.summary || data.content || JSON.stringify(data));
-    } catch (e: any) {
-      setSummary('Error: ' + e.message);
+    } catch (e) {
+      setSummary('Error: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       setLoading(false);
     }
@@ -46,7 +46,7 @@ export function CourseSummarizer() {
           onChange={(e) => setSelectedCourse(e.target.value)}
         >
           <option value="">Select a course…</option>
-          {(courses as any[]).map((c: any) => (
+          {(courses as Array<{ id?: number | string; name?: string }>).map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>

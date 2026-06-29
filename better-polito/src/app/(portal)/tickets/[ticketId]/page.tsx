@@ -19,7 +19,7 @@ export default function TicketDetailPage() {
   const reply = useReplyToTicket(id);
   const [message, setMessage] = useState('');
 
-  const ticketData = ticket as any;
+  const ticketData = ticket as { subject?: string; status?: string; description?: string; replies?: Array<{ isStaff?: boolean; message?: string }> } | undefined;
 
   const handleReply = async () => {
     if (!message.trim()) return;
@@ -62,7 +62,7 @@ export default function TicketDetailPage() {
                   <p className="text-sm text-text-muted">{ticketData.description}</p>
                 </div>
               )}
-              {(ticketData?.replies ?? []).map((r: any, i: number) => (
+              {(ticketData?.replies ?? []).map((r, i: number) => (
                 <div key={i} className={`p-4 rounded-xl ${r.isStaff ? 'bg-foreground text-surface' : 'bg-background'}`}>
                   <p className={`text-xs font-semibold mb-1 ${r.isStaff ? 'text-white/60' : 'text-muted-foreground'}`}>
                     {r.isStaff ? 'Support' : 'You'}

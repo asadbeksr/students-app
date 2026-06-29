@@ -1,5 +1,4 @@
 import type { Part } from '@google/genai';
-import { arrayBufferToBase64, readFileAsText } from './fileProcessing';
 
 // Lazy-load pdfjs to prevent webpack from statically bundling pdf.mjs (ESM-only)
 async function getPdfjs() {
@@ -106,7 +105,7 @@ export async function convertPdfPagesToBase64(
     await page.render({
       canvasContext: context,
       viewport,
-    } as any).promise;
+    } as Parameters<typeof page.render>[0]).promise;
 
     const base64 = canvas.toDataURL('image/png').split(',')[1];
     results.push({ pageNumber: i, base64Image: base64 });

@@ -28,7 +28,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { useMaterialStore } from '@/stores/materialStore';
 import type { Material, Folder as FolderType } from '@/types';
-import { useProgressStore, TAG_PALETTE, BUILTIN_COLORS, type TagProgressSummary } from '@/lib/stores/progressStore';
+import { useProgressStore, TAG_PALETTE, BUILTIN_COLORS } from '@/lib/stores/progressStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -486,7 +486,7 @@ function NotebookLMModal({
               <div className="mx-5 mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 space-y-2">
                 <p className="text-[12px] font-semibold text-amber-400">⚠ App is running on localhost</p>
                 <p className="text-[11px] text-amber-300/80">
-                  NotebookLM can't reach <code className="text-amber-300 bg-amber-500/20 rounded px-1">localhost</code> URLs from its servers.
+                  NotebookLM can&apos;t reach <code className="text-amber-300 bg-amber-500/20 rounded px-1">localhost</code> URLs from its servers.
                   Expose your app publicly with one of these:
                 </p>
                 <div className="space-y-1.5">
@@ -2441,7 +2441,7 @@ export default function MaterialsTab({
         collapsible={true}
         collapsedSize="0px"
         panelRef={sidebarRef}
-        onResize={(size: any) => {
+        onResize={(size: { asPercentage: number; inPixels: number }) => {
           setIsSidebarCollapsed((size?.inPixels ?? 0) < 10);
           sidebarOnResize(size);
         }}

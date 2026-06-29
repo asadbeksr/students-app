@@ -95,7 +95,8 @@ export const useCoursePortalStore = create<CoursePortalStore>()(
     {
       name: 'better-polito:course-portal',
       version: 2,
-      migrate: (state: any) => {
+      migrate: (persisted: unknown) => {
+        const state = persisted as { states?: Record<string, { preview?: { url?: string } | null }> } | undefined;
         // Clear persisted previews that are missing the url field
         if (state?.states) {
           for (const courseId of Object.keys(state.states)) {
@@ -105,7 +106,7 @@ export const useCoursePortalStore = create<CoursePortalStore>()(
             }
           }
         }
-        return state;
+        return state as unknown as CoursePortalStore;
       },
     }
   )

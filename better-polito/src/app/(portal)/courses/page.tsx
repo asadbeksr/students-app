@@ -168,19 +168,33 @@ function SortableWidget({ id, span, isEditing, onSpanChange, onHide, children }:
 
 // ─── widget contents ──────────────────────────────────────────────────────────
 
+// Loosely-typed shapes for the dynamic PoliTO dashboard payloads.
+type Lecture = {
+  startsAt?: string; startTime?: string; endsAt?: string; endTime?: string; date?: string;
+  courseId?: number | string; courseCode?: string; code?: string; id?: number | string;
+  courseName?: string; title?: string; subject?: string;
+  room?: string; classRoom?: string; location?: string;
+};
+type DashMessage = { isRead?: boolean; subject?: string; title?: string; sender?: string; from?: string };
+type DashCourse = {
+  id?: number | string; code?: string; courseId?: number | string;
+  staff?: Array<{ name?: string; firstName?: string }>;
+  name?: string; shortcode?: string; credits?: number;
+};
+type DashExam = { status?: string; examStartsAt?: string; id?: number | string; courseName?: string };
+type DashGrade = { grade?: number | string; courseName?: string; name?: string };
+
 function ClassesContent({ isEditing }: { isEditing?: boolean }) {
   const { data: lectures = [], isLoading } = useGetLectures({ fromDate: todayISO(), toDate: todayISO() });
-  
+
   const todayStr = todayISO();
-  const items = (lectures as any[])
+  const items = (lectures as Lecture[])
     .filter(l => {
       const d = l.startsAt ?? l.startTime ?? l.date ?? '';
       return d.split('T')[0] === todayStr;
     })
     .sort((a, b) => new Date(a.startsAt ?? a.startTime ?? 0).getTime() - new Date(b.startsAt ?? b.startTime ?? 0).getTime())
     .slice(0, 4);
-
-  console.log("Filtered Today Items:", items);
 
   return (
     <Widget id="classes" label="Today's Classes" href="/calendar" isEditing={isEditing}>
@@ -193,9 +207,11 @@ function ClassesContent({ isEditing }: { isEditing?: boolean }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((l: any, i: number) => {
+          {items.map((l: Lecture, i: number) => {
             const courseId = l.courseId ?? l.courseCode ?? l.code ?? l.id;
             const courseLink = courseId ? `/courses/${courseId}` : null;
+            const start = l.startTime ?? l.startsAt;
+            const end = l.endTime ?? l.endsAt;
             const sharedClassName = cn(
               "glass-inner flex items-start gap-3 p-3 rounded-2xl",
               courseLink ? "cursor-pointer hover:opacity-90 transition-opacity block" : "cursor-default"
@@ -206,16 +222,16 @@ function ClassesContent({ isEditing }: { isEditing?: boolean }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-foreground truncate">{l.courseName ?? l.title ?? l.subject}</p>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    {(l.startTime ?? l.startsAt) && (
+                    {start && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        {(l.startTime ?? l.startsAt).includes('T')
-                          ? new Date(l.startTime ?? l.startsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-                          : (l.startTime ?? l.startsAt)}
-                        {(l.endTime ?? l.endsAt)
-                          ? `–${(l.endTime ?? l.endsAt).includes('T')
-                            ? new Date(l.endTime ?? l.endsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-                            : (l.endTime ?? l.endsAt)}`
+                        {start.includes('T')
+                          ? new Date(start).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                          : start}
+                        {end
+                          ? `–${end.includes('T')
+                            ? new Date(end).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                            : end}`
                           : ''}
                       </span>
                     )}
@@ -245,7 +261,7 @@ function ClassesContent({ isEditing }: { isEditing?: boolean }) {
 
 function MessagesContent({ isEditing }: { isEditing?: boolean }) {
   const { data: messages = [], isLoading } = useGetMessages();
-  const unread = (messages as any[]).filter(m => !m.isRead);
+  const unread = (messages as DashMessage[]).filter(m => !m.isRead);
   return (
     <Widget id="messages" label="Messages" href="/messages" isEditing={isEditing}>
       {isLoading ? (
@@ -262,7 +278,7 @@ function MessagesContent({ isEditing }: { isEditing?: boolean }) {
             <span className="text-sm text-muted-foreground">unread</span>
           </div>
           <div className="space-y-1.5">
-            {unread.slice(0, 3).map((m: any, i: number) => (
+            {unread.slice(0, 3).map((m: DashMessage, i: number) => (
               <div key={i} className="glass-inner p-2.5 rounded-xl">
                 <p className="text-xs font-medium text-foreground truncate">{m.subject ?? m.title}</p>
                 <p className="text-[11px] text-muted-foreground truncate mt-0.5">{m.sender ?? m.from}</p>
@@ -277,7 +293,7 @@ function MessagesContent({ isEditing }: { isEditing?: boolean }) {
 
 function CoursesContent({ isEditing }: { isEditing?: boolean }) {
   const { data: courses = [], isLoading } = useGetCourses();
-  const items = (courses as any[]).slice(0, 5);
+  const items = (courses as DashCourse[]).slice(0, 5);
 
   return (
     <Widget id="courses" label="Courses" href="/courses" isEditing={isEditing}>
@@ -290,11 +306,11 @@ function CoursesContent({ isEditing }: { isEditing?: boolean }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((course: any, index: number) => {
+          {items.map((course: DashCourse, index: number) => {
             const courseId = course.id ?? course.code ?? course.courseId;
             const teachers = (course.staff ?? [])
               .slice(0, 2)
-              .map((s: any) => s.name ?? s.firstName)
+              .map((s) => s.name ?? s.firstName)
               .filter(Boolean)
               .join(', ');
 
@@ -325,9 +341,9 @@ function CoursesContent({ isEditing }: { isEditing?: boolean }) {
 
 function ExamsContent({ isEditing }: { isEditing?: boolean }) {
   const { data: exams = [], isLoading } = useGetExams();
-  const upcoming = (exams as any[])
-    .filter(e => ['Available','Requestable','Booked','RequestAccepted','Requested'].includes(e.status) && e.examStartsAt)
-    .sort((a, b) => new Date(a.examStartsAt).getTime() - new Date(b.examStartsAt).getTime())
+  const upcoming = (exams as DashExam[])
+    .filter(e => ['Available','Requestable','Booked','RequestAccepted','Requested'].includes(e.status ?? '') && e.examStartsAt)
+    .sort((a, b) => new Date(a.examStartsAt ?? 0).getTime() - new Date(b.examStartsAt ?? 0).getTime())
     .slice(0, 3);
   return (
     <Widget id="exams" label="Upcoming Exams" href="/exams" isEditing={isEditing}>
@@ -340,8 +356,8 @@ function ExamsContent({ isEditing }: { isEditing?: boolean }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {upcoming.map((exam: any) => {
-            const days = daysUntil(exam.examStartsAt);
+          {upcoming.map((exam: DashExam) => {
+            const days = daysUntil(exam.examStartsAt ?? '');
             const urgent = days <= 7;
             const accent = WIDGET_META.exams.accent;
             const blueAccent = WIDGET_META.classes.accent;
@@ -350,7 +366,7 @@ function ExamsContent({ isEditing }: { isEditing?: boolean }) {
                 <p className="text-sm font-semibold text-foreground truncate">{exam.courseName}</p>
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-muted-foreground">
-                    {new Date(exam.examStartsAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                    {new Date(exam.examStartsAt ?? '').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                   </p>
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full"
                     style={{
@@ -371,10 +387,10 @@ function ExamsContent({ isEditing }: { isEditing?: boolean }) {
 
 function GradesContent({ isEditing }: { isEditing?: boolean }) {
   const { data: grades = [], isLoading } = useGetGrades();
-  const all = grades as any[];
-  const numeric = all.filter(g => !isNaN(parseFloat(g.grade)));
+  const all = grades as DashGrade[];
+  const numeric = all.filter(g => !isNaN(parseFloat(String(g.grade ?? ''))));
   const avg = numeric.length > 0
-    ? (numeric.reduce((s, g) => s + parseFloat(g.grade), 0) / numeric.length).toFixed(1)
+    ? (numeric.reduce((s, g) => s + parseFloat(String(g.grade ?? '')), 0) / numeric.length).toFixed(1)
     : null;
   return (
     <Widget id="grades" label="Grades" href="/transcript" isEditing={isEditing}>
@@ -389,10 +405,10 @@ function GradesContent({ isEditing }: { isEditing?: boolean }) {
             </div>
           )}
           <div className="space-y-1.5">
-            {all.slice(0, 4).map((g: any, i: number) => (
+            {all.slice(0, 4).map((g: DashGrade, i: number) => (
               <div key={i} className="glass-inner flex items-center justify-between p-2.5 rounded-xl">
                 <p className="text-xs font-medium text-foreground truncate flex-1 mr-2">{g.courseName ?? g.name}</p>
-                <Badge variant="outline" className="text-[11px] font-bold shrink-0">{formatThirtiethsGrade(g.grade)}</Badge>
+                <Badge variant="outline" className="text-[11px] font-bold shrink-0">{formatThirtiethsGrade(g.grade as number | undefined)}</Badge>
               </div>
             ))}
           </div>
@@ -437,7 +453,8 @@ const WIDGET_CONTENT: Record<WidgetId, (p: { isEditing?: boolean }) => React.Rea
 
 export default function DashboardPage() {
   const { data: student } = useGetStudent();
-  const firstName = (student as any)?.firstName ?? (student as any)?.name?.split(' ')[0] ?? 'Student';
+  const studentInfo = student as { firstName?: string; name?: string } | undefined;
+  const firstName = studentInfo?.firstName ?? studentInfo?.name?.split(' ')[0] ?? 'Student';
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const [layout, setLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
@@ -502,7 +519,7 @@ export default function DashboardPage() {
             <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
               {getGreeting()}, {firstName} 👋
             </h1>
-            <p className="text-muted-foreground text-sm mt-1">Here's your academic snapshot for today.</p>
+            <p className="text-muted-foreground text-sm mt-1">Here&apos;s your academic snapshot for today.</p>
           </div>
           <button
             onClick={() => setIsEditing(e => !e)}

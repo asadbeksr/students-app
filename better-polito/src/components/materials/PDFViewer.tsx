@@ -68,7 +68,7 @@ export default function PDFViewer({
     setPdfHash(''); // Reset hash when new document loads
     updateCourseState(courseId, { previewPage: null });
     if (!propUrl) {
-      const pdfData = material?.fileData || (material as any)?.content;
+      const pdfData = material?.fileData || (material as { content?: unknown } | undefined)?.content;
       if (pdfData instanceof ArrayBuffer) {
         const blob = new Blob([pdfData], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);

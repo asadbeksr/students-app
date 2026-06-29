@@ -1,6 +1,5 @@
 'use client';
 import { useGetGrades, useGetProvisionalGrades } from '@/lib/queries/studentHooks';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -12,8 +11,28 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AnalyticsTab } from './AnalyticsTab';
 
-function formatGrade(grade: any): string {
-  const n = parseFloat(grade);
+type Grade = {
+  id?: number | string;
+  grade?: number | string;
+  passed?: boolean;
+  credits?: number;
+  academicYear?: number | string;
+  year?: number | string;
+  date?: string;
+  honors?: boolean;
+  cum_laude?: boolean;
+  lode?: boolean;
+  courseName?: string;
+  name?: string;
+  course?: string;
+  courseShortcode?: string;
+  shortcode?: string;
+  acceptDeadline?: string;
+  deadline?: string;
+};
+
+function formatGrade(grade: number | string | undefined): string {
+  const n = parseFloat(String(grade ?? ''));
   if (isNaN(n)) return String(grade ?? '—');
   if (n === 30) return '30';
   return String(Math.round(n));
@@ -23,15 +42,15 @@ export default function TranscriptPage() {
   const { data: grades = [], isLoading: gradesLoading } = useGetGrades();
   const { data: provisionalGrades = [], isLoading: provLoading } = useGetProvisionalGrades();
 
-  const passedGrades = (grades as any[]).filter(g => g.passed !== false && !isNaN(parseFloat(g.grade)));
-  const totalCredits = passedGrades.reduce((acc: number, g: any) => acc + (g.credits ?? 0), 0);
+  const passedGrades = (grades as Grade[]).filter(g => g.passed !== false && !isNaN(parseFloat(String(g.grade ?? ''))));
+  const totalCredits = passedGrades.reduce((acc: number, g: Grade) => acc + (g.credits ?? 0), 0);
   const avgGrade = passedGrades.length > 0
-    ? (passedGrades.reduce((acc: number, g: any) => acc + parseFloat(g.grade), 0) / passedGrades.length).toFixed(2)
+    ? (passedGrades.reduce((acc: number, g: Grade) => acc + parseFloat(String(g.grade ?? '')), 0) / passedGrades.length).toFixed(2)
     : null;
 
   // Group by academic year
-  const byYear: Record<string, any[]> = {};
-  (grades as any[]).forEach(g => {
+  const byYear: Record<string, Grade[]> = {};
+  (grades as Grade[]).forEach(g => {
     const year = g.academicYear ?? g.year ?? (g.date ? new Date(g.date).getFullYear() : 'Unknown');
     const key = String(year);
     if (!byYear[key]) byYear[key] = [];
@@ -64,13 +83,13 @@ export default function TranscriptPage() {
           </div>
 
           {/* Provisional grades */}
-          {(provLoading || (provisionalGrades as any[]).length > 0) && (
+          {(provLoading || (provisionalGrades as Grade[]).length > 0) && (
             <div className="glass rounded-3xl p-6 border-amber-500/20 bg-amber-500/5">
               <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500 mb-4 font-medium">
                 <Clock className="w-5 h-5" />
                 Pending Grades
-                {(provisionalGrades as any[]).length > 0 && (
-                  <Badge className="bg-amber-500 text-white ml-2">{(provisionalGrades as any[]).length}</Badge>
+                {(provisionalGrades as Grade[]).length > 0 && (
+                  <Badge className="bg-amber-500 text-white ml-2">{(provisionalGrades as Grade[]).length}</Badge>
                 )}
               </div>
               <div>
@@ -78,7 +97,7 @@ export default function TranscriptPage() {
                   <div className="space-y-2">{[1, 2].map(i => <Skeleton key={i} className="h-16 rounded-2xl" />)}</div>
                 ) : (
                   <div className="space-y-2">
-                    {(provisionalGrades as any[]).map((g: any, i: number) => (
+                    {(provisionalGrades as Grade[]).map((g: Grade, i: number) => (
                       <ProvisionalGradeCard key={g.id ?? i} grade={g} />
                     ))}
                   </div>
@@ -95,7 +114,7 @@ export default function TranscriptPage() {
             <div>
               {gradesLoading ? (
                 <div className="space-y-2">{[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-14 rounded-2xl" />)}</div>
-              ) : (grades as any[]).length === 0 ? (
+              ) : (grades as Grade[]).length === 0 ? (
                 <div className="py-10 flex flex-col items-center justify-center">
                   <GraduationCap className="w-10 h-10 text-muted-foreground/30 mb-3" />
                   <p className="text-sm text-muted-foreground">No grades yet.</p>
@@ -108,7 +127,7 @@ export default function TranscriptPage() {
                         {year !== 'Unknown' ? `Academic Year ${year}` : 'Other'}
                       </p>
                       <div className="space-y-2">
-                        {byYear[year].map((grade: any, i: number) => (
+                        {byYear[year].map((grade: Grade, i: number) => (
                           <GradeRow key={grade.id ?? i} grade={grade} />
                         ))}
                       </div>
@@ -117,7 +136,7 @@ export default function TranscriptPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {(grades as any[]).map((grade: any, i: number) => (
+                  {(grades as Grade[]).map((grade: Grade, i: number) => (
                     <GradeRow key={grade.id ?? i} grade={grade} />
                   ))}
                 </div>
@@ -134,8 +153,8 @@ export default function TranscriptPage() {
   );
 }
 
-function GradeRow({ grade }: { grade: any }) {
-  const gradeNum = parseFloat(grade.grade);
+function GradeRow({ grade }: { grade: Grade }) {
+  const gradeNum = parseFloat(String(grade.grade ?? ''));
   const isLode = grade.honors === true || grade.cum_laude === true || grade.grade === '30L' || grade.lode === true;
   const variant = isNaN(gradeNum) ? 'secondary' : gradeNum >= 27 ? 'success' : gradeNum >= 18 ? 'secondary' : 'destructive';
 
@@ -167,10 +186,10 @@ function GradeRow({ grade }: { grade: any }) {
   );
 }
 
-function ProvisionalGradeCard({ grade }: { grade: any }) {
+function ProvisionalGradeCard({ grade }: { grade: Grade }) {
   const qc = useQueryClient();
   const accept = useMutation({
-    mutationFn: () => getApiClient().request<any>(`/provisional-grades/${grade.id}/accept`, { method: 'POST' }),
+    mutationFn: () => getApiClient().request<unknown>(`/provisional-grades/${grade.id}/accept`, { method: 'POST' }),
     onSuccess: () => {
       toast.success('Grade accepted');
       qc.invalidateQueries({ queryKey: PROVISIONAL_GRADES_QUERY_KEY });
@@ -179,7 +198,7 @@ function ProvisionalGradeCard({ grade }: { grade: any }) {
     onError: () => toast.error('Could not accept grade'),
   });
   const reject = useMutation({
-    mutationFn: () => getApiClient().request<any>(`/provisional-grades/${grade.id}/reject`, { method: 'POST' }),
+    mutationFn: () => getApiClient().request<unknown>(`/provisional-grades/${grade.id}/reject`, { method: 'POST' }),
     onSuccess: () => {
       toast.success('Grade rejected');
       qc.invalidateQueries({ queryKey: PROVISIONAL_GRADES_QUERY_KEY });

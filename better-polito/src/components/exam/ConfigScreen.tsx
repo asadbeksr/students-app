@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ListChecks } from 'lucide-react';
 import Link from 'next/link';
 import type {
@@ -528,7 +527,7 @@ export function ConfigScreen({ subject, mode, modeCfg, onStart, starting, error 
             </button>
 
             <p className="summary-note">
-              Once started, the timer runs. You can't regenerate questions until the attempt
+              Once started, the timer runs. You can&apos;t regenerate questions until the attempt
               finishes or time expires.
             </p>
           </div>

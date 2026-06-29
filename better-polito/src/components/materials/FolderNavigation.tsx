@@ -84,7 +84,7 @@ export default function FolderNavigation({ courseId, onSelectMaterial, onUploadC
         await deleteMaterial(materialId);
         if (selectedMaterialId === materialId) {
           setSelectedMaterialId(null);
-          onSelectMaterial?.(null as any);
+          onSelectMaterial?.(null as unknown as Material);
         }
         toast({ title: 'Deleted', description: 'Material deleted successfully' });
       } catch {

@@ -11,7 +11,9 @@ import { MESSAGES_QUERY_KEY } from '@/lib/queries/studentHooks';
 import { toast } from 'sonner';
 import { useState } from 'react';
 
-const TYPE_CONFIG: Record<string, { icon: any; color: string; label: string }> = {
+type Message = { id?: number; isRead?: boolean; type?: string; subject?: string; title?: string; sender?: string; content?: string; body?: string; sentAt?: string };
+
+const TYPE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
   info: { icon: Info, color: 'text-blue-500', label: 'Info' },
   warning: { icon: AlertTriangle, color: 'text-amber-500', label: 'Warning' },
   mfa: { icon: Shield, color: 'text-purple-500', label: 'Security' },
@@ -33,7 +35,7 @@ export default function MessagesPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }); toast.success('Message deleted'); },
   });
 
-  const unread = (messages as any[]).filter((m: any) => !m.isRead).length;
+  const unread = (messages as Message[]).filter((m) => !m.isRead).length;
 
   return (
     <div className="space-y-6 w-full">
@@ -47,7 +49,7 @@ export default function MessagesPage() {
 
       {isLoading ? (
         <div className="space-y-3">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20" />)}</div>
-      ) : (messages as any[]).length === 0 ? (
+      ) : (messages as Message[]).length === 0 ? (
         <Card>
           <CardContent className="py-16">
             <MessageSquare className="w-10 h-10 text-border mb-3" />
@@ -56,7 +58,7 @@ export default function MessagesPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {(messages as any[]).map((m: any, i: number) => {
+          {(messages as Message[]).map((m: Message, i: number) => {
             const typeKey = m.type?.toLowerCase() ?? 'default';
             const cfg = TYPE_CONFIG[typeKey] ?? TYPE_CONFIG.default;
             const Icon = cfg.icon;
@@ -98,7 +100,7 @@ export default function MessagesPage() {
                           <Button
                             size="sm" variant="ghost"
                             className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 h-6 px-2 ml-auto"
-                            onClick={(e) => { e.stopPropagation(); deleteMsg.mutate(m.id); }}
+                            onClick={(e) => { e.stopPropagation(); if (m.id) deleteMsg.mutate(m.id); }}
                           >
                             Delete
                           </Button>

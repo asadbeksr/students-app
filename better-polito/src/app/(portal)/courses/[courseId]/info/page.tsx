@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQueries } from '@tanstack/react-query';
-import { ArrowLeft, BookOpen, CalendarDays, ExternalLink, GraduationCap } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ExternalLink, GraduationCap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useGetCourse, useGetCourseGuide, useGetCourses } from '@/lib/queries/courseHooks';
@@ -33,6 +33,20 @@ type GuideSectionItem = {
   title: string;
   content: string;
 };
+
+// Loosely-typed shapes for the dynamic PoliTO course payloads.
+type AnyRecord = Record<string, unknown>;
+type CourseEdition = { id?: number | string; year?: number | string };
+type CourseStaffEntry = { id?: number | string; personId?: number | string; role?: string; name?: string };
+type CourseData = {
+  id?: number | string; shortcode?: string; cfu?: number | string; credits?: number | string;
+  year?: number | string; academicYear?: number | string; courseType?: string;
+  teachingPeriod?: number | string; period?: number | string;
+  modules?: unknown[]; previousEditions?: CourseEdition[]; staff?: CourseStaffEntry[];
+  moodleUrl?: string; moodle?: string; elearningUrl?: string; platformUrl?: string;
+  url?: string; website?: string; courseUrl?: string;
+};
+type PersonData = { id?: number | string; firstName?: string; lastName?: string; role?: string };
 
 function formatAcademicYearLabel(year: number): string {
   return `${year - 1}/${String(year).slice(-2)}`;
@@ -67,7 +81,7 @@ function isLikelyMoodleUrl(url: string): boolean {
   return lower.includes('moodle') || lower.includes('didattica.polito.it');
 }
 
-function getMoodleLinkFromCourseData(course: any, guide: any[]): string | undefined {
+function getMoodleLinkFromCourseData(course: CourseData | null | undefined, guide: unknown): string | undefined {
   const candidates: string[] = [];
 
   [course?.moodleUrl, course?.moodle, course?.elearningUrl, course?.platformUrl, course?.url, course?.website, course?.courseUrl]
@@ -97,9 +111,9 @@ function getMoodleLinkFromCourseData(course: any, guide: any[]): string | undefi
   return unique.find((url) => isLikelyMoodleUrl(url));
 }
 
-function normalizeGuideSections(guide: any[]): GuideSectionItem[] {
+function normalizeGuideSections(guide: unknown): GuideSectionItem[] {
   return (Array.isArray(guide) ? guide : [])
-    .map((section: any, index: number) => {
+    .map((section: AnyRecord, index: number) => {
       const title = typeof section?.title === 'string' && section.title.trim() ? section.title.trim() : `Section ${index + 1}`;
       const content = (typeof section?.content === 'string' ? section.content : '')
         .replace(/[\f]+/g, '\n')
@@ -118,22 +132,22 @@ export default function CourseInfoPage() {
   const { data: courses = [] } = useGetCourses();
   const { data: courseGuide = [] } = useGetCourseGuide(id);
 
-  const c = course as any;
+  const c = course as CourseData | undefined;
 
   const moodleUrl = useMemo(() => getMoodleLinkFromCourseData(c, Array.isArray(courseGuide) ? courseGuide : []), [c, courseGuide]);
   const guideSections = useMemo(() => normalizeGuideSections(Array.isArray(courseGuide) ? courseGuide : []), [courseGuide]);
 
-  const coursesPool = useMemo(() => {
-    const list = Array.isArray(courses) ? (courses as any[]) : [];
-    const modules = list.flatMap((courseItem) => Array.isArray(courseItem?.modules) ? courseItem.modules : []);
+  const coursesPool = useMemo<CourseData[]>(() => {
+    const list = Array.isArray(courses) ? (courses as CourseData[]) : [];
+    const modules = list.flatMap((courseItem) => Array.isArray(courseItem?.modules) ? (courseItem.modules as CourseData[]) : []);
     return [...modules, ...list].filter(Boolean);
   }, [courses]);
 
   const linkedCourse = useMemo(() => {
-    return coursesPool.find((courseItem: any) => {
+    return coursesPool.find((courseItem: CourseData) => {
       if (Number(courseItem?.id) === id) return true;
       const previous = Array.isArray(courseItem?.previousEditions) ? courseItem.previousEditions : [];
-      return previous.some((edition: any) => Number(edition?.id) === id);
+      return previous.some((edition: CourseEdition) => Number(edition?.id) === id);
     });
   }, [coursesPool, id]);
 
@@ -157,14 +171,14 @@ export default function CourseInfoPage() {
       : Array.isArray(c?.previousEditions)
         ? c.previousEditions
         : [];
-    previous.forEach((edition: any) => push(edition?.id, edition?.year));
+    previous.forEach((edition: CourseEdition) => push(edition?.id, edition?.year));
 
     return out;
   }, [linkedCourse?.id, linkedCourse?.year, linkedCourse?.previousEditions, c?.id, c?.year, c?.previousEditions, id]);
 
   const staffBase = useMemo<StaffBaseEntry[]>(() => {
-    const raw = Array.isArray(c?.staff) ? (c.staff as any[]) : [];
-    return raw.map((item: any): StaffBaseEntry => {
+    const raw = Array.isArray(c?.staff) ? (c.staff as CourseStaffEntry[]) : [];
+    return raw.map((item: CourseStaffEntry): StaffBaseEntry => {
       const idRaw = item?.id ?? item?.personId;
       const idText = idRaw == null ? '' : String(idRaw).trim();
       const numericId = Number(idText);
@@ -187,17 +201,17 @@ export default function CourseInfoPage() {
   const staffPersonQueries = useQueries({
     queries: staffIds.map((personId) => ({
       queryKey: ['person', personId],
-      queryFn: () => (getApiClient() as any).getPerson(personId).then((r: any) => r.data),
+      queryFn: () => getApiClient().getPerson(personId).then((r) => r.data),
       enabled: !!personId,
       staleTime: 10 * 60 * 1000,
     })),
   });
 
   const staffPersonsById = useMemo(() => {
-    const map = new Map<number, any>();
+    const map = new Map<number, PersonData>();
     staffIds.forEach((personId, index) => {
       const personData = staffPersonQueries[index]?.data;
-      if (personData) map.set(personId, personData);
+      if (personData) map.set(personId, personData as PersonData);
     });
     return map;
   }, [staffIds, staffPersonQueries]);
