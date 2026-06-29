@@ -72,8 +72,10 @@ function extractPageWindow(fullText: string, centerPage: number, radius: number)
 /** Parse "--- Page N ---\ntext" format into a page map */
 function buildPageMap(fullText: string): Record<number, string> {
   const map: Record<number, string> = {};
-  const parts = fullText.split(/\n\n--- Page (\d+) ---\n/);
-  // parts[0] is any text before first marker (usually the prefix line), then alternating: pageNum, text
+  // Tolerate 0-2 leading newlines so the FIRST page marker is matched even when
+  // the text has been trimmed (otherwise page 1 would be dropped from the map).
+  const parts = fullText.split(/\n{0,2}--- Page (\d+) ---\n/);
+  // parts[0] is any text before the first marker, then alternating: pageNum, text
   for (let i = 1; i < parts.length - 1; i += 2) {
     const pageNum = parseInt(parts[i], 10);
     if (!isNaN(pageNum)) map[pageNum] = parts[i + 1]?.trim() ?? '';
