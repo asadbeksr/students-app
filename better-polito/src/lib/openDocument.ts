@@ -1,3 +1,4 @@
+import { db } from '@/lib/db';
 import {
   useDocumentContentStore,
   type DocumentContent,
@@ -65,11 +66,43 @@ async function runExtraction(preview: PreviewFile): Promise<DocumentContent> {
     }
 
     store.setContent(preview.id, content);
+    // Persist so reloads / a closed chat panel don't force a re-extraction.
+    try {
+      await db.documentText.put({
+        id: preview.id,
+        text: content.text,
+        pageCount: content.pageCount,
+        isScanned: content.isScanned,
+        extractedAt: new Date().toISOString(),
+      });
+    } catch (persistError) {
+      console.error('Failed to persist document text:', persistError);
+    }
     return content;
   } catch (error) {
     console.error('Failed to extract document text:', error);
     store.setContent(preview.id, failed);
     return failed;
+  }
+}
+
+// Read-through the Dexie persistence layer before extracting. Returns the
+// hydrated content (also warming the in-memory cache) or null on a miss.
+async function loadPersistedDocument(fileId: string): Promise<DocumentContent | null> {
+  try {
+    const stored = await db.documentText.get(fileId);
+    if (!stored) return null;
+    const content: DocumentContent = {
+      text: stored.text,
+      pageCount: stored.pageCount,
+      isScanned: stored.isScanned,
+      status: 'ready',
+    };
+    useDocumentContentStore.getState().setContent(fileId, content);
+    return content;
+  } catch (error) {
+    console.error('Failed to read persisted document text:', error);
+    return null;
   }
 }
 
@@ -93,7 +126,10 @@ export function ensureDocumentExtracted(
   const existing = inFlight.get(preview.id);
   if (existing) return existing;
 
-  const p = runExtraction(preview).finally(() => inFlight.delete(preview.id));
+  // Try the Dexie cache first, then fall back to a fresh extraction.
+  const p = loadPersistedDocument(preview.id)
+    .then(persisted => persisted ?? runExtraction(preview))
+    .finally(() => inFlight.delete(preview.id));
   inFlight.set(preview.id, p);
   return p;
 }

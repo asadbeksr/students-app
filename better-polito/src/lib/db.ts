@@ -42,6 +42,16 @@ export interface SavedExamConfig {
   config: Partial<AttemptConfig>;
 }
 
+// Extracted text of an open course document, persisted so the AI chat survives
+// reloads / a closed chat panel without re-extracting. Keyed by the file id.
+export interface StoredDocumentText {
+  id: string;
+  text: string;        // full extracted text (with `--- Page N ---` markers when available)
+  pageCount: number;
+  isScanned: boolean;
+  extractedAt: string; // ISO timestamp
+}
+
 class StudyBuddyDB extends Dexie {
   courses!: Table<Course>;
   folders!: Table<Folder>;
@@ -56,6 +66,7 @@ class StudyBuddyDB extends Dexie {
   examAttempts!: Table<ActiveExamAttempt>;
   examHistory!: Table<ArchivedExamAttempt>;
   examConfigs!: Table<SavedExamConfig>;
+  documentText!: Table<StoredDocumentText>;
 
   constructor() {
     super('StudyBuddyDB');
@@ -287,6 +298,12 @@ class StudyBuddyDB extends Dexie {
       examHistory: 'id, [subject+mode], startedAt',
       examConfigs: 'id',
     }).upgrade((tx) => migrateExamLocalStorageToDexie(tx));
+
+    // Version 12: Persist extracted open-document text so the AI chat survives
+    // reloads / a closed chat panel without re-extracting (keyed by file id).
+    this.version(12).stores({
+      documentText: 'id',
+    });
   }
 
 }

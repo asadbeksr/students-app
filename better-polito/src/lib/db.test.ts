@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { db } from '@/lib/db';
 
 describe('StudyBuddyDB schema', () => {
-  it('opens at the current version with the exam-practice stores', async () => {
+  it('opens at the current version with the exam-practice + document-text stores', async () => {
     await db.open();
-    expect(db.verno).toBe(11);
+    expect(db.verno).toBe(12);
     const tables = db.tables.map((t) => t.name);
-    expect(tables).toEqual(expect.arrayContaining(['examAttempts', 'examHistory', 'examConfigs']));
+    expect(tables).toEqual(expect.arrayContaining(['examAttempts', 'examHistory', 'examConfigs', 'documentText']));
   });
 
   it('no longer carries the legacy mock-exam stores', async () => {
