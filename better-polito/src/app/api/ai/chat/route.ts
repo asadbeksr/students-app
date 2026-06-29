@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getGeminiClient } from '@/lib/gemini';
+import { callGemini, resolveModel } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
-    const ai = getGeminiClient();
-    const { messages } = await req.json();
+    const { messages, model } = await req.json();
 
     const systemPrompt = `You are an AI assistant for the Polito Community Portal Portalstudent portal — an unofficial community tool for PoliTO students.
 Help students with academic questions, exam strategies, study tips, and how to use university services.
@@ -17,8 +16,8 @@ If you don't know something specific about PoliTO, say so honestly.`;
       parts: [{ text: msg.content }],
     }));
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+    const response = await callGemini({
+      model: resolveModel(model),
       contents,
       config: {
         systemInstruction: systemPrompt,

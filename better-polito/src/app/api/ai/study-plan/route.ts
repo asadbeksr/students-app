@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getGeminiClient } from '@/lib/gemini';
+import { callGemini, DEFAULT_GEMINI_MODEL } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
-    const ai = getGeminiClient();
     const { exams, grades, courses, student } = await req.json();
 
     const prompt = `You are an expert AI Study Planner acting as an academic advisor for a university student. Given their data, create a detailed, highly personalized 4-week study plan.
@@ -35,8 +34,8 @@ Return valid JSON in this exact structure:
   "summary": "A short, highly personalized, and encouraging recommendation paragraph tailored specifically to their major, grades, and upcoming workload."
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+    const response = await callGemini({
+      model: DEFAULT_GEMINI_MODEL,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json',

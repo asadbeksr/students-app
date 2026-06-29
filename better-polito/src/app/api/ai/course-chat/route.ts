@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { getGeminiClient } from '@/lib/gemini';
+import { callGeminiStream, resolveModel } from '@/lib/gemini';
 import { formatAttachmentsForGeminiFromSerialized, type SerializedAttachment } from '@/lib/geminiVision';
 import { Type } from '@google/genai';
 import type { FunctionCall, Part, Tool } from '@google/genai';
@@ -93,7 +93,6 @@ const READ_PDF_PAGES_TOOL: Tool = {
 
 export async function POST(req: Request) {
   try {
-    const ai = getGeminiClient();
     const {
       messages, systemPrompt, model, attachments,
       openDocument,
@@ -105,7 +104,7 @@ export async function POST(req: Request) {
       openDocument?: OpenDocument;
     };
 
-    const selectedModel = model || 'gemini-flash-latest';
+    const selectedModel = resolveModel(model);
     let enrichedSystemPrompt = systemPrompt || '';
 
     // The full extracted text (with page markers) is only present when the
@@ -189,7 +188,7 @@ ${partial}`;
 
           // If tool is available, do a streaming pass to check for tool calls
           if (hasTool) {
-            const toolStream = await ai.models.generateContentStream({
+            const toolStream = await callGeminiStream({
               model: selectedModel,
               contents,
               config: { ...genConfig, tools: [READ_PDF_PAGES_TOOL] },
@@ -241,7 +240,7 @@ ${partial}`;
           }
 
           // Stream the final response (after tool resolution, or when no tool needed)
-          const finalStream = await ai.models.generateContentStream({
+          const finalStream = await callGeminiStream({
             model: selectedModel,
             contents: finalContents,
             config: genConfig,
