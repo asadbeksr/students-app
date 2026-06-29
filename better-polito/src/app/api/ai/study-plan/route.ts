@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { callGemini, DEFAULT_GEMINI_MODEL } from '@/lib/gemini';
+import { STUDY_PLAN_SCHEMA, parseStudyPlan } from './studyPlan';
 
 export async function POST(req: Request) {
   try {
@@ -39,12 +40,19 @@ Return valid JSON in this exact structure:
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         responseMimeType: 'application/json',
-        maxOutputTokens: 2048,
+        responseSchema: STUDY_PLAN_SCHEMA,
+        maxOutputTokens: 8192,
       },
     });
 
-    const content = response.text ?? '{}';
-    return NextResponse.json(JSON.parse(content));
+    const plan = parseStudyPlan(response.text ?? '');
+    if (plan) return NextResponse.json(plan);
+
+    // Degrade gracefully instead of 500-ing on a malformed/truncated response.
+    return NextResponse.json({
+      weeks: [],
+      summary: 'The study plan could not be generated this time — the response was incomplete. Please try again.',
+    });
   } catch (error) {
     const message = (error as Error).message || 'Unknown error';
 
