@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+import Dexie, { Table, Transaction } from 'dexie';
 import type {
   Course,
   Folder,
@@ -286,9 +286,70 @@ class StudyBuddyDB extends Dexie {
       examAttempts: 'id',
       examHistory: 'id, [subject+mode], startedAt',
       examConfigs: 'id',
-    });
+    }).upgrade((tx) => migrateExamLocalStorageToDexie(tx));
   }
 
+}
+
+/**
+ * One-time port of the exam-practice data written by the pre-Dexie code into
+ * the version-11 tables. Reads the legacy `mock-attempt:`, `mock-config:` and
+ * `mock-attempt-history-data:` localStorage keys, writes them through the
+ * upgrade transaction, then removes each key it consumed. Stale `mock-history:`
+ * summary blobs are dropped — history summaries are now derived from the full
+ * archived attempts. Returns the consumed keys (handy for tests/logging).
+ */
+export async function migrateExamLocalStorageToDexie(tx: Transaction): Promise<string[]> {
+  if (typeof localStorage === 'undefined') return [];
+
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k) keys.push(k);
+  }
+
+  const consumed: string[] = [];
+  for (const key of keys) {
+    try {
+      if (key.startsWith('mock-attempt-history-data:')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const attempt = JSON.parse(raw);
+          if (attempt?.submittedAt) {
+            await tx.table('examHistory').put({
+              id: String(attempt.startedAt),
+              subject: attempt.subject,
+              mode: attempt.mode,
+              startedAt: attempt.startedAt,
+              attempt,
+            });
+          }
+        }
+        consumed.push(key);
+      } else if (key.startsWith('mock-attempt:')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const attempt = JSON.parse(raw);
+          await tx.table('examAttempts').put({ id: key.slice('mock-attempt:'.length), attempt });
+        }
+        consumed.push(key);
+      } else if (key.startsWith('mock-config:')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const config = JSON.parse(raw);
+          await tx.table('examConfigs').put({ id: key.slice('mock-config:'.length), config });
+        }
+        consumed.push(key);
+      } else if (key.startsWith('mock-history:')) {
+        consumed.push(key);
+      }
+    } catch {
+      /* skip malformed entry */
+    }
+  }
+
+  for (const key of consumed) localStorage.removeItem(key);
+  return consumed;
 }
 
 let _db: StudyBuddyDB | null = null;
